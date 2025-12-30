@@ -14,7 +14,7 @@
     "scale:prices": "node ./scripts/scale-product-prices.js",
     "setup:payment-providers": "node ./scripts/setup-payment-providers.js",
     "clear:carts": "node ./scripts/clear-carts.js",
-    "migrate": "medusa migrations run",
+    "migrate": "medusa db:migrate",
     "smoke:register-approve": "node ./scripts/smoke-register-approve.js"
   },
   "dependencies": {
