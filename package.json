@@ -1,0 +1,22 @@
+{
+  "name": "chroma",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@8.15.4",
+  "scripts": {
+    "dev": "concurrently -n api,admin,front-store \"pnpm --filter @chroma/api dev\" \"pnpm --filter @chroma/admin dev\" \"pnpm --filter @chroma/front-store dev\"",
+    "dev:api": "pnpm --filter @chroma/api dev",
+    "dev:admin": "pnpm --filter @chroma/admin dev",
+    "dev:front-store": "pnpm --filter @chroma/front-store dev",
+    "build": "pnpm --recursive build",
+    "lint": "pnpm --recursive lint"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0"
+  },
+  "dependencies": {
+    "pnpm": "^10.25.0"
+  }
+}

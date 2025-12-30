@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug API (dev)",
+      "program": "${workspaceFolder}/packages/api/node_modules/.bin/medusa",
+      "args": ["develop"],
+      "cwd": "${workspaceFolder}/packages/api",
+      "envFile": "${workspaceFolder}/packages/api/.env",
+      "runtimeExecutable": "${env:HOME}/.asdf/shims/node",
+      "console": "integratedTerminal",
+      "outputCapture": "std"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug API (start)",
+      "program": "${workspaceFolder}/packages/api/node_modules/.bin/medusa",
+      "args": ["start"],
+      "cwd": "${workspaceFolder}/packages/api",
+      "envFile": "${workspaceFolder}/packages/api/.env",
+      "runtimeExecutable": "${env:HOME}/.asdf/shims/node",
+      "console": "integratedTerminal",
+      "outputCapture": "std"
+    }
+  ]
+}

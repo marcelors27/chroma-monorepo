@@ -1,0 +1,1817 @@
+[
+  {
+    "title": "Cimento CP-II 50kg",
+    "description": "Saco de cimento CP-II 50kg para estruturas e alvenaria.",
+    "thumbnail": "https://images.unsplash.com/photo-1581579185262-232c43f920b5?auto=format&fit=crop&w=800&q=80",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "50kg"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Saco 50kg",
+        "options": {
+          "Unidade": "50kg"
+        },
+        "prices": [
+          {
+            "amount": 37.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Tinta Acrílica Branca 18L",
+    "description": "Tinta acrílica premium branca 18L para ambientes internos e externos.",
+    "thumbnail": "https://images.unsplash.com/photo-1451976426598-a759dd6f3c75?auto=format&fit=crop&w=800&q=80",
+    "options": [
+      {
+        "title": "Acabamento",
+        "values": [
+          "Fosco"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Fosco",
+        "options": {
+          "Acabamento": "Fosco"
+        },
+        "prices": [
+          {
+            "amount": 229.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Porcelanato Acetinado 60x60",
+    "description": "Porcelanato acetinado 60x60 cm para áreas internas, caixa com 4 peças.",
+    "thumbnail": "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&q=80",
+    "options": [
+      {
+        "title": "Caixa",
+        "values": [
+          "4 peças"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Caixa 4 peças",
+        "options": {
+          "Caixa": "4 peças"
+        },
+        "prices": [
+          {
+            "amount": 139.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Argamassa AC-II 20kg",
+    "description": "Argamassa colante AC-II 20kg para cerâmicas e porcelanatos internos.",
+    "thumbnail": "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=800&q=80",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "20kg"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Saco 20kg",
+        "options": {
+          "Unidade": "20kg"
+        },
+        "prices": [
+          {
+            "amount": 29.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Kit Torneira Misturador Cozinha",
+    "description": "Kit torneira misturador monocomando em aço inox com bica móvel.",
+    "thumbnail": "https://images.unsplash.com/photo-1582719478216-0c7b3e5c3106?auto=format&fit=crop&w=800&q=80",
+    "options": [
+      {
+        "title": "Acabamento",
+        "values": [
+          "Inox"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Inox escovado",
+        "options": {
+          "Acabamento": "Inox"
+        },
+        "prices": [
+          {
+            "amount": 429.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Bloco de Concreto 14x19x39",
+    "description": "Bloco estrutural de concreto 14x19x39 cm para alvenaria.",
+    "thumbnail": "https://images.unsplash.com/photo-1503387837-b154d5074bd2?auto=format&fit=crop&w=800&q=80",
+    "type": "Estruturas",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "Peça"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Peça",
+        "options": {
+          "Unidade": "Peça"
+        },
+        "prices": [
+          {
+            "amount": 8.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Tijolo Ceramico 9x19x19",
+    "description": "Tijolo ceramico 9x19x19 cm para vedacao.",
+    "thumbnail": "https://images.unsplash.com/photo-1509395176047-4a66953fd231?auto=format&fit=crop&w=800&q=80",
+    "type": "Estruturas",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "Peça"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Peça",
+        "options": {
+          "Unidade": "Peça"
+        },
+        "prices": [
+          {
+            "amount": 1.2,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Areia Media 20kg",
+    "description": "Saco de areia media 20kg para obras gerais.",
+    "thumbnail": "https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&w=800&q=80",
+    "type": "Agregados",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "20kg"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Saco 20kg",
+        "options": {
+          "Unidade": "20kg"
+        },
+        "prices": [
+          {
+            "amount": 15.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Brita 1 20kg",
+    "description": "Saco de brita 1 20kg para concreto e drenagem.",
+    "thumbnail": "https://images.unsplash.com/photo-1501706362039-c6b2a4c0b0b2?auto=format&fit=crop&w=800&q=80",
+    "type": "Agregados",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "20kg"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Saco 20kg",
+        "options": {
+          "Unidade": "20kg"
+        },
+        "prices": [
+          {
+            "amount": 18.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Cal Hidratada 20kg",
+    "description": "Cal hidratada 20kg para argamassas e pintura.",
+    "thumbnail": "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=800&q=80",
+    "type": "Cal",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "20kg"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Saco 20kg",
+        "options": {
+          "Unidade": "20kg"
+        },
+        "prices": [
+          {
+            "amount": 24.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Vergalhao CA-50 10mm 12m",
+    "description": "Barra de aco CA-50 10mm com 12 metros.",
+    "thumbnail": "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=800&q=80",
+    "type": "Aco",
+    "options": [
+      {
+        "title": "Bitola",
+        "values": [
+          "10mm"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "10mm",
+        "options": {
+          "Bitola": "10mm"
+        },
+        "prices": [
+          {
+            "amount": 62.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Fio Eletrico 2.5mm 100m",
+    "description": "Bobina de fio eletrico 2.5mm com 100 metros.",
+    "thumbnail": "https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=800&q=80",
+    "type": "Eletrica",
+    "options": [
+      {
+        "title": "Cor",
+        "values": [
+          "Preto"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Preto",
+        "options": {
+          "Cor": "Preto"
+        },
+        "prices": [
+          {
+            "amount": 189.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Disjuntor Bipolar 32A",
+    "description": "Disjuntor bipolar 32A para quadro eletrico.",
+    "thumbnail": "https://images.unsplash.com/photo-1581092786450-7b6f2391a9b2?auto=format&fit=crop&w=800&q=80",
+    "type": "Eletrica",
+    "options": [
+      {
+        "title": "Corrente",
+        "values": [
+          "32A"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "32A",
+        "options": {
+          "Corrente": "32A"
+        },
+        "prices": [
+          {
+            "amount": 35.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Interruptor Simples",
+    "description": "Interruptor simples de embutir na cor branca.",
+    "thumbnail": "https://images.unsplash.com/photo-1501045661006-fcebe0257c3f?auto=format&fit=crop&w=800&q=80",
+    "type": "Eletrica",
+    "options": [
+      {
+        "title": "Cor",
+        "values": [
+          "Branco"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Branco",
+        "options": {
+          "Cor": "Branco"
+        },
+        "prices": [
+          {
+            "amount": 12.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Tomada 10A",
+    "description": "Tomada de 10A para instalacao residencial.",
+    "thumbnail": "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=800&q=80",
+    "type": "Eletrica",
+    "options": [
+      {
+        "title": "Cor",
+        "values": [
+          "Branco"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Branco",
+        "options": {
+          "Cor": "Branco"
+        },
+        "prices": [
+          {
+            "amount": 11.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Cano PVC 20mm 6m",
+    "description": "Tubo PVC 20mm com 6 metros para agua fria.",
+    "thumbnail": "https://images.unsplash.com/photo-1565182999561-18d7dc61c393?auto=format&fit=crop&w=800&q=80",
+    "type": "Hidraulica",
+    "options": [
+      {
+        "title": "Bitola",
+        "values": [
+          "20mm"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "20mm",
+        "options": {
+          "Bitola": "20mm"
+        },
+        "prices": [
+          {
+            "amount": 27.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Joelho PVC 90 20mm",
+    "description": "Conexao joelho 90 graus PVC 20mm.",
+    "thumbnail": "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=800&q=80",
+    "type": "Hidraulica",
+    "options": [
+      {
+        "title": "Bitola",
+        "values": [
+          "20mm"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "20mm",
+        "options": {
+          "Bitola": "20mm"
+        },
+        "prices": [
+          {
+            "amount": 4.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Registro Esfera 25mm",
+    "description": "Registro esfera 25mm para linha de agua.",
+    "thumbnail": "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=800&q=80",
+    "type": "Hidraulica",
+    "options": [
+      {
+        "title": "Bitola",
+        "values": [
+          "25mm"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "25mm",
+        "options": {
+          "Bitola": "25mm"
+        },
+        "prices": [
+          {
+            "amount": 22.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Caixa d'agua 500L",
+    "description": "Caixa d'agua em polietileno com 500 litros.",
+    "thumbnail": "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=800&q=80",
+    "type": "Hidraulica",
+    "options": [
+      {
+        "title": "Capacidade",
+        "values": [
+          "500L"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "500L",
+        "options": {
+          "Capacidade": "500L"
+        },
+        "prices": [
+          {
+            "amount": 489.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Serra Circular 1400W",
+    "description": "Serra circular 1400W para cortes precisos em madeira.",
+    "thumbnail": "https://images.unsplash.com/photo-1503387837-b154d5074bd2?auto=format&fit=crop&w=800&q=80",
+    "type": "Ferramentas",
+    "options": [
+      {
+        "title": "Voltagem",
+        "values": [
+          "220V"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "220V",
+        "options": {
+          "Voltagem": "220V"
+        },
+        "prices": [
+          {
+            "amount": 589.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Furadeira Impacto 650W",
+    "description": "Furadeira de impacto 650W para concreto e alvenaria.",
+    "thumbnail": "https://images.unsplash.com/photo-1523413651479-597eb2da0ad6?auto=format&fit=crop&w=800&q=80",
+    "type": "Ferramentas",
+    "options": [
+      {
+        "title": "Voltagem",
+        "values": [
+          "220V"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "220V",
+        "options": {
+          "Voltagem": "220V"
+        },
+        "prices": [
+          {
+            "amount": 249.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Martelo Unha 25mm",
+    "description": "Martelo unha 25mm com cabo em fibra.",
+    "thumbnail": "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=800&q=80",
+    "type": "Ferramentas",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "Peça"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Peça",
+        "options": {
+          "Unidade": "Peça"
+        },
+        "prices": [
+          {
+            "amount": 45.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Trena 5m",
+    "description": "Trena de 5 metros com trava e gancho reforcado.",
+    "thumbnail": "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=800&q=80",
+    "type": "Ferramentas",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "Peça"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Peça",
+        "options": {
+          "Unidade": "Peça"
+        },
+        "prices": [
+          {
+            "amount": 29.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Lixa Massa 120",
+    "description": "Lixa para massa grana 120.",
+    "thumbnail": "https://images.unsplash.com/photo-1501045661006-fcebe0257c3f?auto=format&fit=crop&w=800&q=80",
+    "type": "Pintura",
+    "options": [
+      {
+        "title": "Grana",
+        "values": [
+          "120"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "120",
+        "options": {
+          "Grana": "120"
+        },
+        "prices": [
+          {
+            "amount": 3.5,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Rolo de Pintura 23cm",
+    "description": "Rolo de pintura 23 cm para tinta latex e acrilica.",
+    "thumbnail": "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=800&q=80",
+    "type": "Pintura",
+    "options": [
+      {
+        "title": "Tamanho",
+        "values": [
+          "23cm"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "23cm",
+        "options": {
+          "Tamanho": "23cm"
+        },
+        "prices": [
+          {
+            "amount": 25.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Pincel 2\"",
+    "description": "Pincel 2 polegadas para acabamento e retoques.",
+    "thumbnail": "https://images.unsplash.com/photo-1493666438817-866a91353ca9?auto=format&fit=crop&w=800&q=80",
+    "type": "Pintura",
+    "options": [
+      {
+        "title": "Tamanho",
+        "values": [
+          "2\""
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "2\"",
+        "options": {
+          "Tamanho": "2\""
+        },
+        "prices": [
+          {
+            "amount": 14.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Selador Acrilico 18L",
+    "description": "Selador acrilico 18L para paredes internas.",
+    "thumbnail": "https://images.unsplash.com/photo-1451976426598-a759dd6f3c75?auto=format&fit=crop&w=800&q=80",
+    "type": "Tintas",
+    "options": [
+      {
+        "title": "Volume",
+        "values": [
+          "18L"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "18L",
+        "options": {
+          "Volume": "18L"
+        },
+        "prices": [
+          {
+            "amount": 149.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Massa Corrida 25kg",
+    "description": "Massa corrida 25kg para nivelamento de paredes.",
+    "thumbnail": "https://images.unsplash.com/photo-1451976426598-a759dd6f3c75?auto=format&fit=crop&w=800&q=80",
+    "type": "Tintas",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "25kg"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Balde 25kg",
+        "options": {
+          "Unidade": "25kg"
+        },
+        "prices": [
+          {
+            "amount": 67.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Rejunte Flexivel 1kg",
+    "description": "Rejunte flexivel 1kg para porcelanatos e ceramicas.",
+    "thumbnail": "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&q=80",
+    "type": "Revestimentos",
+    "options": [
+      {
+        "title": "Cor",
+        "values": [
+          "Cinza"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Cinza",
+        "options": {
+          "Cor": "Cinza"
+        },
+        "prices": [
+          {
+            "amount": 19.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Porcelanato Polido 80x80",
+    "description": "Porcelanato polido 80x80 cm, caixa com 2 pecas.",
+    "thumbnail": "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&q=80",
+    "type": "Revestimentos",
+    "options": [
+      {
+        "title": "Caixa",
+        "values": [
+          "2 pecas"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Caixa 2 pecas",
+        "options": {
+          "Caixa": "2 pecas"
+        },
+        "prices": [
+          {
+            "amount": 1899.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Piso Vinilico 2mm 3m2",
+    "description": "Piso vinilico 2mm para area interna, caixa 3m2.",
+    "thumbnail": "https://images.unsplash.com/photo-1502005097973-6a7082348e28?auto=format&fit=crop&w=800&q=80",
+    "type": "Pisos",
+    "options": [
+      {
+        "title": "Caixa",
+        "values": [
+          "3m2"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Caixa 3m2",
+        "options": {
+          "Caixa": "3m2"
+        },
+        "prices": [
+          {
+            "amount": 1199.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Lamina MDF 15mm 2.75x1.83",
+    "description": "Chapa MDF 15mm para moveis e acabamento.",
+    "thumbnail": "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=800&q=80",
+    "type": "Madeiras",
+    "options": [
+      {
+        "title": "Espessura",
+        "values": [
+          "15mm"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "15mm",
+        "options": {
+          "Espessura": "15mm"
+        },
+        "prices": [
+          {
+            "amount": 1599.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Luva Nitrilica",
+    "description": "Luva nitrilica para protecao e manuseio.",
+    "thumbnail": "https://images.unsplash.com/photo-1582719478216-0c7b3e5c3106?auto=format&fit=crop&w=800&q=80",
+    "type": "EPI",
+    "options": [
+      {
+        "title": "Tamanho",
+        "values": [
+          "M"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "M",
+        "options": {
+          "Tamanho": "M"
+        },
+        "prices": [
+          {
+            "amount": 29.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Mascara PFF2",
+    "description": "Mascara PFF2 para protecao respiratoria.",
+    "thumbnail": "https://images.unsplash.com/photo-1582719478216-0c7b3e5c3106?auto=format&fit=crop&w=800&q=80",
+    "type": "EPI",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "Peça"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Peça",
+        "options": {
+          "Unidade": "Peça"
+        },
+        "prices": [
+          {
+            "amount": 5.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Refletor LED 50W",
+    "description": "Refletor LED 50W branco frio para areas externas.",
+    "thumbnail": "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=800&q=80",
+    "type": "Iluminacao",
+    "options": [
+      {
+        "title": "Potencia",
+        "values": [
+          "50W"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "50W",
+        "options": {
+          "Potencia": "50W"
+        },
+        "prices": [
+          {
+            "amount": 89.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Detergente Neutro 5L",
+    "description": "Detergente neutro concentrado 5L para limpeza geral.",
+    "thumbnail": "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Volume",
+        "values": [
+          "5L"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Galao 5L",
+        "options": {
+          "Volume": "5L"
+        },
+        "prices": [
+          {
+            "amount": 24.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Desinfetante Lavanda 5L",
+    "description": "Desinfetante perfumado lavanda 5L para areas comuns.",
+    "thumbnail": "https://images.unsplash.com/photo-1581579185262-232c43f920b5?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Volume",
+        "values": [
+          "5L"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Galao 5L",
+        "options": {
+          "Volume": "5L"
+        },
+        "prices": [
+          {
+            "amount": 22.5,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Sabao em Po 5kg",
+    "description": "Sabao em po para lavanderia e limpeza pesada.",
+    "thumbnail": "https://images.unsplash.com/photo-1600880292089-90a7e086ee0c?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Peso",
+        "values": [
+          "5kg"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Saco 5kg",
+        "options": {
+          "Peso": "5kg"
+        },
+        "prices": [
+          {
+            "amount": 36.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Papel Toalha Interfolha 1000 folhas",
+    "description": "Papel toalha interfolha branco, pacote com 1000 folhas.",
+    "thumbnail": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Pacote",
+        "values": [
+          "1000 folhas"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Pacote 1000 folhas",
+        "options": {
+          "Pacote": "1000 folhas"
+        },
+        "prices": [
+          {
+            "amount": 29.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Papel Higienico Rolao 300m",
+    "description": "Papel higienico rolao 300m para banheiros coletivos.",
+    "thumbnail": "https://images.unsplash.com/photo-1581574200807-6a6d4b0c6c07?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Rolo",
+        "values": [
+          "300m"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Rolo 300m",
+        "options": {
+          "Rolo": "300m"
+        },
+        "prices": [
+          {
+            "amount": 19.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Saco de Lixo 100L - 100 unidades",
+    "description": "Sacos reforcados 100L para uso condominial.",
+    "thumbnail": "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Pacote",
+        "values": [
+          "100 unidades"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Pacote 100 unidades",
+        "options": {
+          "Pacote": "100 unidades"
+        },
+        "prices": [
+          {
+            "amount": 49.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Vassoura Nylon Reforcada",
+    "description": "Vassoura de nylon para areas externas e internas.",
+    "thumbnail": "https://images.unsplash.com/photo-1556909212-d5b604d0c90d?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "Peca"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Peca",
+        "options": {
+          "Unidade": "Peca"
+        },
+        "prices": [
+          {
+            "amount": 18.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Rodo Aluminio 60cm",
+    "description": "Rodo de aluminio com base de 60cm e borracha dupla.",
+    "thumbnail": "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Tamanho",
+        "values": [
+          "60cm"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "60cm",
+        "options": {
+          "Tamanho": "60cm"
+        },
+        "prices": [
+          {
+            "amount": 26.5,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Balde 20L",
+    "description": "Balde plastico reforcado 20L com alca.",
+    "thumbnail": "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Capacidade",
+        "values": [
+          "20L"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "20L",
+        "options": {
+          "Capacidade": "20L"
+        },
+        "prices": [
+          {
+            "amount": 21.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Luvas Nitrilicas Caixa 100",
+    "description": "Luvas nitrilicas tamanho M, caixa com 100 unidades.",
+    "thumbnail": "https://images.unsplash.com/photo-1582719478171-2dd3f3e8fe45?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Tamanho",
+        "values": [
+          "M"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "M - 100 unidades",
+        "options": {
+          "Tamanho": "M"
+        },
+        "prices": [
+          {
+            "amount": 39.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Extintor PQS 4kg",
+    "description": "Extintor de incendio PQS 4kg para areas comuns.",
+    "thumbnail": "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=800&q=80",
+    "type": "Seguranca",
+    "options": [
+      {
+        "title": "Peso",
+        "values": [
+          "4kg"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "4kg",
+        "options": {
+          "Peso": "4kg"
+        },
+        "prices": [
+          {
+            "amount": 189.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Placa Sinalizacao Saida",
+    "description": "Placa fotoluminescente de saida de emergencia.",
+    "thumbnail": "https://images.unsplash.com/photo-1471879832106-c7ab9e0cee23?auto=format&fit=crop&w=800&q=80",
+    "type": "Seguranca",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "Peca"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Peca",
+        "options": {
+          "Unidade": "Peca"
+        },
+        "prices": [
+          {
+            "amount": 29.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Camera IP 1080p",
+    "description": "Camera IP 1080p com acesso remoto e visao noturna.",
+    "thumbnail": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+    "type": "Seguranca",
+    "options": [
+      {
+        "title": "Resolucao",
+        "values": [
+          "1080p"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "1080p",
+        "options": {
+          "Resolucao": "1080p"
+        },
+        "prices": [
+          {
+            "amount": 299.0,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Fechadura Eletronica",
+    "description": "Fechadura eletronica com senha e tag.",
+    "thumbnail": "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80",
+    "type": "Seguranca",
+    "options": [
+      {
+        "title": "Cor",
+        "values": [
+          "Preto"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Preto",
+        "options": {
+          "Cor": "Preto"
+        },
+        "prices": [
+          {
+            "amount": 689.0,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Cabo de Rede Cat6 305m",
+    "description": "Cabo de rede Cat6 para instalacoes condominiais.",
+    "thumbnail": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+    "type": "Informatica",
+    "options": [
+      {
+        "title": "Comprimento",
+        "values": [
+          "305m"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Bobina 305m",
+        "options": {
+          "Comprimento": "305m"
+        },
+        "prices": [
+          {
+            "amount": 429.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Fita Isolante 20m",
+    "description": "Fita isolante para manutencao eletrica.",
+    "thumbnail": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+    "type": "Eletrica",
+    "options": [
+      {
+        "title": "Comprimento",
+        "values": [
+          "20m"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "20m",
+        "options": {
+          "Comprimento": "20m"
+        },
+        "prices": [
+          {
+            "amount": 7.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Disjuntor 32A",
+    "description": "Disjuntor termomagnetico 32A para quadros.",
+    "thumbnail": "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80",
+    "type": "Eletrica",
+    "options": [
+      {
+        "title": "Corrente",
+        "values": [
+          "32A"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "32A",
+        "options": {
+          "Corrente": "32A"
+        },
+        "prices": [
+          {
+            "amount": 29.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Tomada 20A",
+    "description": "Tomada 20A padrao brasileiro.",
+    "thumbnail": "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80",
+    "type": "Eletrica",
+    "options": [
+      {
+        "title": "Corrente",
+        "values": [
+          "20A"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "20A",
+        "options": {
+          "Corrente": "20A"
+        },
+        "prices": [
+          {
+            "amount": 8.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Luminaria LED 18W",
+    "description": "Luminaria LED 18W para areas internas.",
+    "thumbnail": "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=800&q=80",
+    "type": "Iluminacao",
+    "options": [
+      {
+        "title": "Potencia",
+        "values": [
+          "18W"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "18W",
+        "options": {
+          "Potencia": "18W"
+        },
+        "prices": [
+          {
+            "amount": 39.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Sensor de Presenca",
+    "description": "Sensor de presenca para iluminacao automatica.",
+    "thumbnail": "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80",
+    "type": "Iluminacao",
+    "options": [
+      {
+        "title": "Alcance",
+        "values": [
+          "12m"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "12m",
+        "options": {
+          "Alcance": "12m"
+        },
+        "prices": [
+          {
+            "amount": 59.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Kit Jardinagem Basico",
+    "description": "Kit com pa, rastelo e tesoura para jardinagem.",
+    "thumbnail": "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=800&q=80",
+    "type": "Jardinagem",
+    "options": [
+      {
+        "title": "Kit",
+        "values": [
+          "3 pecas"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "3 pecas",
+        "options": {
+          "Kit": "3 pecas"
+        },
+        "prices": [
+          {
+            "amount": 79.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Fertilizante NPK 10kg",
+    "description": "Fertilizante NPK 10kg para areas verdes.",
+    "thumbnail": "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=800&q=80",
+    "type": "Jardinagem",
+    "options": [
+      {
+        "title": "Peso",
+        "values": [
+          "10kg"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Saco 10kg",
+        "options": {
+          "Peso": "10kg"
+        },
+        "prices": [
+          {
+            "amount": 69.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Areia Lavada 20kg",
+    "description": "Areia lavada para manutencao e pequenos reparos.",
+    "thumbnail": "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=800&q=80",
+    "type": "Materiais",
+    "options": [
+      {
+        "title": "Peso",
+        "values": [
+          "20kg"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Saco 20kg",
+        "options": {
+          "Peso": "20kg"
+        },
+        "prices": [
+          {
+            "amount": 18.5,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Tubo PVC 100mm 6m",
+    "description": "Tubo PVC 100mm com 6m para esgoto e drenagem.",
+    "thumbnail": "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&q=80",
+    "type": "Hidraulica",
+    "options": [
+      {
+        "title": "Comprimento",
+        "values": [
+          "6m"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "6m",
+        "options": {
+          "Comprimento": "6m"
+        },
+        "prices": [
+          {
+            "amount": 129.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Joelho PVC 100mm",
+    "description": "Joelho PVC 100mm para conexoes hidraulicas.",
+    "thumbnail": "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&q=80",
+    "type": "Hidraulica",
+    "options": [
+      {
+        "title": "Diametro",
+        "values": [
+          "100mm"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "100mm",
+        "options": {
+          "Diametro": "100mm"
+        },
+        "prices": [
+          {
+            "amount": 12.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Registro Esfera 3/4",
+    "description": "Registro esfera 3/4 para manutencao hidraulica.",
+    "thumbnail": "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&q=80",
+    "type": "Hidraulica",
+    "options": [
+      {
+        "title": "Medida",
+        "values": [
+          "3/4"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "3/4",
+        "options": {
+          "Medida": "3/4"
+        },
+        "prices": [
+          {
+            "amount": 24.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Bomba Pressurizadora 0.5cv",
+    "description": "Bomba pressurizadora 0.5cv para redes internas.",
+    "thumbnail": "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?auto=format&fit=crop&w=800&q=80",
+    "type": "Hidraulica",
+    "options": [
+      {
+        "title": "Potencia",
+        "values": [
+          "0.5cv"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "0.5cv",
+        "options": {
+          "Potencia": "0.5cv"
+        },
+        "prices": [
+          {
+            "amount": 899.0,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Caixa d'agua 1000L",
+    "description": "Caixa d'agua 1000L em polietileno.",
+    "thumbnail": "https://images.unsplash.com/photo-1523413651479-597eb2da0ad6?auto=format&fit=crop&w=800&q=80",
+    "type": "Hidraulica",
+    "options": [
+      {
+        "title": "Capacidade",
+        "values": [
+          "1000L"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "1000L",
+        "options": {
+          "Capacidade": "1000L"
+        },
+        "prices": [
+          {
+            "amount": 689.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Controle Remoto 433MHz",
+    "description": "Controle remoto 433MHz para portoes e automatizadores.",
+    "thumbnail": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+    "type": "Seguranca",
+    "options": [
+      {
+        "title": "Frequencia",
+        "values": [
+          "433MHz"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "433MHz",
+        "options": {
+          "Frequencia": "433MHz"
+        },
+        "prices": [
+          {
+            "amount": 39.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Tapete Capacho 60x40",
+    "description": "Tapete capacho antiderrapante 60x40 cm.",
+    "thumbnail": "https://images.unsplash.com/photo-1519710164239-da123dc03ef4e?auto=format&fit=crop&w=800&q=80",
+    "type": "Acessorios",
+    "options": [
+      {
+        "title": "Tamanho",
+        "values": [
+          "60x40"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "60x40",
+        "options": {
+          "Tamanho": "60x40"
+        },
+        "prices": [
+          {
+            "amount": 49.9,
+            "currency_code": "brl"
+          }
+        ]
+      }
+    ]
+  }
+]

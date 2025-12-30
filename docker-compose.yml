@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER-medusa}
+      POSTGRES_PASSWORD: ${DB_PASSWORD-medusa}
+      POSTGRES_DB: ${DB_NAME-chroma}
+    ports:
+      - "0.0.0.0:5432:5432" # expõe Postgres para fora do compose
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "0.0.0.0:6379:6379" # expõe Redis para fora do compose
+    restart: unless-stopped
+
+volumes:
+  db_data:

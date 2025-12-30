@@ -1,0 +1,40 @@
+{
+  "name": "@chroma/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API Medusa para o e-commerce de materiais de construção Chroma",
+  "scripts": {
+    "medusa": "medusa",
+    "dev": "medusa develop",
+    "start": "medusa start",
+    "seed": "node ./seed/seed.js",
+    "list:payment-providers": "node ./scripts/list-payment-providers.js",
+    "list:shipping-config": "node ./scripts/list-shipping-config.js",
+    "assign:shipping-profile": "node ./scripts/assign-shipping-profile.js",
+    "scale:prices": "node ./scripts/scale-product-prices.js",
+    "setup:payment-providers": "node ./scripts/setup-payment-providers.js",
+    "clear:carts": "node ./scripts/clear-carts.js",
+    "migrate": "medusa migrations run",
+    "smoke:register-approve": "node ./scripts/smoke-register-approve.js"
+  },
+  "dependencies": {
+    "@medusajs/admin-shared": "^2.12.3",
+    "@medusajs/cli": "2.12.3",
+    "@medusajs/dashboard": "^2.12.3",
+    "@medusajs/fulfillment-manual": "2.12.3",
+    "@medusajs/framework": "2.12.3",
+    "@medusajs/medusa": "2.12.3",
+    "@medusajs/payment-stripe": "2.12.3",
+    "@medusajs/utils": "2.12.3",
+    "dotenv": "^16.3.1",
+    "medusa-file-local": "latest",
+    "medusa-payment-manual": "latest",
+    "pg": "^8.11.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2"
+  }
+}

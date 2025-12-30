@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Chroma Mobile Store",
+    "slug": "chroma-mobile-store",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.chroma.mobilestore"
+    },
+    "ios": {
+      "bundleIdentifier": "com.chroma.mobilestore"
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug API (dev)",
+      "program": "${workspaceFolder}/packages/api/node_modules/.bin/medusa",
+      "args": [
+        "develop"
+      ],
+      "cwd": "${workspaceFolder}/packages/api",
+      "runtimeExecutable": "${env:HOME}/.asdf/shims/node",
+      "env": {
+        "NODE_OPTIONS": "--enable-source-maps"
+      },
+      "envFile": "${workspaceFolder}/packages/api/.env",
+      "console": "integratedTerminal",
+      "outputCapture": "std",
+      "sourceMaps": true,
+      "outFiles": [
+        "${workspaceFolder}/packages/api/**/*.js"
+      ],
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Attach API (inspect:9229)",
+      "port": 9229,
+      "restart": false,
+      "timeout": 30000,
+      "protocol": "inspector",
+      "sourceMaps": true,
+      "outFiles": [
+        "${workspaceFolder}/packages/api/**/*.js"
+      ],
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**"
+      ]
+    }
+  ]
+}
