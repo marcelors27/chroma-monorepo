@@ -6,7 +6,7 @@
   "scripts": {
     "medusa": "medusa",
     "dev": "medusa develop",
-    "start": "medusa start",
+    "start": "node ./scripts/start-with-migrations.js",
     "seed": "node ./seed/seed.js",
     "list:payment-providers": "node ./scripts/list-payment-providers.js",
     "list:shipping-config": "node ./scripts/list-shipping-config.js",

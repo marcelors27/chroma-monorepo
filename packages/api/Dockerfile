@@ -14,4 +14,4 @@ COPY . .
 
 EXPOSE 9000
 WORKDIR /app/packages/api
-CMD ["pnpm", "medusa", "start"]
+CMD ["pnpm", "start"]

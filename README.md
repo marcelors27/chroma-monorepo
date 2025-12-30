@@ -48,3 +48,19 @@ Para subir tudo junto na raiz: `pnpm dev` (usa `concurrently`).
 - `pnpm medusa user ...` (um único admin)
 - `pnpm seed`
 - `pnpm dev:store` e `pnpm dev:admin`
+
+## Deploy da API no Railway
+O monorepo já inclui `railway.toml` com build e start da API Medusa.
+
+Variáveis recomendadas no Railway (service da API):
+- `DATABASE_URL`
+- `REDIS_URL`
+- `STORE_CORS`, `ADMIN_CORS`, `AUTH_CORS`
+- `JWT_SECRET`, `COOKIE_SECRET`
+- `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`
+- `RESEND_API_KEY`, `RESEND_FROM`
+- `STORE_URL` ou `FRONTEND_URL`
+
+Comandos usados:
+- Build: `pnpm install --frozen-lockfile`
+- Start: `pnpm --filter @chroma/api start`
