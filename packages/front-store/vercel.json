@@ -1,5 +1,5 @@
 {
   "installCommand": "npx --yes pnpm@8.15.4 install --frozen-lockfile",
   "buildCommand": "pnpm --filter @chroma/front-store build",
-  "outputDirectory": "packages/front-store/dist"
+  "outputDirectory": "dist"
 }
