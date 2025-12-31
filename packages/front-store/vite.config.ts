@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    allowedHosts: ["chromaapi-production.up.railway.app"],
     proxy: {
       "/api": {
         target: "http://localhost:9000",
