@@ -85,7 +85,15 @@ async function shouldRunMigrations() {
 
 async function main() {
   const apiDir = path.join(__dirname, "..")
-  const adminIndexPath = path.join(apiDir, "public", "admin", "index.html")
+  const adminBuildDir = path.join(apiDir, "public", "admin")
+  const adminIndexPath = path.join(adminBuildDir, "index.html")
+  const adminBuildFromServerDir = path.join(
+    apiDir,
+    ".medusa",
+    "server",
+    "public",
+    "admin"
+  )
   const needsAdminBuild = !fs.existsSync(adminIndexPath)
 
   if (await shouldRunMigrations()) {
@@ -96,6 +104,11 @@ async function main() {
   if (needsAdminBuild) {
     console.log("[start-with-migrations] Building admin...")
     await runCommand("pnpm", ["medusa", "build"], { cwd: apiDir })
+  }
+
+  if (!fs.existsSync(adminIndexPath) && fs.existsSync(adminBuildFromServerDir)) {
+    fs.mkdirSync(adminBuildDir, { recursive: true })
+    fs.cpSync(adminBuildFromServerDir, adminBuildDir, { recursive: true })
   }
 
   if (!fs.existsSync(adminIndexPath)) {
