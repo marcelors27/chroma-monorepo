@@ -98,6 +98,16 @@ async function main() {
     await runCommand("pnpm", ["medusa", "build"], { cwd: apiDir })
   }
 
+  if (!fs.existsSync(adminIndexPath)) {
+    console.error(
+      `[start-with-migrations] Admin build missing: ${adminIndexPath}.`
+    )
+    console.error(
+      "[start-with-migrations] medusa start requires the admin build. Check build logs above."
+    )
+    process.exit(1)
+  }
+
   await runCommand("pnpm", ["medusa", "start"], { cwd: apiDir })
 }
 
