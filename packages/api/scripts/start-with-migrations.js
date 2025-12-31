@@ -1,4 +1,5 @@
 const { spawn } = require("child_process")
+const fs = require("fs")
 const path = require("path")
 const { loadEnv } = require("./load-env")
 
@@ -84,14 +85,15 @@ async function shouldRunMigrations() {
 
 async function main() {
   const apiDir = path.join(__dirname, "..")
-  const isProduction = process.env.NODE_ENV === "production"
+  const adminIndexPath = path.join(apiDir, "public", "admin", "index.html")
+  const needsAdminBuild = !fs.existsSync(adminIndexPath)
 
   if (await shouldRunMigrations()) {
     console.log("[start-with-migrations] Running migrations...")
     await runCommand("pnpm", ["migrate"], { cwd: apiDir })
   }
 
-  if (isProduction) {
+  if (needsAdminBuild) {
     console.log("[start-with-migrations] Building admin...")
     await runCommand("pnpm", ["medusa", "build"], { cwd: apiDir })
   }
