@@ -1,9 +1,15 @@
 const dotenv = require("dotenv")
+const fs = require("fs")
 const path = require("path")
 const { Modules } = require("@medusajs/framework/utils")
 
-// Load env from packages/api/.env by default
-dotenv.config({ path: path.join(__dirname, ".env") })
+// Load env from packages/api/.env.development when available (default for dev)
+const preferredEnv =
+  process.env.NODE_ENV === "production" ? ".env" : ".env.development"
+const preferredEnvPath = path.join(__dirname, preferredEnv)
+const fallbackEnvPath = path.join(__dirname, ".env")
+const envPath = fs.existsSync(preferredEnvPath) ? preferredEnvPath : fallbackEnvPath
+dotenv.config({ path: envPath })
 
 const DATABASE_TYPE = process.env.DATABASE_TYPE || "postgres"
 const DATABASE_URL =

@@ -1,8 +1,7 @@
-const path = require("path")
-const dotenv = require("dotenv")
 const { Client } = require("pg")
+const { loadEnv } = require("./load-env")
 
-dotenv.config({ path: path.join(__dirname, "..", ".env") })
+loadEnv()
 
 const DATABASE_TYPE = process.env.DATABASE_TYPE || "postgres"
 const DATABASE_URL = process.env.DATABASE_URL

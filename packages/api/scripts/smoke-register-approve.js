@@ -8,8 +8,9 @@
  * - Admin credentials in ADMIN_EMAIL / ADMIN_PASSWORD (fallback to supersecret defaults)
  */
 const crypto = require("crypto")
-const path = require("path")
-require("dotenv").config({ path: path.join(__dirname, "..", ".env") })
+const { loadEnv } = require("./load-env")
+
+loadEnv()
 
 const MEDUSA_URL = process.env.MEDUSA_URL || process.env.MEDUSA_BACKEND_URL || "http://localhost:9000"
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@chroma.local"

@@ -1,7 +1,6 @@
-const path = require("path")
-const dotenv = require("dotenv")
+const { loadEnv } = require("./load-env")
 
-dotenv.config({ path: path.join(__dirname, "..", ".env") })
+loadEnv()
 
 const MEDUSA_URL =
   process.env.MEDUSA_BACKEND_URL || process.env.MEDUSA_URL || "http://localhost:9000"

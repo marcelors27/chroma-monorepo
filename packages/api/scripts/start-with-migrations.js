@@ -1,5 +1,8 @@
 const { spawn } = require("child_process")
 const path = require("path")
+const { loadEnv } = require("./load-env")
+
+loadEnv()
 
 const DATABASE_TYPE = process.env.DATABASE_TYPE || "postgres"
 const DATABASE_URL =
@@ -81,10 +84,16 @@ async function shouldRunMigrations() {
 
 async function main() {
   const apiDir = path.join(__dirname, "..")
+  const isProduction = process.env.NODE_ENV === "production"
 
   if (await shouldRunMigrations()) {
     console.log("[start-with-migrations] Running migrations...")
     await runCommand("pnpm", ["migrate"], { cwd: apiDir })
+  }
+
+  if (isProduction) {
+    console.log("[start-with-migrations] Building admin...")
+    await runCommand("pnpm", ["medusa", "build"], { cwd: apiDir })
   }
 
   await runCommand("pnpm", ["medusa", "start"], { cwd: apiDir })
