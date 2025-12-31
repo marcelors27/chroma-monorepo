@@ -54,6 +54,10 @@ module.exports = {
     store: { disable: false },
     // Ajuste os domínios de produção nos .env
   },
+  admin: {
+    disable: false,
+    path: "/app",
+  },
   plugins: [
     `medusa-payment-manual`,
     {
