@@ -22,6 +22,12 @@
     "plugins": [
       "expo-asset",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9952dc58-f0f3-4fcd-8fcc-3e5c2fa60a7a"
+      }
+    },
+    "owner": "marcelors27"
   }
 }
