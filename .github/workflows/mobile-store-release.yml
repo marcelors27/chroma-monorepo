@@ -70,5 +70,6 @@ jobs:
           pnpm dlx eas-cli@latest submit \
             --platform "${{ inputs.platform }}" \
             --profile "${{ inputs.profile }}" \
+            --latest \
             --non-interactive
         working-directory: packages/mobile-store
