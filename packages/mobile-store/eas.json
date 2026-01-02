@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 7.0.0"
+    "version": ">= 7.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "production": {
@@ -8,6 +9,7 @@
         "buildType": "app-bundle"
       },
       "ios": {
+        "distribution": "store",
         "credentialsSource": "remote"
       }
     },
@@ -17,6 +19,7 @@
         "buildType": "apk"
       },
       "ios": {
+        "distribution": "internal",
         "credentialsSource": "remote"
       }
     }
