@@ -5,9 +5,6 @@
   },
   "build": {
     "production": {
-      "android": {
-        "buildType": "app-bundle"
-      },
       "ios": {
         "distribution": "store",
         "credentialsSource": "remote"
@@ -15,9 +12,6 @@
     },
     "staging": {
       "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      },
       "ios": {
         "distribution": "internal",
         "credentialsSource": "remote"

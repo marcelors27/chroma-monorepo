@@ -6,12 +6,12 @@ on:
       platform:
         description: "Build target: android, ios, or all"
         required: true
-        default: "all"
+        default: "ios"
         type: choice
         options:
+          - ios
           - all
           - android
-          - ios
       profile:
         description: "EAS build profile"
         required: true
