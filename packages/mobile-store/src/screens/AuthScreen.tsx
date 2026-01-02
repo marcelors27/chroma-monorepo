@@ -94,6 +94,13 @@ const AuthScreen = () => {
   return (
     <ScreenBackground source={backgrounds.auth}>
       <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.introCard}>
+          <Text style={styles.introTitle}>Gerencie as compras do seu condominio</Text>
+          <Text style={styles.introText}>
+            Centralize pedidos, gerencie multiplos CNPJs e tenha acesso a produtos exclusivos para condominios.
+          </Text>
+        </View>
+
         <Text style={styles.title}>{isLogin ? "Bem-vindo de volta" : "Crie sua conta"}</Text>
         <Text style={styles.subtitle}>
           {isLogin
@@ -168,6 +175,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.muted,
     marginBottom: 16,
+  },
+  introCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    marginBottom: 20,
+    gap: 8,
+  },
+  introTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  introText: {
+    color: colors.muted,
+    lineHeight: 20,
   },
   switchRow: {
     marginTop: 16,

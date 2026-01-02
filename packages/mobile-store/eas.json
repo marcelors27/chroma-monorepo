@@ -8,6 +8,12 @@
       "ios": {
         "distribution": "store",
         "credentialsSource": "remote"
+      },
+      "env": {
+        "EXPO_PUBLIC_MEDUSA_URL": "https://chromaapi-production.up.railway.app",
+        "EXPO_PUBLIC_MEDUSA_PUBLISHABLE_KEY": "pk_8fdd2827d3632d7fed995b8fac0b3daea5a4f8b861f624f2ed2f00d91c2817b7",
+        "EXPO_PUBLIC_MEDUSA_REGION_ID": "reg_01KCVH6V2JH3SQQGAPHYYA6K38",
+        "EXPO_PUBLIC_MEDUSA_CURRENCY_CODE": "brl"
       }
     },
     "staging": {
@@ -15,6 +21,12 @@
       "ios": {
         "distribution": "internal",
         "credentialsSource": "remote"
+      },
+      "env": {
+        "EXPO_PUBLIC_MEDUSA_URL": "https://chromaapi-production.up.railway.app",
+        "EXPO_PUBLIC_MEDUSA_PUBLISHABLE_KEY": "pk_8fdd2827d3632d7fed995b8fac0b3daea5a4f8b861f624f2ed2f00d91c2817b7",
+        "EXPO_PUBLIC_MEDUSA_REGION_ID": "reg_01KCVH6V2JH3SQQGAPHYYA6K38",
+        "EXPO_PUBLIC_MEDUSA_CURRENCY_CODE": "brl"
       }
     }
   },

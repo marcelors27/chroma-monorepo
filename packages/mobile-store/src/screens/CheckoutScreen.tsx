@@ -25,6 +25,15 @@ const CheckoutScreen = () => {
   const [recurrenceFrequency, setRecurrenceFrequency] = useState<"weekly" | "biweekly" | "monthly">("monthly");
   const [recurrenceDayOfWeek, setRecurrenceDayOfWeek] = useState("1");
   const [recurrenceDayOfMonth, setRecurrenceDayOfMonth] = useState("5");
+  const weekDays = [
+    { label: "Domingo", value: "0" },
+    { label: "Segunda", value: "1" },
+    { label: "Terca", value: "2" },
+    { label: "Quarta", value: "3" },
+    { label: "Quinta", value: "4" },
+    { label: "Sexta", value: "5" },
+    { label: "Sabado", value: "6" },
+  ];
 
   const buildRecurrenceItems = () => {
     return items.map((item) => ({
@@ -162,12 +171,19 @@ const CheckoutScreen = () => {
                   keyboardType="numeric"
                 />
               ) : (
-                <TextField
-                  label="Dia da semana (0-6)"
-                  value={recurrenceDayOfWeek}
-                  onChangeText={setRecurrenceDayOfWeek}
-                  keyboardType="numeric"
-                />
+                <>
+                  <Text style={styles.label}>Dia da semana</Text>
+                  <View style={styles.row}>
+                    {weekDays.map((day) => (
+                      <Button
+                        key={day.value}
+                        title={day.label}
+                        variant={recurrenceDayOfWeek === day.value ? "primary" : "outline"}
+                        onPress={() => setRecurrenceDayOfWeek(day.value)}
+                      />
+                    ))}
+                  </View>
+                </>
               )}
             </View>
           )}

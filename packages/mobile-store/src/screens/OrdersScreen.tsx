@@ -26,6 +26,15 @@ const OrdersScreen = () => {
   const [recurrenceDayOfMonth, setRecurrenceDayOfMonth] = useState("5");
   const [recurrencePayment, setRecurrencePayment] = useState<"credit" | "pix" | "boleto">("pix");
   const [recurrenceSaving, setRecurrenceSaving] = useState(false);
+  const weekDays = [
+    { label: "Domingo", value: "0" },
+    { label: "Segunda", value: "1" },
+    { label: "Terca", value: "2" },
+    { label: "Quarta", value: "3" },
+    { label: "Quinta", value: "4" },
+    { label: "Sexta", value: "5" },
+    { label: "Sabado", value: "6" },
+  ];
   const { data, isLoading, isError } = useQuery({ queryKey: ["orders"], queryFn: listOrders });
   const orders = data?.orders || [];
 
@@ -136,12 +145,20 @@ const OrdersScreen = () => {
                 keyboardType="numeric"
               />
             ) : (
-              <TextField
-                label="Dia da semana (0-6)"
-                value={recurrenceDayOfWeek}
-                onChangeText={setRecurrenceDayOfWeek}
-                keyboardType="numeric"
-              />
+              <>
+                <Text style={styles.label}>Dia da semana</Text>
+                <View style={styles.row}>
+                  {weekDays.map((day) => (
+                    <Button
+                      key={day.value}
+                      title={day.label}
+                      variant={recurrenceDayOfWeek === day.value ? "primary" : "outline"}
+                      onPress={() => setRecurrenceDayOfWeek(day.value)}
+                      style={styles.inlineButton}
+                    />
+                  ))}
+                </View>
+              </>
             )}
             <Text style={styles.label}>Pagamento</Text>
             <View style={styles.row}>
