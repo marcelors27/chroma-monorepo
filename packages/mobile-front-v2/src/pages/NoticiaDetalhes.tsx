@@ -1,4 +1,4 @@
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { ArrowLeft, Share2, BookmarkPlus, Clock } from "lucide-react-native";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
@@ -35,39 +35,39 @@ export default function NoticiaDetalhes() {
 
   return (
     <AuthenticatedLayout>
-      <ScrollView className="px-4 py-4">
-        <View className="relative">
-          <Image source={{ uri: noticia.image }} className="w-full h-56 rounded-2xl" />
-          <View className="absolute top-4 left-4">
-            <Pressable onPress={() => navigation.goBack()} className="p-2 rounded-full bg-black/50">
+      <ScrollView style={styles.scrollContent}>
+        <View style={styles.hero}>
+          <Image source={{ uri: noticia.image }} style={styles.heroImage} />
+          <View style={styles.backButtonWrap}>
+            <Pressable onPress={() => navigation.goBack()} style={styles.iconButton}>
               <ArrowLeft color="white" size={18} />
             </Pressable>
           </View>
-          <View className="absolute top-4 right-4 flex-row gap-2">
-            <Pressable onPress={handleShare} className="p-2 rounded-full bg-black/50">
+          <View style={styles.actionsRow}>
+            <Pressable onPress={handleShare} style={styles.iconButton}>
               <Share2 color="white" size={18} />
             </Pressable>
-            <Pressable onPress={() => toast.success("Notícia salva!")} className="p-2 rounded-full bg-black/50">
+            <Pressable onPress={() => toast.success("Notícia salva!")} style={styles.iconButton}>
               <BookmarkPlus color="white" size={18} />
             </Pressable>
           </View>
         </View>
 
-        <View className="mt-4">
-          <View className="flex-row items-center gap-2">
-            <Text className="text-primary font-medium">{noticia.source}</Text>
-            <View className="flex-row items-center gap-1">
+        <View style={styles.contentBlock}>
+          <View style={styles.metaRow}>
+            <Text style={styles.sourceText}>{noticia.source}</Text>
+            <View style={styles.timeRow}>
               <Clock color="hsl(215 15% 55%)" size={12} />
-              <Text className="text-xs text-muted-foreground">{noticia.date}</Text>
+              <Text style={styles.timeText}>{noticia.date}</Text>
             </View>
           </View>
-          <Text className="text-xl font-bold text-foreground mt-2">{noticia.title}</Text>
-          <Text className="text-sm text-muted-foreground mt-3">{noticia.summary}</Text>
+          <Text style={styles.title}>{noticia.title}</Text>
+          <Text style={styles.summary}>{noticia.summary}</Text>
         </View>
 
-        <View className="mt-4">
+        <View style={styles.body}>
           {noticia.content.map((paragraph, index) => (
-            <Text key={index} className="text-sm text-foreground/90 mb-3">
+            <Text key={index} style={styles.paragraph}>
               {paragraph}
             </Text>
           ))}
@@ -76,3 +76,77 @@ export default function NoticiaDetalhes() {
     </AuthenticatedLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  hero: {
+    position: "relative",
+  },
+  heroImage: {
+    width: "100%",
+    height: 224,
+    borderRadius: 20,
+  },
+  backButtonWrap: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+  },
+  actionsRow: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    flexDirection: "row",
+    gap: 8,
+  },
+  iconButton: {
+    padding: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  contentBlock: {
+    marginTop: 16,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sourceText: {
+    color: "#5DA2E6",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  timeText: {
+    color: "#8C98A8",
+    fontSize: 11,
+  },
+  title: {
+    color: "#E6E8EA",
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: 8,
+  },
+  summary: {
+    color: "#8C98A8",
+    fontSize: 13,
+    marginTop: 12,
+  },
+  body: {
+    marginTop: 16,
+  },
+  paragraph: {
+    color: "rgba(230, 232, 234, 0.9)",
+    fontSize: 13,
+    marginBottom: 12,
+  },
+});

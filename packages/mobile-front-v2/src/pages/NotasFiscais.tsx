@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, Pressable } from "react-native";
+import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
@@ -13,21 +13,21 @@ export default function NotasFiscais() {
     <AuthenticatedLayout>
       <Header title="Notas fiscais" showBackButton showCondoSelector />
 
-      <ScrollView className="px-4 py-4">
+      <ScrollView style={styles.scrollContent}>
         {invoices.map((invoice) => (
-          <View key={invoice.id} className="bg-card rounded-2xl p-4 mb-3">
-            <Text className="text-sm font-semibold text-foreground">{invoice.id}</Text>
-            <Text className="text-xs text-muted-foreground mt-1">{invoice.status}</Text>
-            <Text className="text-sm text-foreground mt-2">R$ {invoice.total.toFixed(2)}</Text>
+          <View key={invoice.id} style={styles.card}>
+            <Text style={styles.cardTitle}>{invoice.id}</Text>
+            <Text style={styles.cardStatus}>{invoice.status}</Text>
+            <Text style={styles.cardTotal}>R$ {invoice.total.toFixed(2)}</Text>
             <Pressable
               onPress={() =>
                 invoice.status === "Disponível"
                   ? toast.success(`Baixando ${invoice.id}`)
                   : toast.info("Nota fiscal ainda está sendo processada")
               }
-              className="mt-3 px-3 py-2 rounded-xl bg-secondary"
+              style={styles.cardButton}
             >
-              <Text className="text-sm text-foreground">Baixar</Text>
+              <Text style={styles.cardButtonText}>Baixar</Text>
             </Pressable>
           </View>
         ))}
@@ -35,3 +35,43 @@ export default function NotasFiscais() {
     </AuthenticatedLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  card: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+  },
+  cardTitle: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  cardStatus: {
+    color: "#8C98A8",
+    fontSize: 11,
+    marginTop: 4,
+  },
+  cardTotal: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    marginTop: 8,
+  },
+  cardButton: {
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+  },
+  cardButtonText: {
+    color: "#E6E8EA",
+    fontSize: 13,
+  },
+});

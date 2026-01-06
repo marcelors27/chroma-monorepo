@@ -1,63 +1,90 @@
-import { Pressable, Text } from "react-native";
-import type { PressableProps } from "react-native";
-import { cn } from "@/lib/utils";
+import type { ComponentProps } from "react";
+import { Button as TamaguiButton, Text, styled } from "tamagui";
+import type { ButtonProps as TamaguiButtonProps } from "tamagui";
 
 type ButtonVariant = "default" | "secondary" | "ghost" | "outline" | "destructive";
 type ButtonSize = "sm" | "md" | "lg";
 
-interface ButtonProps extends PressableProps {
+interface ButtonProps extends Omit<TamaguiButtonProps, "size"> {
   variant?: ButtonVariant;
   size?: ButtonSize;
-  className?: string;
-  textClassName?: string;
+  textProps?: ComponentProps<typeof Text>;
 }
 
-const variantStyles: Record<ButtonVariant, string> = {
-  default: "bg-primary",
-  secondary: "bg-secondary",
-  ghost: "bg-transparent",
-  outline: "border border-border bg-transparent",
-  destructive: "bg-destructive",
-};
-
-const sizeStyles: Record<ButtonSize, string> = {
-  sm: "px-3 py-2 rounded-xl",
-  md: "px-4 py-3 rounded-2xl",
-  lg: "px-5 py-4 rounded-2xl",
-};
+const BaseButton = styled(TamaguiButton, {
+  name: "AppButton",
+  borderRadius: 20,
+  height: 44,
+  paddingHorizontal: 18,
+  justifyContent: "center",
+  alignItems: "center",
+  pressStyle: { opacity: 0.9 },
+  variants: {
+    variant: {
+      default: {
+        backgroundColor: "$accent",
+      },
+      secondary: {
+        backgroundColor: "$backgroundStrong",
+      },
+      ghost: {
+        backgroundColor: "transparent",
+      },
+      outline: {
+        backgroundColor: "transparent",
+        borderWidth: 1,
+        borderColor: "$borderColor",
+      },
+      destructive: {
+        backgroundColor: "$red10",
+      },
+    },
+    sizeVariant: {
+      sm: {
+        height: 36,
+        borderRadius: 16,
+        paddingHorizontal: 12,
+      },
+      md: {
+        height: 44,
+        borderRadius: 20,
+        paddingHorizontal: 18,
+      },
+      lg: {
+        height: 52,
+        borderRadius: 22,
+        paddingHorizontal: 20,
+      },
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+    sizeVariant: "md",
+  },
+});
 
 export function Button({
   variant = "default",
   size = "md",
-  className,
-  textClassName,
+  textProps,
   children,
   ...props
 }: ButtonProps) {
   return (
-    <Pressable
-      className={cn(
-        "items-center justify-center",
-        variantStyles[variant],
-        sizeStyles[size],
-        className,
-      )}
-      {...props}
-    >
+    <BaseButton variant={variant} sizeVariant={size} {...props}>
       {typeof children === "string" ? (
         <Text
-          className={cn(
-            "text-sm font-semibold",
-            variant === "ghost" || variant === "outline" ? "text-foreground" : "text-primary-foreground",
-            variant === "destructive" && "text-destructive-foreground",
-            textClassName,
-          )}
+          color={variant === "ghost" || variant === "outline" ? "$color" : "$background"}
+          fontSize={13}
+          fontWeight="600"
+          textAlign="center"
+          {...textProps}
         >
           {children}
         </Text>
       ) : (
         children
       )}
-    </Pressable>
+    </BaseButton>
   );
 }

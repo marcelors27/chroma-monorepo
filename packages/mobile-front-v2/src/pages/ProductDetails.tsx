@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Image, Pressable, ScrollView, Text, View, Linking } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, Linking } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { ArrowLeft, Heart, Minus, Plus, Share2, Star, Maximize2, ChevronLeft, ChevronRight, RefreshCw, Play } from "lucide-react-native";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
@@ -7,6 +7,8 @@ import { FullscreenGallery } from "@/components/ui/FullscreenGallery";
 import { toast } from "@/lib/toast";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useShare } from "@/hooks/useShare";
+import { useCondo } from "@/contexts/CondoContext";
+import { useCart } from "@/contexts/CartContext";
 
 type MediaItem = {
   type: "image" | "video" | "youtube" | "vimeo";
@@ -85,6 +87,76 @@ const mockProducts: Record<
     reviewCount: 82,
     features: ["Full HD 1080p", "Visão noturna", "App mobile", "Instalação rápida"],
   },
+  "3": {
+    id: "3",
+    name: "Aspirador Industrial",
+    description: "Alta potência para grandes áreas",
+    fullDescription:
+      "O Aspirador Industrial entrega alta performance para limpeza de áreas amplas e de grande circulação. Com filtro reforçado e reservatório espaçoso, reduz o tempo de operação e melhora a eficiência da equipe.",
+    price: 899.9,
+    originalPrice: 1199.9,
+    media: [
+      { type: "image", url: "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=1200&auto=format&fit=crop&q=80" },
+      { type: "image", url: "https://images.unsplash.com/photo-1523292562811-8fa7962a78c8?w=1200&auto=format&fit=crop&q=80" },
+      { type: "image", url: "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=1200&auto=format&fit=crop&q=80" },
+    ],
+    category: "Limpeza",
+    rating: 4.7,
+    reviewCount: 64,
+    features: ["Motor de alta sucção", "Filtro HEPA", "Baixo ruído", "Reservatório 30L"],
+  },
+  "4": {
+    id: "4",
+    name: "Kit Ferramentas Completo",
+    description: "100 peças para manutenção predial",
+    fullDescription:
+      "Kit completo com 100 peças essenciais para manutenção predial. Ideal para pequenos reparos do dia a dia, com ferramentas resistentes e organizadas em maleta reforçada.",
+    price: 459.9,
+    media: [
+      { type: "image", url: "https://images.unsplash.com/photo-1581092921461-eab62e97a2aa?w=1200&auto=format&fit=crop&q=80" },
+      { type: "image", url: "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=1200&auto=format&fit=crop&q=80" },
+      { type: "image", url: "https://images.unsplash.com/photo-1528740561666-dc2479dc08ab?w=1200&auto=format&fit=crop&q=80" },
+    ],
+    category: "Manutenção",
+    rating: 4.5,
+    reviewCount: 39,
+    features: ["100 peças", "Maleta reforçada", "Aço temperado", "Garantia de 12 meses"],
+  },
+  "5": {
+    id: "5",
+    name: "Central de Alarme",
+    description: "Sistema de alarme com 8 zonas",
+    fullDescription:
+      "Central de alarme com 8 zonas configuráveis e integração com sensores de presença. Segurança ampliada para áreas comuns, com painel intuitivo e suporte técnico dedicado.",
+    price: 649.9,
+    originalPrice: 799.9,
+    media: [
+      { type: "image", url: "https://images.unsplash.com/photo-1558002038-1055907df827?w=1200&auto=format&fit=crop&q=80" },
+      { type: "image", url: "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=1200&auto=format&fit=crop&q=80" },
+      { type: "image", url: "https://images.unsplash.com/photo-1523292562811-8fa7962a78c8?w=1200&auto=format&fit=crop&q=80" },
+    ],
+    category: "Segurança",
+    rating: 4.6,
+    reviewCount: 58,
+    features: ["8 zonas configuráveis", "App mobile", "Sirene integrada", "Relatórios em tempo real"],
+  },
+  "6": {
+    id: "6",
+    name: "Cortador de Grama",
+    description: "Motor potente e silencioso",
+    fullDescription:
+      "Cortador de grama silencioso com motor potente e fácil manuseio. Ideal para áreas verdes do condomínio, com altura ajustável e baixo consumo de energia.",
+    price: 1299.9,
+    media: [
+      { type: "image", url: "https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?w=1200&auto=format&fit=crop&q=80" },
+      { type: "image", url: "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200&auto=format&fit=crop&q=80" },
+      { type: "image", url: "https://images.unsplash.com/photo-1563453392212-326f5e854473?w=1200&auto=format&fit=crop&q=80" },
+    ],
+    category: "Jardim",
+    rating: 4.4,
+    reviewCount: 27,
+    features: ["Altura ajustável", "Baixo ruído", "Coletor de 40L", "Alça ergonômica"],
+  },
 };
 
 const getYouTubeId = (url: string) => {
@@ -119,6 +191,8 @@ export default function ProductDetails() {
   const route = useRoute();
   const { share } = useShare();
   const { toggleFavorite, isFavorite } = useFavorites();
+  const { activeCondo } = useCondo();
+  const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -161,15 +235,19 @@ export default function ProductDetails() {
   if (!product) {
     return (
       <AuthenticatedLayout>
-        <View className="flex-1 items-center justify-center px-4">
-          <Text className="text-muted-foreground">Produto não encontrado</Text>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>Produto não encontrado</Text>
         </View>
       </AuthenticatedLayout>
     );
   }
 
   const handleAddToCart = () => {
-    toast.success(`${quantity}x ${product.name} adicionado ao carrinho!`);
+    if (!activeCondo) {
+      toast.error("Selecione um condomínio antes de adicionar itens ao carrinho.");
+      return;
+    }
+    addItem(quantity);
   };
 
   const handleFavorite = () => {
@@ -194,98 +272,101 @@ export default function ProductDetails() {
 
   return (
     <AuthenticatedLayout>
-      <View className="flex-1">
-        <ScrollView className="px-4 pt-2 pb-28">
-          <View className="flex-row items-center justify-between mb-4">
-            <Pressable onPress={() => navigation.goBack()} className="w-11 h-11 rounded-full bg-secondary items-center justify-center">
+      <View style={styles.container}>
+        <ScrollView style={styles.scrollContent}>
+          <View style={styles.topBar}>
+            <Pressable onPress={() => navigation.goBack()} style={styles.topIconButton}>
               <ArrowLeft color="white" size={18} />
             </Pressable>
-            <View className="flex-row gap-2">
-              <Pressable onPress={handleFavorite} className="w-11 h-11 rounded-full bg-secondary items-center justify-center">
+            <View style={styles.topActions}>
+              <Pressable onPress={handleFavorite} style={styles.topIconButton}>
                 <Heart color={isFavorite(product.id) ? "hsl(0 72% 51%)" : "white"} size={18} />
               </Pressable>
-              <Pressable onPress={handleShare} className="w-11 h-11 rounded-full bg-secondary items-center justify-center">
+              <Pressable onPress={handleShare} style={styles.topIconButton}>
                 <Share2 color="white" size={18} />
               </Pressable>
             </View>
           </View>
 
-          <View className="-mx-4">
-            <View className="relative">
+          <View style={styles.galleryWrap}>
+            <View style={styles.galleryMedia}>
               {resolveMediaThumbnail(currentItem) ? (
                 <Pressable
                   onPress={() => {
                     handleOpenMedia(currentItem, galleryIndex);
                   }}
-                  className="w-full h-96"
+                  style={styles.galleryMainPressable}
                 >
-                  <Image source={{ uri: resolveMediaThumbnail(currentItem)! }} className="w-full h-96" />
+                  <Image source={{ uri: resolveMediaThumbnail(currentItem)! }} style={styles.galleryMainImage} />
                 </Pressable>
               ) : (
-                <View className="w-full h-96 bg-secondary items-center justify-center">
-                  <Text className="text-muted-foreground">Prévia indisponível</Text>
+                <View style={styles.galleryFallback}>
+                  <Text style={styles.galleryFallbackText}>Prévia indisponível</Text>
                 </View>
               )}
               {currentItem.type !== "image" && (
-                <View className="absolute inset-0 items-center justify-center">
+                <View style={styles.galleryPlayOverlay}>
                   <Pressable
                     onPress={() => handleOpenMedia(currentItem, galleryIndex)}
-                    className="w-14 h-14 rounded-full bg-secondary items-center justify-center"
+                    style={styles.galleryPlayButton}
                   >
                     <Play color="#FFFFFF" size={22} />
                   </Pressable>
                 </View>
               )}
               {discount > 0 && (
-                <View className="absolute left-4 top-4 px-4 py-2 rounded-full bg-primary">
-                  <Text className="text-primary-foreground font-semibold">-{discount}%</Text>
+                <View style={styles.discountBadge}>
+                  <Text style={styles.discountText}>-{discount}%</Text>
                 </View>
               )}
               <Pressable
                 onPress={() => {
                   handleOpenMedia(currentItem, galleryIndex);
                 }}
-                className="absolute right-4 top-4 w-10 h-10 rounded-full bg-secondary items-center justify-center"
+                style={[styles.galleryActionButton, styles.galleryActionTopRight]}
               >
                 <Maximize2 color="#FFFFFF" size={18} />
               </Pressable>
               <Pressable
                 onPress={() => setGalleryIndex((prev) => Math.max(0, prev - 1))}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-secondary items-center justify-center"
+                style={[styles.galleryActionButton, styles.galleryActionLeft]}
               >
                 <ChevronLeft color="#FFFFFF" size={20} />
               </Pressable>
               <Pressable
                 onPress={() => setGalleryIndex((prev) => Math.min(product.media.length - 1, prev + 1))}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-secondary items-center justify-center"
+                style={[styles.galleryActionButton, styles.galleryActionRight]}
               >
                 <ChevronRight color="#FFFFFF" size={20} />
               </Pressable>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4 py-4">
-              <View className="flex-row gap-3">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbnailScroll} contentContainerStyle={styles.thumbnailRow}>
+              <View style={styles.thumbnailRow}>
                 {product.media.map((item, index) => (
                   <Pressable
                     key={`${item.url}-${index}`}
                     onPress={() => {
                       handleOpenMedia(item, index);
                     }}
-                    className={`rounded-2xl border ${galleryIndex === index ? "border-primary" : "border-transparent"}`}
+                    style={[
+                      styles.thumbnailCard,
+                      galleryIndex === index ? styles.thumbnailCardActive : styles.thumbnailCardIdle,
+                    ]}
                   >
                     {resolveMediaThumbnail(item) ? (
-                      <View className="relative">
-                        <Image source={{ uri: resolveMediaThumbnail(item)! }} className="w-16 h-16 rounded-2xl" />
+                      <View style={styles.thumbnailMedia}>
+                        <Image source={{ uri: resolveMediaThumbnail(item)! }} style={styles.thumbnailImage} />
                         {item.type !== "image" && (
-                          <View className="absolute inset-0 items-center justify-center">
-                            <View className="w-7 h-7 rounded-full bg-secondary items-center justify-center">
+                          <View style={styles.thumbnailPlayOverlay}>
+                            <View style={styles.thumbnailPlayBadge}>
                               <Play color="#E6E8EA" size={14} />
                             </View>
                           </View>
                         )}
                       </View>
                     ) : (
-                      <View className="w-16 h-16 rounded-2xl bg-secondary items-center justify-center">
-                        <Text className="text-xs text-muted-foreground">Mídia</Text>
+                      <View style={styles.thumbnailFallback}>
+                        <Text style={styles.thumbnailFallbackText}>Mídia</Text>
                       </View>
                     )}
                   </Pressable>
@@ -294,11 +375,11 @@ export default function ProductDetails() {
             </ScrollView>
           </View>
 
-          <View className="mt-2">
-            <Text className="text-sm text-muted-foreground">{product.category}</Text>
-            <Text className="text-2xl font-bold text-foreground mt-1">{product.name}</Text>
-            <View className="flex-row items-center gap-2 mt-2">
-              <View className="flex-row items-center gap-1">
+          <View style={styles.details}>
+            <Text style={styles.categoryText}>{product.category}</Text>
+            <Text style={styles.productTitle}>{product.name}</Text>
+            <View style={styles.ratingRow}>
+              <View style={styles.ratingStars}>
                 {ratingStars.map((value) => (
                   <Star
                     key={`star-${value}`}
@@ -308,56 +389,56 @@ export default function ProductDetails() {
                   />
                 ))}
               </View>
-              <Text className="text-base text-foreground">{product.rating}</Text>
-              <Text className="text-sm text-muted-foreground">({product.reviewCount} avaliações)</Text>
+              <Text style={styles.ratingValue}>{product.rating}</Text>
+              <Text style={styles.ratingCount}>({product.reviewCount} avaliações)</Text>
             </View>
-            <View className="flex-row items-end gap-4 mt-3">
-              <Text className="text-3xl font-bold text-accent">
+            <View style={styles.priceRow}>
+              <Text style={styles.priceCurrent}>
                 R$ {product.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
               </Text>
               {product.originalPrice && (
-                <Text className="text-lg text-muted-foreground line-through">
+                <Text style={styles.priceOriginal}>
                   R$ {product.originalPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </Text>
               )}
             </View>
           </View>
 
-          <View className="mt-6">
-            <Text className="text-lg font-semibold text-foreground mb-2">Descrição</Text>
-            <Text className="text-base text-muted-foreground leading-6">{product.fullDescription}</Text>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Descrição</Text>
+            <Text style={styles.sectionBody}>{product.fullDescription}</Text>
           </View>
 
-          <View className="mt-6">
-            <Text className="text-lg font-semibold text-foreground mb-2">Características</Text>
-            <View className="gap-2">
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Características</Text>
+            <View style={styles.featureList}>
               {product.features.map((feature) => (
-                <View key={feature} className="flex-row items-start gap-2">
-                  <View className="w-2 h-2 rounded-full bg-accent mt-2" />
-                  <Text className="text-base text-muted-foreground flex-1">{feature}</Text>
+                <View key={feature} style={styles.featureRow}>
+                  <View style={styles.featureDot} />
+                  <Text style={styles.featureText}>{feature}</Text>
                 </View>
               ))}
             </View>
           </View>
 
-          <View className="mt-6 flex-row items-center justify-between">
-            <Text className="text-lg font-semibold text-foreground">Avaliações</Text>
+          <View style={styles.reviewHeader}>
+            <Text style={styles.sectionTitle}>Avaliações</Text>
             <Pressable>
-              <Text className="text-base text-accent">Ver todas</Text>
+              <Text style={styles.reviewLink}>Ver todas</Text>
             </Pressable>
           </View>
 
-          <View className="mt-4 gap-4">
+          <View style={styles.reviewList}>
             {reviews.map((review) => (
-              <View key={review.id} className="bg-card rounded-3xl p-4 border border-border">
-                <View className="flex-row items-start gap-3">
-                  <Image source={{ uri: review.avatar }} className="w-12 h-12 rounded-full" />
-                  <View className="flex-1">
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-base font-semibold text-foreground">{review.name}</Text>
-                      <Text className="text-xs text-muted-foreground">{review.date}</Text>
+              <View key={review.id} style={styles.reviewCard}>
+                <View style={styles.reviewRow}>
+                  <Image source={{ uri: review.avatar }} style={styles.reviewAvatar} />
+                  <View style={styles.reviewBody}>
+                    <View style={styles.reviewHeaderRow}>
+                      <Text style={styles.reviewName}>{review.name}</Text>
+                      <Text style={styles.reviewDate}>{review.date}</Text>
                     </View>
-                    <View className="flex-row items-center gap-1 mt-1">
+                    <View style={styles.reviewStars}>
                       {ratingStars.map((value) => (
                         <Star
                           key={`${review.id}-star-${value}`}
@@ -367,7 +448,7 @@ export default function ProductDetails() {
                         />
                       ))}
                     </View>
-                    <Text className="text-sm text-muted-foreground mt-2 leading-5">{review.text}</Text>
+                    <Text style={styles.reviewText}>{review.text}</Text>
                   </View>
                 </View>
               </View>
@@ -375,27 +456,27 @@ export default function ProductDetails() {
           </View>
         </ScrollView>
 
-        <View className="absolute left-0 right-0 bottom-0 px-4 py-3 bg-card border-t border-border">
-          <View className="flex-row items-center gap-3">
-            <View className="flex-row items-center bg-secondary rounded-2xl px-3 py-2 flex-1">
+        <View style={styles.bottomBar}>
+          <View style={styles.bottomBarRow}>
+            <View style={styles.quantityPill}>
               <Pressable
                 onPress={() => setQuantity((prev) => Math.max(1, prev - 1))}
-                className="w-9 h-9 rounded-xl bg-background items-center justify-center"
+                style={styles.quantityButton}
               >
                 <Minus color="white" size={16} />
               </Pressable>
-              <Text className="flex-1 text-center text-base font-semibold text-foreground">{quantity}</Text>
+              <Text style={styles.quantityValue}>{quantity}</Text>
               <Pressable
                 onPress={() => setQuantity((prev) => prev + 1)}
-                className="w-9 h-9 rounded-xl bg-background items-center justify-center"
+                style={styles.quantityButton}
               >
                 <Plus color="white" size={16} />
               </Pressable>
             </View>
-            <Pressable onPress={handleAddToCart} className="flex-1 py-4 rounded-2xl bg-accent flex-row items-center justify-center gap-2">
-              <Text className="text-accent-foreground text-base font-semibold">Adicionar</Text>
+            <Pressable onPress={handleAddToCart} style={styles.addButton}>
+              <Text style={styles.addButtonText}>Adicionar</Text>
             </Pressable>
-            <Pressable className="w-12 h-12 rounded-2xl bg-secondary items-center justify-center">
+            <Pressable style={styles.refreshButton}>
               <RefreshCw color="#E6E8EA" size={18} />
             </Pressable>
           </View>
@@ -414,3 +495,373 @@ export default function ProductDetails() {
     </AuthenticatedLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  emptyText: {
+    color: "#8C98A8",
+    fontSize: 13,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 112,
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  topActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  topIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  galleryWrap: {
+    marginHorizontal: -16,
+  },
+  galleryMedia: {
+    position: "relative",
+  },
+  galleryMainPressable: {
+    width: "100%",
+    height: 384,
+  },
+  galleryMainImage: {
+    width: "100%",
+    height: 384,
+  },
+  galleryFallback: {
+    width: "100%",
+    height: 384,
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  galleryFallbackText: {
+    color: "#8C98A8",
+    fontSize: 13,
+  },
+  galleryPlayOverlay: {
+    position: "absolute",
+    inset: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  galleryPlayButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  discountBadge: {
+    position: "absolute",
+    left: 16,
+    top: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#5DA2E6",
+  },
+  discountText: {
+    color: "#0B0F14",
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  galleryActionButton: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  galleryActionTopRight: {
+    right: 16,
+    top: 16,
+  },
+  galleryActionLeft: {
+    left: 16,
+    top: "50%",
+    transform: [{ translateY: -20 }],
+  },
+  galleryActionRight: {
+    right: 16,
+    top: "50%",
+    transform: [{ translateY: -20 }],
+  },
+  thumbnailScroll: {
+    paddingVertical: 16,
+  },
+  thumbnailRow: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  thumbnailCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  thumbnailCardActive: {
+    borderColor: "#5DA2E6",
+  },
+  thumbnailCardIdle: {
+    borderColor: "transparent",
+  },
+  thumbnailMedia: {
+    position: "relative",
+  },
+  thumbnailImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+  },
+  thumbnailPlayOverlay: {
+    position: "absolute",
+    inset: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbnailPlayBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbnailFallback: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbnailFallbackText: {
+    color: "#8C98A8",
+    fontSize: 11,
+  },
+  details: {
+    marginTop: 8,
+  },
+  categoryText: {
+    color: "#8C98A8",
+    fontSize: 13,
+  },
+  productTitle: {
+    color: "#E6E8EA",
+    fontSize: 22,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  ratingStars: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  ratingValue: {
+    color: "#E6E8EA",
+    fontSize: 14,
+  },
+  ratingCount: {
+    color: "#8C98A8",
+    fontSize: 13,
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 12,
+    marginTop: 12,
+  },
+  priceCurrent: {
+    color: "#5DA2E6",
+    fontSize: 28,
+    fontWeight: "700",
+  },
+  priceOriginal: {
+    color: "#8C98A8",
+    fontSize: 16,
+    textDecorationLine: "line-through",
+  },
+  section: {
+    marginTop: 24,
+  },
+  sectionTitle: {
+    color: "#E6E8EA",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  sectionBody: {
+    color: "#8C98A8",
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  featureList: {
+    gap: 8,
+  },
+  featureRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  featureDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#5DA2E6",
+    marginTop: 6,
+  },
+  featureText: {
+    color: "#8C98A8",
+    fontSize: 14,
+    flex: 1,
+  },
+  reviewHeader: {
+    marginTop: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  reviewLink: {
+    color: "#5DA2E6",
+    fontSize: 14,
+  },
+  reviewList: {
+    marginTop: 16,
+    gap: 16,
+  },
+  reviewCard: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(46, 54, 68, 0.6)",
+  },
+  reviewRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  reviewAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  reviewBody: {
+    flex: 1,
+  },
+  reviewHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  reviewName: {
+    color: "#E6E8EA",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  reviewDate: {
+    color: "#8C98A8",
+    fontSize: 11,
+  },
+  reviewStars: {
+    flexDirection: "row",
+    gap: 4,
+    marginTop: 6,
+  },
+  reviewText: {
+    color: "#8C98A8",
+    fontSize: 13,
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  bottomBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(46, 54, 68, 0.6)",
+  },
+  bottomBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  quantityPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flex: 1,
+    gap: 8,
+  },
+  quantityButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "#0B0F14",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quantityValue: {
+    flex: 1,
+    textAlign: "center",
+    color: "#E6E8EA",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  addButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: "#5DA2E6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addButtonText: {
+    color: "#0B0F14",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  refreshButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

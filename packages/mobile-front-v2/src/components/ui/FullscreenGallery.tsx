@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Modal, Pressable, Text, View, Image, Linking } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View, Image, Linking } from "react-native";
 import Video from "react-native-video";
 import { WebView } from "react-native-webview";
 import { ChevronLeft, ChevronRight, X, Play } from "lucide-react-native";
@@ -55,27 +55,27 @@ export function FullscreenGallery({
 
   return (
     <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 bg-black items-center justify-center">
-        <View className="absolute top-12 left-4 right-4 flex-row items-center justify-between">
-          <Text className="text-white font-semibold">Galeria</Text>
-          <Pressable onPress={onClose} className="p-2 rounded-full bg-white/10">
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Galeria</Text>
+          <Pressable onPress={onClose} style={styles.headerButton}>
             <X color="white" size={18} />
           </Pressable>
         </View>
 
         {currentMedia?.type === "image" ? (
-          <Image source={{ uri: currentMedia.url }} className="w-full h-[70%]" resizeMode="contain" />
+          <Image source={{ uri: currentMedia.url }} style={styles.media} resizeMode="contain" />
         ) : currentMedia?.type === "video" ? (
           <Video
             source={{ uri: currentMedia.url }}
-            className="w-full h-[70%]"
+            style={styles.media}
             resizeMode="contain"
             controls
           />
         ) : currentMedia?.type === "youtube" && youtubeEmbedUrl ? (
           <WebView
             source={{ uri: youtubeEmbedUrl }}
-            className="w-full h-[70%]"
+            style={styles.media}
             allowsFullscreenVideo
             javaScriptEnabled
             mediaPlaybackRequiresUserAction={false}
@@ -83,47 +83,47 @@ export function FullscreenGallery({
         ) : currentMedia?.type === "vimeo" && vimeoEmbedUrl ? (
           <WebView
             source={{ uri: vimeoEmbedUrl }}
-            className="w-full h-[70%]"
+            style={styles.media}
             allowsFullscreenVideo
             javaScriptEnabled
             mediaPlaybackRequiresUserAction={false}
           />
         ) : (
-          <View className="w-full h-[70%] items-center justify-center">
+          <View style={styles.mediaFallback}>
             {currentThumbnail ? (
-              <View className="w-full h-full items-center justify-center">
-                <Image source={{ uri: currentThumbnail }} className="w-full h-full" resizeMode="contain" />
+              <View style={styles.thumbnailWrap}>
+                <Image source={{ uri: currentThumbnail }} style={styles.thumbnail} resizeMode="contain" />
                 <Pressable
                   onPress={handleOpenMedia}
-                  className="absolute px-5 py-3 rounded-full bg-white/15 flex-row items-center gap-2"
+                  style={styles.mediaButton}
                 >
                   <Play color="white" size={18} />
-                  <Text className="text-white font-semibold">Reproduzir vídeo</Text>
+                  <Text style={styles.mediaButtonText}>Reproduzir vídeo</Text>
                 </Pressable>
               </View>
             ) : (
               <Pressable
                 onPress={handleOpenMedia}
-                className="px-5 py-3 rounded-full bg-white/15 flex-row items-center gap-2"
+                style={styles.mediaButton}
               >
                 <Play color="white" size={18} />
-                <Text className="text-white font-semibold">Abrir mídia</Text>
+                <Text style={styles.mediaButtonText}>Abrir mídia</Text>
               </Pressable>
             )}
           </View>
         )}
 
         {media.length > 1 && (
-          <View className="absolute bottom-12 left-0 right-0 flex-row items-center justify-between px-6">
+          <View style={styles.navRow}>
             <Pressable
               onPress={() => setCurrentIndex((prev) => (prev - 1 + media.length) % media.length)}
-              className="p-3 rounded-full bg-white/10"
+              style={styles.navButton}
             >
               <ChevronLeft color="white" size={20} />
             </Pressable>
             <Pressable
               onPress={() => setCurrentIndex((prev) => (prev + 1) % media.length)}
-              className="p-3 rounded-full bg-white/10"
+              style={styles.navButton}
             >
               <ChevronRight color="white" size={20} />
             </Pressable>
@@ -133,3 +133,79 @@ export function FullscreenGallery({
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  header: {
+    position: "absolute",
+    top: 48,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerTitle: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  headerButton: {
+    padding: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  },
+  media: {
+    width: "100%",
+    height: "70%",
+  },
+  mediaFallback: {
+    width: "100%",
+    height: "70%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbnailWrap: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbnail: {
+    width: "100%",
+    height: "100%",
+  },
+  mediaButton: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+  },
+  mediaButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  navRow: {
+    position: "absolute",
+    bottom: 48,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+  },
+  navButton: {
+    padding: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  },
+});

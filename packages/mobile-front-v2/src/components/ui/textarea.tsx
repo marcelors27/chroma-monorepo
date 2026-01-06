@@ -1,21 +1,20 @@
-import { TextInput } from "react-native";
-import type { TextInputProps } from "react-native";
-import { cn } from "@/lib/utils";
+import { TextArea } from "tamagui";
+import type { TextAreaProps } from "tamagui";
 
-interface TextareaProps extends TextInputProps {
-  className?: string;
-}
-
-export function Textarea({ className, ...props }: TextareaProps) {
+export function Textarea(props: TextAreaProps) {
   return (
-    <TextInput
-      multiline
+    <TextArea
+      backgroundColor="$backgroundStrong"
+      borderColor="$borderColor"
+      borderWidth={1}
+      color="$color"
+      fontSize={14}
+      borderRadius={16}
+      paddingHorizontal={12}
+      paddingVertical={10}
+      minHeight={120}
       textAlignVertical="top"
-      className={cn(
-        "w-full rounded-xl border border-border bg-card px-3 py-3 text-sm text-foreground",
-        className,
-      )}
-      placeholderTextColor="hsl(215 15% 55%)"
+      placeholderTextColor="#8C98A8"
       {...props}
     />
   );

@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, Pressable } from "react-native";
+import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
@@ -13,21 +13,21 @@ export default function Recorrencias() {
     <AuthenticatedLayout>
       <Header title="Recorrências" showCondoSelector showNotification={false} />
 
-      <ScrollView className="px-4 py-4">
+      <ScrollView style={styles.scrollContent}>
         {recurringOrders.map((item) => (
-          <View key={item.id} className="bg-card rounded-2xl p-4 mb-3">
-            <Text className="text-sm font-semibold text-foreground">{item.name}</Text>
-            <Text className="text-xs text-muted-foreground mt-1">{item.frequency}</Text>
-            <Text className="text-xs text-primary mt-2">{item.status === "active" ? "Ativa" : "Pausada"}</Text>
-            <View className="flex-row gap-2 mt-3">
+          <View key={item.id} style={styles.card}>
+            <Text style={styles.cardTitle}>{item.name}</Text>
+            <Text style={styles.cardMeta}>{item.frequency}</Text>
+            <Text style={styles.cardStatus}>{item.status === "active" ? "Ativa" : "Pausada"}</Text>
+            <View style={styles.actionsRow}>
               <Pressable
                 onPress={() => toast.success(item.status === "active" ? "Recorrência pausada" : "Recorrência ativada")}
-                className="px-3 py-2 rounded-xl bg-secondary"
+                style={styles.secondaryButton}
               >
-                <Text className="text-sm text-foreground">Alternar</Text>
+                <Text style={styles.secondaryButtonText}>Alternar</Text>
               </Pressable>
-              <Pressable onPress={() => toast.success("Recorrência removida")} className="px-3 py-2 rounded-xl bg-destructive/10">
-                <Text className="text-sm text-destructive">Remover</Text>
+              <Pressable onPress={() => toast.success("Recorrência removida")} style={styles.destructiveButton}>
+                <Text style={styles.destructiveButtonText}>Remover</Text>
               </Pressable>
             </View>
           </View>
@@ -36,3 +36,57 @@ export default function Recorrencias() {
     </AuthenticatedLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  card: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+  },
+  cardTitle: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  cardMeta: {
+    color: "#8C98A8",
+    fontSize: 11,
+    marginTop: 4,
+  },
+  cardStatus: {
+    color: "#5DA2E6",
+    fontSize: 11,
+    marginTop: 8,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12,
+  },
+  secondaryButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+  },
+  secondaryButtonText: {
+    color: "#E6E8EA",
+    fontSize: 13,
+  },
+  destructiveButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: "rgba(239, 68, 68, 0.12)",
+  },
+  destructiveButtonText: {
+    color: "#EF4444",
+    fontSize: 13,
+  },
+});

@@ -81,21 +81,19 @@ export function ProductCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(24, 28, 36, 0.94)",
-    borderRadius: 22,
+    backgroundColor: "rgba(22, 26, 33, 0.96)",
+    borderRadius: 20,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(74, 82, 96, 0.55)",
     shadowColor: "#000000",
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 5,
   },
   media: {
     position: "relative",
     aspectRatio: 1,
-    backgroundColor: "rgba(32, 36, 44, 0.9)",
+    backgroundColor: "rgba(30, 34, 42, 0.9)",
   },
   mediaImage: {
     width: "100%",
@@ -122,7 +120,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "rgba(34, 38, 46, 0.9)",
+    backgroundColor: "rgba(20, 24, 30, 0.92)",
   },
   categoryText: {
     color: "#E6E8EA",
@@ -140,6 +138,7 @@ const styles = StyleSheet.create({
   description: {
     color: "#8C98A8",
     fontSize: 12,
+    lineHeight: 16,
   },
   footer: {
     marginTop: 12,
@@ -158,8 +157,11 @@ const styles = StyleSheet.create({
     textDecorationLine: "line-through",
   },
   addButton: {
-    padding: 10,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#5DA2E6",
   },
 });

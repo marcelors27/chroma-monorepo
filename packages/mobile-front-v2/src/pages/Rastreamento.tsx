@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, Pressable } from "react-native";
+import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
@@ -19,21 +19,21 @@ export default function Rastreamento() {
     <AuthenticatedLayout>
       <Header title="Rastreamento" showBackButton showCondoSelector />
 
-      <ScrollView className="px-4 py-4">
-        <View className="bg-card rounded-2xl p-4">
-          <Text className="text-sm text-muted-foreground">Pedido</Text>
-          <Text className="text-lg font-semibold text-foreground">{id}</Text>
-          <Text className="text-xs text-muted-foreground mt-1">Código de rastreio: BR123456789</Text>
-          <Pressable onPress={() => toast.success("Código de rastreio copiado!")} className="mt-3 px-3 py-2 rounded-xl bg-secondary">
-            <Text className="text-sm text-foreground">Copiar código</Text>
+      <ScrollView style={styles.scrollContent}>
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>Pedido</Text>
+          <Text style={styles.cardTitle}>{id}</Text>
+          <Text style={styles.cardSubtitle}>Código de rastreio: BR123456789</Text>
+          <Pressable onPress={() => toast.success("Código de rastreio copiado!")} style={styles.copyButton}>
+            <Text style={styles.copyButtonText}>Copiar código</Text>
           </Pressable>
         </View>
 
-        <View className="mt-4">
+        <View style={styles.timeline}>
           {trackingSteps.map((step) => (
-            <View key={step.id} className="bg-card rounded-2xl p-4 mb-3">
-              <Text className="text-sm font-semibold text-foreground">{step.title}</Text>
-              <Text className="text-xs text-muted-foreground mt-1">{step.date}</Text>
+            <View key={step.id} style={styles.stepCard}>
+              <Text style={styles.stepTitle}>{step.title}</Text>
+              <Text style={styles.stepDate}>{step.date}</Text>
             </View>
           ))}
         </View>
@@ -41,3 +41,60 @@ export default function Rastreamento() {
     </AuthenticatedLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  card: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    padding: 16,
+  },
+  cardLabel: {
+    color: "#8C98A8",
+    fontSize: 13,
+  },
+  cardTitle: {
+    color: "#E6E8EA",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  cardSubtitle: {
+    color: "#8C98A8",
+    fontSize: 11,
+    marginTop: 4,
+  },
+  copyButton: {
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+  },
+  copyButtonText: {
+    color: "#E6E8EA",
+    fontSize: 13,
+  },
+  timeline: {
+    marginTop: 16,
+  },
+  stepCard: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+  },
+  stepTitle: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  stepDate: {
+    color: "#8C98A8",
+    fontSize: 11,
+    marginTop: 4,
+  },
+});

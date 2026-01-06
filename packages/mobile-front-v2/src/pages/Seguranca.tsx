@@ -1,4 +1,4 @@
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { Button } from "@/components/ui/button";
@@ -12,24 +12,24 @@ export default function Seguranca() {
     <AuthenticatedLayout>
       <Header title="Segurança" showBackButton showCondoSelector />
 
-      <ScrollView className="px-4 py-4">
-        <View className="bg-card rounded-2xl p-4">
+      <ScrollView style={styles.scrollContent}>
+        <View style={styles.card}>
           <Label>Senha atual</Label>
-          <Input secureTextEntry className="mt-1" />
-          <Label className="mt-3">Nova senha</Label>
-          <Input secureTextEntry className="mt-1" />
-          <Label className="mt-3">Confirmar nova senha</Label>
-          <Input secureTextEntry className="mt-1" />
-          <Button onPress={() => toast.success("Senha alterada com sucesso!")} className="mt-4">
+          <Input secureTextEntry marginTop={4} />
+          <Label marginTop={12}>Nova senha</Label>
+          <Input secureTextEntry marginTop={4} />
+          <Label marginTop={12}>Confirmar nova senha</Label>
+          <Input secureTextEntry marginTop={4} />
+          <Button onPress={() => toast.success("Senha alterada com sucesso!")} marginTop={16}>
             Atualizar senha
           </Button>
         </View>
 
-        <View className="bg-card rounded-2xl p-4 mt-4">
-          <View className="flex-row items-center justify-between">
+        <View style={[styles.card, styles.cardSpacing]}>
+          <View style={styles.rowBetween}>
             <View>
-              <Text className="text-sm font-semibold text-foreground">Autenticação em dois fatores</Text>
-              <Text className="text-xs text-muted-foreground mt-1">Mais segurança na sua conta</Text>
+              <Text style={styles.cardTitle}>Autenticação em dois fatores</Text>
+              <Text style={styles.cardSubtitle}>Mais segurança na sua conta</Text>
             </View>
             <Switch
               value={false}
@@ -43,3 +43,34 @@ export default function Seguranca() {
     </AuthenticatedLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  card: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    padding: 16,
+  },
+  cardSpacing: {
+    marginTop: 16,
+  },
+  rowBetween: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cardTitle: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  cardSubtitle: {
+    color: "#8C98A8",
+    fontSize: 11,
+    marginTop: 4,
+  },
+});

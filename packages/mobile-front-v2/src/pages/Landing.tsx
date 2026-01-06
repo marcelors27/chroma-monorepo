@@ -47,6 +47,7 @@ const CTA_BG = "https://images.unsplash.com/photo-1460317442991-0ec209397118?w=1
 export default function Landing() {
   const navigation = useNavigation();
   const screenWidth = Dimensions.get("window").width;
+  const featureCardWidth = Math.floor((screenWidth - 84) / 2);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -99,7 +100,7 @@ export default function Landing() {
           {features.map((feature) => {
             const Icon = feature.icon;
             return (
-              <View key={feature.title} style={[styles.featureCard, { width: (screenWidth - 56) / 2 }]}>
+              <View key={feature.title} style={[styles.featureCard, { width: featureCardWidth }]}>
                 <View style={styles.featureIconWrap}>
                   <Icon color="#5DA2E6" size={18} />
                 </View>
@@ -260,6 +261,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
+    justifyContent: "center",
   },
   featureCard: {
     backgroundColor: "rgba(24, 28, 36, 0.92)",

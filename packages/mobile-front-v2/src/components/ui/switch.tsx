@@ -1,16 +1,22 @@
-import { Switch as RNSwitch } from "react-native";
-import type { SwitchProps } from "react-native";
+import { Switch as TamaguiSwitch } from "tamagui";
 
-interface UISwitchProps extends SwitchProps {
-  className?: string;
+interface UISwitchProps {
+  value?: boolean;
+  onValueChange?: (value: boolean) => void;
+  disabled?: boolean;
 }
 
-export function Switch(props: UISwitchProps) {
+export function Switch({ value = false, onValueChange, disabled }: UISwitchProps) {
   return (
-    <RNSwitch
-      trackColor={{ false: "hsl(220 15% 20%)", true: "hsl(220 10% 50%)" }}
-      thumbColor="white"
-      {...props}
-    />
+    <TamaguiSwitch
+      checked={value}
+      onCheckedChange={(next) => onValueChange?.(next === true)}
+      disabled={disabled}
+      backgroundColor={value ? "$backgroundStrong" : "$backgroundStrong"}
+      borderColor="$borderColor"
+      borderWidth={1}
+    >
+      <TamaguiSwitch.Thumb backgroundColor="#FFFFFF" />
+    </TamaguiSwitch>
   );
 }

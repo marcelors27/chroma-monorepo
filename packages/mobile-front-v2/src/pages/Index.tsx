@@ -6,6 +6,8 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { NewsCard } from "@/components/ui/NewsCard";
 import { ProductCard } from "@/components/ui/ProductCard";
 import { toast } from "@/lib/toast";
+import { useCondo } from "@/contexts/CondoContext";
+import { useCart } from "@/contexts/CartContext";
 
 const featuredNews = {
   id: "featured",
@@ -57,11 +59,17 @@ const featuredProducts = [
 
 export default function Index() {
   const navigation = useNavigation();
+  const { activeCondo } = useCondo();
+  const { addItem } = useCart();
   const screenWidth = Dimensions.get("window").width;
   const productCardWidth = (screenWidth - 52) / 2;
 
   const handleAddToCart = (productName: string) => {
-    toast.success(`${productName} adicionado ao carrinho!`);
+    if (!activeCondo) {
+      toast.error("Selecione um condomínio antes de adicionar itens ao carrinho.");
+      return;
+    }
+    addItem(1);
   };
 
   return (

@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
-import { Modal, Pressable, View } from "react-native";
+import { Modal, Pressable, StyleSheet, View } from "react-native";
 import type { PressableProps, ViewProps } from "react-native";
-import { cn } from "@/lib/utils";
 
 type PopoverContextType = {
   open: boolean;
@@ -46,7 +45,7 @@ export function PopoverTrigger({ children, ...props }: PressableProps) {
   );
 }
 
-export function PopoverContent({ className, children }: ViewProps & { className?: string }) {
+export function PopoverContent({ style, children }: ViewProps) {
   const context = useContext(PopoverContext);
   if (!context) {
     return null;
@@ -54,12 +53,29 @@ export function PopoverContent({ className, children }: ViewProps & { className?
 
   return (
     <Modal transparent visible={context.open} animationType="fade" onRequestClose={() => context.setOpen(false)}>
-      <View className="flex-1 bg-black/50 px-4 justify-center">
-        <Pressable className="absolute inset-0" onPress={() => context.setOpen(false)} />
-        <View className={cn("w-full max-w-md rounded-2xl bg-card p-4 self-center", className)}>
+      <View style={styles.overlay}>
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={() => context.setOpen(false)} />
+        <View style={[styles.content, style]}>
           {children}
         </View>
       </View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    paddingHorizontal: 16,
+    justifyContent: "center",
+  },
+  content: {
+    width: "100%",
+    maxWidth: 420,
+    borderRadius: 20,
+    backgroundColor: "#151A22",
+    padding: 16,
+    alignSelf: "center",
+  },
+});

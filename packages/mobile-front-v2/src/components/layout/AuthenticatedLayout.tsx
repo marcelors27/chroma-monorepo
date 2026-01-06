@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { ImageBackground, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import condoBackground from "@/assets/condo-background.jpg";
 
@@ -15,7 +16,9 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
           colors={["rgba(16, 20, 26, 0.92)", "rgba(16, 20, 26, 0.82)", "rgba(16, 20, 26, 0.95)"]}
           style={styles.gradient}
         >
-          {children}
+          <SafeAreaView style={styles.safeArea} edges={["top"]}>
+            {children}
+          </SafeAreaView>
         </LinearGradient>
       </ImageBackground>
     </View>
@@ -31,6 +34,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   gradient: {
+    flex: 1,
+  },
+  safeArea: {
     flex: 1,
   },
 });

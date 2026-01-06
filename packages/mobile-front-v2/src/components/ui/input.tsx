@@ -1,19 +1,18 @@
-import { TextInput } from "react-native";
-import type { TextInputProps } from "react-native";
-import { cn } from "@/lib/utils";
+import { Input as TamaguiInput } from "tamagui";
+import type { InputProps as TamaguiInputProps } from "tamagui";
 
-interface InputProps extends TextInputProps {
-  className?: string;
-}
-
-export function Input({ className, ...props }: InputProps) {
+export function Input(props: TamaguiInputProps) {
   return (
-    <TextInput
-      className={cn(
-        "w-full rounded-xl border border-border bg-card px-3 py-3 text-sm text-foreground",
-        className,
-      )}
-      placeholderTextColor="hsl(215 15% 55%)"
+    <TamaguiInput
+      backgroundColor="$backgroundStrong"
+      borderColor="$borderColor"
+      borderWidth={1}
+      color="$color"
+      fontSize={14}
+      height={48}
+      borderRadius={16}
+      paddingHorizontal={12}
+      placeholderTextColor="#8C98A8"
       {...props}
     />
   );

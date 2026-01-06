@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import type { PressableProps, ViewProps } from "react-native";
-import { cn } from "@/lib/utils";
 
 type SheetContextType = {
   open: boolean;
@@ -48,25 +47,28 @@ export function SheetTrigger({ children, ...props }: PressableProps & { asChild?
 
 interface SheetContentProps extends ViewProps {
   side?: "right" | "bottom";
-  className?: string;
 }
 
-export function SheetContent({ side = "bottom", className, children, ...props }: SheetContentProps) {
+export function SheetContent({ side = "bottom", style, children, ...props }: SheetContentProps) {
   const context = useContext(SheetContext);
   if (!context) {
     return null;
   }
 
-  const containerClasses =
-    side === "right"
-      ? "ml-auto h-full w-full max-w-md rounded-l-2xl"
-      : "mt-auto w-full rounded-t-2xl";
-
   return (
-    <Modal transparent visible={context.open} animationType="slide" onRequestClose={() => context.setOpen(false)}>
-      <View className="flex-1 bg-black/60">
-        <Pressable className="flex-1" onPress={() => context.setOpen(false)} />
-        <View className={cn("bg-card p-4", containerClasses, className)} {...props}>
+    <Modal
+      transparent
+      visible={context.open}
+      animationType="slide"
+      statusBarTranslucent
+      onRequestClose={() => context.setOpen(false)}
+    >
+      <View style={styles.overlay}>
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={() => context.setOpen(false)} />
+        <View
+          style={[styles.container, side === "right" ? styles.rightSheet : styles.bottomSheet, style]}
+          {...props}
+        >
           {children}
         </View>
       </View>
@@ -74,14 +76,52 @@ export function SheetContent({ side = "bottom", className, children, ...props }:
   );
 }
 
-export function SheetHeader({ className, ...props }: ViewProps & { className?: string }) {
-  return <View className={cn("mb-3", className)} {...props} />;
+export function SheetHeader(props: ViewProps) {
+  return <View style={styles.header} {...props} />;
 }
 
-export function SheetTitle({ className, children }: { className?: string; children?: React.ReactNode }) {
-  return <Text className={cn("text-lg font-semibold text-foreground", className)}>{children}</Text>;
+export function SheetTitle({ children }: { children?: React.ReactNode }) {
+  return <Text style={styles.title}>{children}</Text>;
 }
 
-export function SheetFooter({ className, ...props }: ViewProps & { className?: string }) {
-  return <View className={cn("mt-3 flex-row gap-2", className)} {...props} />;
+export function SheetFooter(props: ViewProps) {
+  return <View style={styles.footer} {...props} />;
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+  },
+  container: {
+    backgroundColor: "#0B0F14",
+    padding: 16,
+  },
+  bottomSheet: {
+    width: "100%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  rightSheet: {
+    height: "100%",
+    width: "100%",
+    maxWidth: 360,
+    alignSelf: "flex-end",
+    borderTopLeftRadius: 24,
+    borderBottomLeftRadius: 24,
+  },
+  header: {
+    marginBottom: 12,
+  },
+  title: {
+    color: "#E6E8EA",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  footer: {
+    marginTop: 12,
+    flexDirection: "row",
+    gap: 8,
+  },
+});

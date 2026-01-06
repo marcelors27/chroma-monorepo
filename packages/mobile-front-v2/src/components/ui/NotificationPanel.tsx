@@ -4,9 +4,8 @@ import { Bell, Check, CheckCheck, Package, Trash2, Truck } from "lucide-react-na
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNotifications, OrderNotification } from "@/contexts/NotificationContext";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 const statusIcons = {
   confirmed: Check,
@@ -16,10 +15,10 @@ const statusIcons = {
 };
 
 const statusColors = {
-  confirmed: "text-blue-400 bg-blue-400/10",
-  preparing: "text-amber-400 bg-amber-400/10",
-  shipping: "text-purple-400 bg-purple-400/10",
-  delivered: "text-green-400 bg-green-400/10",
+  confirmed: { color: "#60A5FA", backgroundColor: "rgba(96, 165, 250, 0.12)" },
+  preparing: { color: "#F59E0B", backgroundColor: "rgba(245, 158, 11, 0.12)" },
+  shipping: { color: "#A855F7", backgroundColor: "rgba(168, 85, 247, 0.12)" },
+  delivered: { color: "#34D399", backgroundColor: "rgba(52, 211, 153, 0.12)" },
 };
 
 function NotificationItem({
@@ -34,24 +33,26 @@ function NotificationItem({
   return (
     <Pressable
       onPress={onRead}
-      className={cn(
-        "w-full p-4 border-b border-border/50",
-        !notification.read && "bg-primary/10",
-      )}
+      style={[styles.notificationRow, !notification.read && styles.notificationUnread]}
     >
-      <View className="flex-row gap-3">
-        <View className={cn("p-2 rounded-full", statusColors[notification.status])}>
-          <Icon color="white" size={16} />
+      <View style={styles.notificationRowInner}>
+        <View
+          style={[
+            styles.notificationIcon,
+            { backgroundColor: statusColors[notification.status].backgroundColor },
+          ]}
+        >
+          <Icon color={statusColors[notification.status].color} size={16} />
         </View>
-        <View className="flex-1">
-          <View className="flex-row items-start justify-between gap-2">
-            <Text className={cn("font-medium text-sm text-foreground", !notification.read && "text-primary")}>
+        <View style={styles.notificationBody}>
+          <View style={styles.notificationHeader}>
+            <Text style={[styles.notificationTitle, !notification.read && styles.notificationTitleUnread]}>
               {notification.title}
             </Text>
-            {!notification.read && <View className="h-2 w-2 rounded-full bg-primary mt-1.5" />}
+            {!notification.read && <View style={styles.unreadDot} />}
           </View>
-          <Text className="text-sm text-muted-foreground mt-0.5">{notification.message}</Text>
-          <Text className="text-xs text-muted-foreground mt-1">
+          <Text style={styles.notificationMessage}>{notification.message}</Text>
+          <Text style={styles.notificationTime}>
             {formatDistanceToNow(notification.timestamp, { addSuffix: true, locale: ptBR })}
           </Text>
         </View>
@@ -85,15 +86,15 @@ export function NotificationPanel() {
           )}
         </View>
       </SheetTrigger>
-      <SheetContent side="right" className="p-0">
-        <SheetHeader className="p-4 border-b border-border/50">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-semibold text-foreground">Notificações</Text>
-            <View className="flex-row items-center gap-2">
+      <SheetContent side="right" style={styles.sheetContent}>
+        <SheetHeader style={styles.sheetHeader}>
+          <View style={styles.sheetHeaderRow}>
+            <Text style={styles.sheetTitle}>Notificações</Text>
+            <View style={styles.sheetHeaderActions}>
               {notifications.length > 0 && (
                 <>
                   <Button variant="ghost" size="sm" onPress={markAllAsRead}>
-                    <Text className="text-xs text-foreground">Marcar todas</Text>
+                    <Text style={styles.headerActionText}>Marcar todas</Text>
                   </Button>
                   <Button variant="ghost" size="sm" onPress={clearNotifications}>
                     <Trash2 color="hsl(0 72% 51%)" size={16} />
@@ -105,24 +106,24 @@ export function NotificationPanel() {
         </SheetHeader>
 
         {!hasPermission && (
-          <View className="p-4 bg-primary/5 border-b border-border/50">
-            <Text className="text-sm text-muted-foreground mb-2">
+          <View style={styles.permissionBanner}>
+            <Text style={styles.permissionText}>
               Ative as notificações para receber atualizações em tempo real.
             </Text>
-            <Button size="sm" onPress={requestPermission} className="w-full">
-              <Text className="text-sm text-primary-foreground">Ativar notificações</Text>
+            <Button size="sm" onPress={requestPermission} width="100%">
+              <Text style={styles.permissionButtonText}>Ativar notificações</Text>
             </Button>
           </View>
         )}
 
-        <ScrollView className="max-h-[520px]">
+        <ScrollView style={styles.notificationsScroll}>
           {notifications.length === 0 ? (
-            <View className="items-center justify-center py-12 text-center px-4">
-              <View className="p-4 rounded-full bg-secondary mb-4">
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
                 <Bell color="hsl(215 15% 55%)" size={28} />
               </View>
-              <Text className="text-muted-foreground">Nenhuma notificação ainda</Text>
-              <Text className="text-xs text-muted-foreground mt-1">
+              <Text style={styles.emptyTitle}>Nenhuma notificação ainda</Text>
+              <Text style={styles.emptySubtitle}>
                 Você será notificado sobre atualizações dos seus pedidos
               </Text>
             </View>
@@ -147,6 +148,73 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: "rgba(34, 38, 46, 0.9)",
   },
+  sheetContent: {
+    padding: 0,
+  },
+  sheetHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(46, 54, 68, 0.6)",
+  },
+  sheetHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sheetHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sheetTitle: {
+    color: "#E6E8EA",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  headerActionText: {
+    color: "#E6E8EA",
+    fontSize: 12,
+  },
+  permissionBanner: {
+    padding: 16,
+    backgroundColor: "rgba(93, 162, 230, 0.08)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(46, 54, 68, 0.6)",
+  },
+  permissionText: {
+    color: "#8C98A8",
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  permissionButtonText: {
+    color: "#0B0F14",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  notificationsScroll: {
+    maxHeight: 520,
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 48,
+    paddingHorizontal: 16,
+  },
+  emptyIcon: {
+    padding: 16,
+    borderRadius: 999,
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    color: "#8C98A8",
+  },
+  emptySubtitle: {
+    color: "#8C98A8",
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: "center",
+  },
   badge: {
     position: "absolute",
     top: -4,
@@ -163,5 +231,57 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "700",
+  },
+  notificationRow: {
+    width: "100%",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(46, 54, 68, 0.6)",
+  },
+  notificationUnread: {
+    backgroundColor: "rgba(93, 162, 230, 0.12)",
+  },
+  notificationRowInner: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  notificationIcon: {
+    padding: 8,
+    borderRadius: 999,
+  },
+  notificationBody: {
+    flex: 1,
+  },
+  notificationHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  notificationTitle: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "500",
+    flex: 1,
+  },
+  notificationTitleUnread: {
+    color: "#5DA2E6",
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "#5DA2E6",
+    marginTop: 4,
+  },
+  notificationMessage: {
+    color: "#8C98A8",
+    fontSize: 13,
+    marginTop: 4,
+  },
+  notificationTime: {
+    color: "#8C98A8",
+    fontSize: 11,
+    marginTop: 6,
   },
 });

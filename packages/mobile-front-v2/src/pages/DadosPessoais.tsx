@@ -1,4 +1,4 @@
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { Button } from "@/components/ui/button";
@@ -11,15 +11,15 @@ export default function DadosPessoais() {
     <AuthenticatedLayout>
       <Header title="Dados pessoais" showBackButton showCondoSelector />
 
-      <ScrollView className="px-4 py-4">
-        <View className="bg-card rounded-2xl p-4">
+      <ScrollView style={styles.scrollContent}>
+        <View style={styles.card}>
           <Label>Nome completo</Label>
-          <Input defaultValue="João Silva" className="mt-1" />
-          <Label className="mt-3">E-mail</Label>
-          <Input defaultValue="joao.silva@email.com" className="mt-1" />
-          <Label className="mt-3">Telefone</Label>
-          <Input defaultValue="(11) 99999-0000" className="mt-1" />
-          <Button onPress={() => toast.success("Dados atualizados com sucesso!")} className="mt-4">
+          <Input defaultValue="João Silva" marginTop={4} />
+          <Label marginTop={12}>E-mail</Label>
+          <Input defaultValue="joao.silva@email.com" marginTop={4} />
+          <Label marginTop={12}>Telefone</Label>
+          <Input defaultValue="(11) 99999-0000" marginTop={4} />
+          <Button onPress={() => toast.success("Dados atualizados com sucesso!")} marginTop={16}>
             Salvar alterações
           </Button>
         </View>
@@ -27,3 +27,16 @@ export default function DadosPessoais() {
     </AuthenticatedLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  card: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    padding: 16,
+  },
+});

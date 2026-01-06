@@ -1,13 +1,14 @@
 import { useState, useMemo } from "react";
-import { ScrollView, Text, View, Pressable, useWindowDimensions } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet, useWindowDimensions } from "react-native";
 import { Search } from "lucide-react-native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { ProductCard } from "@/components/ui/ProductCard";
 import { ProductFiltersSheet, ProductFilters } from "@/components/ui/ProductFiltersSheet";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { useCondo } from "@/contexts/CondoContext";
+import { useCart } from "@/contexts/CartContext";
 
 const categories = [
   { id: "all", label: "Todos" },
@@ -27,6 +28,7 @@ const products = [
     originalPrice: 249.9,
     image: "https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&auto=format&fit=crop&q=60",
     category: "Limpeza",
+    inStock: true,
   },
   {
     id: "2",
@@ -35,6 +37,7 @@ const products = [
     price: 299.9,
     image: "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop&q=60",
     category: "Segurança",
+    inStock: true,
   },
   {
     id: "3",
@@ -44,6 +47,7 @@ const products = [
     originalPrice: 1199.9,
     image: "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=400&auto=format&fit=crop&q=60",
     category: "Limpeza",
+    inStock: false,
   },
   {
     id: "4",
@@ -52,6 +56,7 @@ const products = [
     price: 459.9,
     image: "https://images.unsplash.com/photo-1581092921461-eab62e97a2aa?w=400&auto=format&fit=crop&q=60",
     category: "Manutenção",
+    inStock: true,
   },
   {
     id: "5",
@@ -61,6 +66,7 @@ const products = [
     originalPrice: 799.9,
     image: "https://images.unsplash.com/photo-1558002038-1055907df827?w=400&auto=format&fit=crop&q=60",
     category: "Segurança",
+    inStock: true,
   },
   {
     id: "6",
@@ -69,6 +75,7 @@ const products = [
     price: 1299.9,
     image: "https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?w=400&auto=format&fit=crop&q=60",
     category: "Jardim",
+    inStock: false,
   },
 ];
 
@@ -81,25 +88,35 @@ const defaultFilters: ProductFilters = {
   inStock: false,
 };
 
+const normalizeText = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
 export default function Produtos() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<ProductFilters>(defaultFilters);
+  const { activeCondo } = useCondo();
+  const { addItem } = useCart();
   const { width } = useWindowDimensions();
   const cardGap = 12;
-  const horizontalPadding = 16;
+  const horizontalPadding = 28;
   const cardWidth = Math.floor((width - horizontalPadding * 2 - cardGap) / 2);
 
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
       const matchesCategory =
-        selectedCategory === "all" || product.category.toLowerCase() === selectedCategory;
+        selectedCategory === "all" ||
+        normalizeText(product.category) === normalizeText(selectedCategory);
       const matchesSearch =
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase());
+        normalizeText(product.name).includes(normalizeText(searchQuery)) ||
+        normalizeText(product.description).includes(normalizeText(searchQuery));
       const matchesPrice = product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1];
       const matchesDiscount = !filters.onlyDiscounted || product.originalPrice;
-      return matchesCategory && matchesSearch && matchesPrice && matchesDiscount;
+      const matchesStock = !filters.inStock || product.inStock;
+      return matchesCategory && matchesSearch && matchesPrice && matchesDiscount && matchesStock;
     });
 
     switch (filters.sortBy) {
@@ -120,7 +137,11 @@ export default function Produtos() {
   }, [selectedCategory, searchQuery, filters]);
 
   const handleAddToCart = (productName: string) => {
-    toast.success(`${productName} adicionado ao carrinho!`);
+    if (!activeCondo) {
+      toast.error("Selecione um condomínio antes de adicionar itens ao carrinho.");
+      return;
+    }
+    addItem(1);
   };
 
   const activeFiltersCount = [
@@ -134,50 +155,66 @@ export default function Produtos() {
     <AuthenticatedLayout>
       <Header title="Produtos" subtitle="Catálogo" showNotification={false} showCondoSelector />
 
-      <ScrollView className="px-4 py-4">
-        <View className="relative">
-          <View className="absolute left-3 top-1/2 -translate-y-1/2">
-            <Search color="hsl(215 15% 55%)" size={18} />
-          </View>
-          <Input
-            placeholder="Buscar produtos..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            className="w-full h-14 pl-12 pr-14 rounded-2xl bg-card border-border text-foreground"
-          />
-          <View className="absolute right-3 top-1/2 -translate-y-1/2">
-            <ProductFiltersSheet filters={filters} onFiltersChange={setFilters} maxPrice={MAX_PRICE} />
+      <ScrollView style={styles.scrollContent}>
+        <View style={styles.searchRow}>
+          <Search color="hsl(215 15% 55%)" size={18} />
+          <View style={styles.searchContainer}>
+            <Input
+              placeholder="Buscar produtos..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              backgroundColor="transparent"
+              borderWidth={0}
+              height={48}
+              paddingLeft={12}
+              paddingRight={44}
+              paddingVertical={0}
+              borderRadius={16}
+            />
+            <View style={styles.searchFilter}>
+              <ProductFiltersSheet
+                filters={filters}
+                onFiltersChange={setFilters}
+                maxPrice={MAX_PRICE}
+                triggerStyle={styles.filterTrigger}
+              />
+            </View>
           </View>
         </View>
 
         {activeFiltersCount > 0 && (
-          <View className="flex-row items-center gap-2 mt-3">
-            <Text className="text-sm text-muted-foreground">
+          <View style={styles.filtersRow}>
+            <Text style={styles.filtersText}>
               {activeFiltersCount} filtro{activeFiltersCount > 1 ? "s" : ""} ativo
               {activeFiltersCount > 1 ? "s" : ""}
             </Text>
             <Pressable onPress={() => setFilters(defaultFilters)}>
-              <Text className="text-accent">Limpar</Text>
+              <Text style={styles.clearFiltersText}>Limpar</Text>
             </Pressable>
           </View>
         )}
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4 -mx-4 px-4">
-          <View className="flex-row gap-2">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoriesScroll}
+          contentContainerStyle={styles.categoriesContent}
+        >
+          <View style={styles.categoryRow}>
             {categories.map((category) => (
               <Pressable
                 key={category.id}
                 onPress={() => setSelectedCategory(category.id)}
-                className={cn(
-                  "px-4 py-2 rounded-full",
-                  selectedCategory === category.id ? "bg-primary" : "bg-card",
-                )}
+                style={[
+                  styles.categoryPill,
+                  selectedCategory === category.id ? styles.categoryPillActive : styles.categoryPillIdle,
+                ]}
               >
                 <Text
-                  className={cn(
-                    "text-sm font-medium",
-                    selectedCategory === category.id ? "text-primary-foreground" : "text-muted-foreground",
-                  )}
+                  style={[
+                    styles.categoryText,
+                    selectedCategory === category.id ? styles.categoryTextActive : styles.categoryTextIdle,
+                  ]}
                 >
                   {category.label}
                 </Text>
@@ -186,27 +223,30 @@ export default function Produtos() {
           </View>
         </ScrollView>
 
-        <Text className="text-sm text-muted-foreground mt-3">
+        <Text style={styles.resultsText}>
           {filteredProducts.length} produto{filteredProducts.length !== 1 ? "s" : ""} encontrado
           {filteredProducts.length !== 1 ? "s" : ""}
         </Text>
 
-        <View className="flex-row flex-wrap gap-3 mt-3">
-          {filteredProducts.map((product) => (
+        <View style={styles.grid}>
+          {filteredProducts.map((product, index) => (
             <ProductCard
               key={product.id}
               {...product}
               onAddToCart={() => handleAddToCart(product.name)}
-              style={{ width: cardWidth }}
+              style={[
+                styles.cardWrapper,
+                { width: cardWidth, marginRight: index % 2 === 0 ? cardGap : 0 },
+              ]}
             />
           ))}
         </View>
 
         {filteredProducts.length === 0 && (
-          <View className="items-center justify-center py-12">
+          <View style={styles.emptyState}>
             <Search color="hsl(215 15% 55%)" size={40} />
-            <Text className="font-semibold text-foreground mt-3">Nenhum produto encontrado</Text>
-            <Text className="text-sm text-muted-foreground text-center mt-1">
+            <Text style={styles.emptyTitle}>Nenhum produto encontrado</Text>
+            <Text style={styles.emptySubtitle}>
               Tente ajustar os filtros ou buscar por outro termo
             </Text>
           </View>
@@ -215,3 +255,127 @@ export default function Produtos() {
     </AuthenticatedLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 28,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  searchContainer: {
+    backgroundColor: "rgba(24, 28, 36, 0.96)",
+    borderColor: "rgba(86, 94, 110, 0.75)",
+    borderWidth: 1,
+    borderRadius: 16,
+    height: 52,
+    justifyContent: "center",
+    shadowColor: "#0B0F14",
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    flex: 1,
+  },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  filtersRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 12,
+  },
+  filtersText: {
+    fontSize: 13,
+    color: "#8C98A8",
+  },
+  clearFiltersText: {
+    color: "#5DA2E6",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  categoriesScroll: {
+    marginTop: 16,
+    marginHorizontal: -28,
+  },
+  categoriesContent: {
+    paddingHorizontal: 28,
+  },
+  searchFilter: {
+    position: "absolute",
+    right: 8,
+  },
+  filterTrigger: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: "rgba(32, 36, 44, 0.95)",
+    borderWidth: 1,
+    borderColor: "rgba(92, 100, 116, 0.7)",
+  },
+  categoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  categoryPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  categoryPillActive: {
+    backgroundColor: "rgba(146, 154, 166, 0.55)",
+    borderColor: "rgba(146, 154, 166, 0.6)",
+  },
+  categoryPillIdle: {
+    backgroundColor: "rgba(31, 35, 43, 0.78)",
+    borderColor: "rgba(62, 70, 84, 0.7)",
+  },
+  categoryText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  categoryTextActive: {
+    color: "#F3F4F6",
+  },
+  categoryTextIdle: {
+    color: "#8C98A8",
+  },
+  resultsText: {
+    color: "#8C98A8",
+    fontSize: 13,
+    marginTop: 12,
+  },
+  grid: {
+    marginTop: 12,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  cardWrapper: {
+    width: "100%",
+    marginBottom: 12,
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 48,
+  },
+  emptyTitle: {
+    color: "#E6E8EA",
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 12,
+  },
+  emptySubtitle: {
+    color: "#8C98A8",
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 4,
+  },
+});

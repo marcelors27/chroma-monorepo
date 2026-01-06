@@ -9,18 +9,28 @@
       "android",
       "web"
     ],
+    "statusBar": {
+      "style": "light",
+      "backgroundColor": "#000000"
+    },
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
       "**/*"
     ],
     "android": {
-      "package": "com.chroma.mobilestore"
+      "package": "com.chroma.mobilestore",
+      "statusBar": {
+        "barStyle": "light-content",
+        "backgroundColor": "#000000"
+      }
     },
     "ios": {
       "bundleIdentifier": "com.chroma.mobilestore",
       "buildNumber": "2",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIStatusBarStyle": "UIStatusBarStyleLightContent",
+        "UIViewControllerBasedStatusBarAppearance": false
       }
     },
     "plugins": [

@@ -1,11 +1,6 @@
-import { ScrollView } from "react-native";
-import type { ScrollViewProps } from "react-native";
-import { cn } from "@/lib/utils";
+import { ScrollView } from "tamagui";
+import type { ScrollViewProps } from "tamagui";
 
-interface ScrollAreaProps extends ScrollViewProps {
-  className?: string;
-}
-
-export function ScrollArea({ className, ...props }: ScrollAreaProps) {
-  return <ScrollView className={cn("flex-1", className)} {...props} />;
+export function ScrollArea(props: ScrollViewProps) {
+  return <ScrollView flex={1} {...props} />;
 }

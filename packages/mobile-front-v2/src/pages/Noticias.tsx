@@ -1,12 +1,11 @@
 import { useState, useMemo } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Search, X } from "lucide-react-native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { NewsCard } from "@/components/ui/NewsCard";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 
 const allNews = [
   {
@@ -77,40 +76,41 @@ export default function Noticias() {
     <AuthenticatedLayout>
       <Header title="Notícias" showBackButton showCondoSelector />
 
-      <ScrollView className="px-4 py-4">
-        <View className="relative">
-          <View className="absolute left-3 top-1/2 -translate-y-1/2">
+      <ScrollView style={styles.scrollContent}>
+        <View style={styles.searchContainer}>
+          <View style={styles.searchIcon}>
             <Search color="hsl(215 15% 55%)" size={16} />
           </View>
           <Input
             placeholder="Buscar notícias..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            className="pl-10 pr-10 bg-card border-border"
+            paddingLeft={40}
+            paddingRight={40}
           />
           {searchQuery ? (
-            <Pressable onPress={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
+            <Pressable onPress={() => setSearchQuery("")} style={styles.clearIcon}>
               <X color="hsl(215 15% 55%)" size={16} />
             </Pressable>
           ) : null}
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4 -mx-4 px-4">
-          <View className="flex-row gap-2">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll} contentContainerStyle={styles.categoriesContent}>
+          <View style={styles.categoryRow}>
             {categories.map((category) => (
               <Pressable
                 key={category}
                 onPress={() => setSelectedCategory(category)}
-                className={cn(
-                  "px-4 py-2 rounded-full",
-                  selectedCategory === category ? "bg-primary" : "bg-card",
-                )}
+                style={[
+                  styles.categoryPill,
+                  selectedCategory === category ? styles.categoryPillActive : styles.categoryPillIdle,
+                ]}
               >
                 <Text
-                  className={cn(
-                    "text-sm font-medium",
-                    selectedCategory === category ? "text-primary-foreground" : "text-muted-foreground",
-                  )}
+                  style={[
+                    styles.categoryText,
+                    selectedCategory === category ? styles.categoryTextActive : styles.categoryTextIdle,
+                  ]}
                 >
                   {category}
                 </Text>
@@ -119,11 +119,11 @@ export default function Noticias() {
           </View>
         </ScrollView>
 
-        <Text className="text-sm text-muted-foreground mt-3">
+        <Text style={styles.resultsText}>
           {filteredNews.length} {filteredNews.length === 1 ? "notícia encontrada" : "notícias encontradas"}
         </Text>
 
-        <View className="gap-3 mt-3">
+        <View style={styles.newsList}>
           {filteredNews.length > 0 ? (
             filteredNews.map((news, index) => (
               <NewsCard
@@ -134,15 +134,15 @@ export default function Noticias() {
               />
             ))
           ) : (
-            <View className="items-center py-12">
-              <Text className="text-muted-foreground">Nenhuma notícia encontrada</Text>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>Nenhuma notícia encontrada</Text>
               <Pressable
                 onPress={() => {
                   setSearchQuery("");
                   setSelectedCategory("Todas");
                 }}
               >
-                <Text className="text-primary text-sm mt-2">Limpar filtros</Text>
+                <Text style={styles.clearText}>Limpar filtros</Text>
               </Pressable>
             </View>
           )}
@@ -151,3 +151,80 @@ export default function Noticias() {
     </AuthenticatedLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  searchContainer: {
+    position: "relative",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: 12,
+    top: "50%",
+    transform: [{ translateY: -8 }],
+  },
+  clearIcon: {
+    position: "absolute",
+    right: 12,
+    top: "50%",
+    transform: [{ translateY: -8 }],
+  },
+  categoriesScroll: {
+    marginTop: 16,
+    marginHorizontal: -16,
+  },
+  categoriesContent: {
+    paddingHorizontal: 16,
+  },
+  categoryRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  categoryPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  categoryPillActive: {
+    backgroundColor: "#5DA2E6",
+  },
+  categoryPillIdle: {
+    backgroundColor: "rgba(24, 28, 36, 0.9)",
+  },
+  categoryText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  categoryTextActive: {
+    color: "#0B0F14",
+  },
+  categoryTextIdle: {
+    color: "#8C98A8",
+  },
+  resultsText: {
+    marginTop: 12,
+    fontSize: 13,
+    color: "#8C98A8",
+  },
+  newsList: {
+    marginTop: 12,
+    gap: 12,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 48,
+  },
+  emptyText: {
+    color: "#8C98A8",
+  },
+  clearText: {
+    marginTop: 8,
+    color: "#5DA2E6",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+});

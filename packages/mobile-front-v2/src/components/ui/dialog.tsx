@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import type { PressableProps, ViewProps } from "react-native";
-import { cn } from "@/lib/utils";
 
 type DialogContextType = {
   open: boolean;
@@ -46,7 +45,7 @@ export function DialogTrigger({ children, ...props }: PressableProps & { asChild
   );
 }
 
-export function DialogContent({ children, className }: ViewProps & { className?: string }) {
+export function DialogContent({ children, style }: ViewProps) {
   const context = useContext(DialogContext);
   if (!context) {
     return null;
@@ -54,9 +53,9 @@ export function DialogContent({ children, className }: ViewProps & { className?:
 
   return (
     <Modal transparent visible={context.open} animationType="fade" onRequestClose={() => context.setOpen(false)}>
-      <View className="flex-1 bg-black/60 px-4 justify-center">
-        <Pressable className="absolute inset-0" onPress={() => context.setOpen(false)} />
-        <View className={cn("w-full max-w-md rounded-2xl bg-card p-4 self-center", className)}>
+      <View style={styles.overlay}>
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={() => context.setOpen(false)} />
+        <View style={[styles.content, style]}>
           {children}
         </View>
       </View>
@@ -64,18 +63,53 @@ export function DialogContent({ children, className }: ViewProps & { className?:
   );
 }
 
-export function DialogHeader({ className, ...props }: ViewProps & { className?: string }) {
-  return <View className={cn("mb-3", className)} {...props} />;
+export function DialogHeader(props: ViewProps) {
+  return <View style={styles.header} {...props} />;
 }
 
-export function DialogFooter({ className, ...props }: ViewProps & { className?: string }) {
-  return <View className={cn("mt-4 flex-row justify-end gap-2", className)} {...props} />;
+export function DialogFooter(props: ViewProps) {
+  return <View style={styles.footer} {...props} />;
 }
 
-export function DialogTitle({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <Text className={cn("text-lg font-semibold text-foreground", className)}>{children}</Text>;
+export function DialogTitle({ children }: { children: React.ReactNode }) {
+  return <Text style={styles.title}>{children}</Text>;
 }
 
-export function DialogDescription({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <Text className={cn("text-sm text-muted-foreground", className)}>{children}</Text>;
+export function DialogDescription({ children }: { children: React.ReactNode }) {
+  return <Text style={styles.description}>{children}</Text>;
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingHorizontal: 16,
+    justifyContent: "center",
+  },
+  content: {
+    width: "100%",
+    maxWidth: 420,
+    alignSelf: "center",
+    borderRadius: 20,
+    backgroundColor: "#151A22",
+    padding: 16,
+  },
+  header: {
+    marginBottom: 12,
+  },
+  footer: {
+    marginTop: 16,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+  },
+  title: {
+    color: "#E6E8EA",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  description: {
+    color: "#8C98A8",
+    fontSize: 13,
+  },
+});

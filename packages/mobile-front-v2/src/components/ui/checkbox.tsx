@@ -1,25 +1,22 @@
-import { Pressable, View } from "react-native";
-import type { PressableProps } from "react-native";
-import { cn } from "@/lib/utils";
+import { Checkbox as TamaguiCheckbox, View } from "tamagui";
+import type { CheckboxProps as TamaguiCheckboxProps } from "tamagui";
 
-interface CheckboxProps extends PressableProps {
-  checked?: boolean;
-  onCheckedChange?: (checked: boolean) => void;
-  className?: string;
-}
-
-export function Checkbox({ checked = false, onCheckedChange, className, ...props }: CheckboxProps) {
+export function Checkbox({ checked = false, onCheckedChange, ...props }: TamaguiCheckboxProps) {
   return (
-    <Pressable
-      onPress={() => onCheckedChange?.(!checked)}
-      className={cn(
-        "h-5 w-5 items-center justify-center rounded-md border border-border bg-card",
-        checked && "bg-primary",
-        className,
-      )}
+    <TamaguiCheckbox
+      checked={checked}
+      onCheckedChange={onCheckedChange}
+      width={20}
+      height={20}
+      borderRadius={999}
+      borderWidth={1}
+      borderColor={checked ? "#5DA2E6" : "$borderColor"}
+      backgroundColor="transparent"
       {...props}
     >
-      {checked && <View className="h-2.5 w-2.5 rounded-sm bg-primary-foreground" />}
-    </Pressable>
+      <TamaguiCheckbox.Indicator>
+        <View width={10} height={10} borderRadius={999} backgroundColor="#5DA2E6" />
+      </TamaguiCheckbox.Indicator>
+    </TamaguiCheckbox>
   );
 }

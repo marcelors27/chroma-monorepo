@@ -29,7 +29,7 @@ export function Header({
   const navigation = useNavigation();
   const { condos, activeCondo, setActiveCondo, isAllCondos, setAllCondos } = useCondo();
 
-  const displayName = isAllCondos ? `${condos.length} condomínios` : activeCondo?.name || "Selecionar";
+  const displayName = isAllCondos ? "Condomínio não selecionado" : activeCondo?.name || "Selecionar";
 
   return (
     <View style={styles.container}>
@@ -58,31 +58,45 @@ export function Header({
                   <ChevronDown color="#8C98A8" size={16} />
                 </Pressable>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-64 bg-card border-border">
-                <DropdownMenuItem 
-                  onClick={setAllCondos}
-                  className="flex items-center justify-between cursor-pointer"
+              <DropdownMenuContent style={{ width: 256 }}>
+                <DropdownMenuItem
+                  onPress={setAllCondos}
+                  style={[styles.dropdownItemRow, isAllCondos && styles.dropdownItemActive]}
                 >
-                  <View className="flex-row items-center gap-2">
-                    <Building2 color="hsl(215 15% 55%)" size={16} />
-                    <Text className="text-foreground">Todos os condomínios</Text>
-                  </View>
+                  <View style={styles.dropdownItemContent}>
                   {isAllCondos && <Check color="hsl(220 10% 50%)" size={16} />}
+                  {!isAllCondos && <Building2 color="hsl(215 15% 55%)" size={16} />}
+                    <Text style={[styles.dropdownItemText, isAllCondos && styles.dropdownItemTextActive]}>
+                      Condomínio não selecionado
+                    </Text>
+                  </View>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {condos.map((condo) => (
                   <DropdownMenuItem
                     key={condo.id}
-                    onClick={() => setActiveCondo(condo)}
-                    className="flex items-center justify-between cursor-pointer"
+                    onPress={() => setActiveCondo(condo)}
+                    style={[
+                      styles.dropdownItemRow,
+                      activeCondo?.id === condo.id && styles.dropdownItemActive,
+                    ]}
                   >
-                    <View className="flex-1">
-                      <Text className="font-medium text-sm text-foreground">{condo.name}</Text>
-                      <Text className="text-xs text-muted-foreground">{condo.address}</Text>
+                    <View style={styles.dropdownItemContent}>
+                      {activeCondo?.id === condo.id && (
+                        <Check color="hsl(220 10% 50%)" size={16} />
+                      )}
+                      <View style={styles.dropdownItemStack}>
+                        <Text
+                          style={[
+                            styles.dropdownItemTitle,
+                            activeCondo?.id === condo.id && styles.dropdownItemTextActive,
+                          ]}
+                        >
+                          {condo.name}
+                        </Text>
+                        <Text style={styles.dropdownItemSubtitle}>{condo.address}</Text>
+                      </View>
                     </View>
-                    {activeCondo?.id === condo.id && (
-                      <Check color="hsl(220 10% 50%)" size={16} />
-                    )}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -140,5 +154,38 @@ const styles = StyleSheet.create({
   condoText: {
     color: "#8C98A8",
     fontSize: 14,
+  },
+  dropdownItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dropdownItemContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  dropdownItemText: {
+    color: "#E6E8EA",
+    fontSize: 13,
+  },
+  dropdownItemTextActive: {
+    color: "#F3F6FA",
+    fontWeight: "600",
+  },
+  dropdownItemActive: {
+    backgroundColor: "rgba(93, 162, 230, 0.12)",
+  },
+  dropdownItemStack: {
+    flex: 1,
+  },
+  dropdownItemTitle: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  dropdownItemSubtitle: {
+    color: "#8C98A8",
+    fontSize: 11,
   },
 });

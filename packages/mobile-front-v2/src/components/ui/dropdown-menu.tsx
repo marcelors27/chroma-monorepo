@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import type { PressableProps, ViewProps } from "react-native";
-import { cn } from "@/lib/utils";
 
 type DropdownContextType = {
   open: boolean;
@@ -34,11 +33,25 @@ export function DropdownMenu({ open, defaultOpen, onOpenChange, children }: Drop
   return <DropdownContext.Provider value={value}>{children}</DropdownContext.Provider>;
 }
 
-export function DropdownMenuTrigger({ children, ...props }: PressableProps & { asChild?: boolean }) {
+export function DropdownMenuTrigger({
+  children,
+  asChild,
+  ...props
+}: PressableProps & { asChild?: boolean }) {
   const context = useContext(DropdownContext);
   if (!context) {
     return null;
   }
+  if (asChild && React.isValidElement(children)) {
+    const child = children as React.ReactElement<PressableProps>;
+    return React.cloneElement(child, {
+      onPress: (event) => {
+        child.props.onPress?.(event);
+        context.setOpen(true);
+      },
+    });
+  }
+
   return (
     <Pressable onPress={() => context.setOpen(true)} {...props}>
       {children}
@@ -47,10 +60,9 @@ export function DropdownMenuTrigger({ children, ...props }: PressableProps & { a
 }
 
 export function DropdownMenuContent({
-  className,
   children,
-  align,
-}: ViewProps & { className?: string; align?: "start" | "center" | "end" }) {
+  style,
+}: ViewProps) {
   const context = useContext(DropdownContext);
   if (!context) {
     return null;
@@ -58,32 +70,63 @@ export function DropdownMenuContent({
 
   return (
     <Modal transparent visible={context.open} animationType="fade" onRequestClose={() => context.setOpen(false)}>
-      <View className="flex-1 items-center justify-center bg-black/50 px-4">
-        <View className={cn("w-full max-w-sm rounded-2xl bg-card p-2", className)}>{children}</View>
+      <View style={styles.overlay}>
+        <View style={[styles.content, style]}>{children}</View>
       </View>
     </Modal>
   );
 }
 
 export function DropdownMenuItem({
-  className,
   children,
   onPress,
-}: PressableProps & { className?: string; children: React.ReactNode }) {
+  style,
+}: PressableProps & { children: React.ReactNode }) {
   const context = useContext(DropdownContext);
   return (
     <Pressable
-      className={cn("rounded-xl px-3 py-3", className)}
+      style={[styles.item, style]}
       onPress={(event) => {
         onPress?.(event);
         context?.setOpen(false);
       }}
     >
-      {typeof children === "string" ? <Text className="text-sm text-foreground">{children}</Text> : children}
+      {typeof children === "string" ? <Text style={styles.itemText}>{children}</Text> : children}
     </Pressable>
   );
 }
 
-export function DropdownMenuSeparator({ className, ...props }: ViewProps & { className?: string }) {
-  return <View className={cn("h-px bg-border my-2", className)} {...props} />;
+export function DropdownMenuSeparator(props: ViewProps) {
+  return <View style={styles.separator} {...props} />;
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    paddingHorizontal: 16,
+  },
+  content: {
+    width: "100%",
+    maxWidth: 320,
+    borderRadius: 20,
+    backgroundColor: "#151A22",
+    padding: 8,
+  },
+  item: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  itemText: {
+    color: "#E6E8EA",
+    fontSize: 13,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "rgba(46, 54, 68, 0.6)",
+    marginVertical: 8,
+  },
+});

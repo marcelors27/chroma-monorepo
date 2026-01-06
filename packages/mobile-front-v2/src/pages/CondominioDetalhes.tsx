@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Building2, MapPin, DollarSign, Users, ArrowLeft, Send } from "lucide-react-native";
 import { Header } from "@/components/layout/Header";
@@ -75,9 +75,9 @@ export default function CondominioDetalhes() {
   if (!condoData || !formData) {
     return (
       <AuthenticatedLayout>
-        <View className="flex-1 items-center justify-center px-4">
-          <Text className="text-muted-foreground">Condomínio não encontrado</Text>
-          <Button onPress={() => navigation.goBack()} className="mt-4">
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>Condomínio não encontrado</Text>
+          <Button onPress={() => navigation.goBack()} marginTop={16}>
             Voltar
           </Button>
         </View>
@@ -111,76 +111,77 @@ export default function CondominioDetalhes() {
     <AuthenticatedLayout>
       <Header title={formData.name} showBackButton showCondoSelector />
 
-      <ScrollView className="px-4 py-4">
-        <View className="bg-card rounded-2xl p-4">
-          <View className="flex-row items-start gap-4">
-            <View className="p-4 rounded-2xl bg-primary/20">
+      <ScrollView style={styles.scrollContent}>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryIcon}>
               <Building2 color="hsl(220 10% 50%)" size={28} />
             </View>
-            <View className="flex-1">
-              <Text className="text-lg font-bold text-foreground">{formData.name}</Text>
-              <Text className="text-sm text-muted-foreground">{formData.address}</Text>
-              <View className="mt-2 px-3 py-1 rounded-full bg-primary/20 self-start">
-                <Text className="text-xs font-semibold text-primary">{formData.role}</Text>
+            <View style={styles.summaryContent}>
+              <Text style={styles.summaryTitle}>{formData.name}</Text>
+              <Text style={styles.summarySubtitle}>{formData.address}</Text>
+              <View style={styles.summaryRoleBadge}>
+                <Text style={styles.summaryRoleText}>{formData.role}</Text>
               </View>
             </View>
           </View>
 
-          <View className="flex-row justify-between mt-4 pt-4 border-t border-border">
-            <View className="items-center flex-1">
+          <View style={styles.summaryStatsRow}>
+            <View style={styles.summaryStat}>
               <Users color="hsl(220 10% 50%)" size={16} />
-              <Text className="text-lg font-bold text-foreground">{formData.units}</Text>
-              <Text className="text-[10px] text-muted-foreground">Unidades</Text>
+              <Text style={styles.summaryStatValue}>{formData.units}</Text>
+              <Text style={styles.summaryStatLabel}>Unidades</Text>
             </View>
-            <View className="items-center flex-1">
+            <View style={styles.summaryStat}>
               <Building2 color="hsl(220 10% 50%)" size={16} />
-              <Text className="text-lg font-bold text-foreground">{formData.floors}</Text>
-              <Text className="text-[10px] text-muted-foreground">Andares</Text>
+              <Text style={styles.summaryStatValue}>{formData.floors}</Text>
+              <Text style={styles.summaryStatLabel}>Andares</Text>
             </View>
-            <View className="items-center flex-1">
+            <View style={styles.summaryStat}>
               <DollarSign color="hsl(220 10% 50%)" size={16} />
-              <Text className="text-lg font-bold text-foreground">R$ {formData.monthlyFee}</Text>
-              <Text className="text-[10px] text-muted-foreground">Taxa mensal</Text>
+              <Text style={styles.summaryStatValue}>R$ {formData.monthlyFee}</Text>
+              <Text style={styles.summaryStatLabel}>Taxa mensal</Text>
             </View>
           </View>
         </View>
 
-        <View className="bg-card rounded-2xl p-4 mt-4">
-          <Text className="text-sm font-semibold text-foreground mb-3">Dados principais</Text>
+        <View style={[styles.card, styles.cardSpacing]}>
+          <Text style={styles.sectionTitle}>Dados principais</Text>
           <Label>Endereço</Label>
           <Input
             value={formData.address}
             editable={isEditing}
             onChangeText={(value) => handleChange("address", value)}
-            className="mt-1"
+            marginTop={4}
           />
-          <Label className="mt-3">Telefone</Label>
+          <Label marginTop={12}>Telefone</Label>
           <Input
             value={formData.phone}
             editable={isEditing}
             onChangeText={(value) => handleChange("phone", value)}
-            className="mt-1"
+            marginTop={4}
           />
-          <Label className="mt-3">E-mail</Label>
+          <Label marginTop={12}>E-mail</Label>
           <Input
             value={formData.email}
             editable={isEditing}
             onChangeText={(value) => handleChange("email", value)}
-            className="mt-1"
+            marginTop={4}
           />
-          <Label className="mt-3">Observações</Label>
+          <Label marginTop={12}>Observações</Label>
           <Textarea
             value={formData.notes}
             editable={isEditing}
             onChangeText={(value) => handleChange("notes", value)}
-            className="mt-1 min-h-[120px]"
+            marginTop={4}
+            minHeight={120}
           />
-          <View className="flex-row gap-2 mt-4">
-            <Button variant={isEditing ? "secondary" : "default"} onPress={() => setIsEditing((prev) => !prev)} className="flex-1">
+          <View style={styles.actionRow}>
+            <Button variant={isEditing ? "secondary" : "default"} onPress={() => setIsEditing((prev) => !prev)} flex={1}>
               {isEditing ? "Cancelar" : "Editar"}
             </Button>
             {isEditing && (
-              <Button onPress={handleSave} className="flex-1">
+              <Button onPress={handleSave} flex={1}>
                 Salvar
               </Button>
             )}
@@ -189,8 +190,8 @@ export default function CondominioDetalhes() {
 
         <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
           <DialogTrigger>
-            <View className="mt-4">
-              <Button className="w-full">
+            <View style={styles.transferRow}>
+              <Button width="100%">
                 Transferir responsabilidade
               </Button>
             </View>
@@ -200,16 +201,16 @@ export default function CondominioDetalhes() {
               <DialogTitle>Transferir responsabilidade</DialogTitle>
             </DialogHeader>
             <Label>E-mail do novo responsável</Label>
-            <Input value={transferEmail} onChangeText={setTransferEmail} className="mt-1" />
-            <Label className="mt-3">Data de início</Label>
+            <Input value={transferEmail} onChangeText={setTransferEmail} marginTop={4} />
+            <Label marginTop={12}>Data de início</Label>
             <CalendarComponent selected={startDate} onSelect={setStartDate} />
-            <Label className="mt-3">Data de término (opcional)</Label>
+            <Label marginTop={12}>Data de término (opcional)</Label>
             <CalendarComponent selected={endDate} onSelect={setEndDate} />
             <DialogFooter>
               <Button onPress={handleTransfer}>
-                <View className="flex-row items-center gap-2">
+                <View style={styles.dialogButtonRow}>
                   <Send color="white" size={16} />
-                  <Text className="text-primary-foreground">Enviar convite</Text>
+                  <Text style={styles.dialogButtonText}>Enviar convite</Text>
                 </View>
               </Button>
             </DialogFooter>
@@ -219,3 +220,117 @@ export default function CondominioDetalhes() {
     </AuthenticatedLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  emptyText: {
+    color: "#8C98A8",
+    fontSize: 13,
+  },
+  summaryCard: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    padding: 16,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 16,
+  },
+  summaryIcon: {
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: "rgba(93, 162, 230, 0.2)",
+  },
+  summaryContent: {
+    flex: 1,
+  },
+  summaryTitle: {
+    color: "#E6E8EA",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  summarySubtitle: {
+    color: "#8C98A8",
+    fontSize: 13,
+    marginTop: 4,
+  },
+  summaryRoleBadge: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(93, 162, 230, 0.2)",
+    alignSelf: "flex-start",
+  },
+  summaryRoleText: {
+    color: "#5DA2E6",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  summaryStatsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(46, 54, 68, 0.6)",
+  },
+  summaryStat: {
+    flex: 1,
+    alignItems: "center",
+  },
+  summaryStatValue: {
+    color: "#E6E8EA",
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  summaryStatLabel: {
+    color: "#8C98A8",
+    fontSize: 10,
+    marginTop: 2,
+  },
+  card: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    padding: 16,
+  },
+  cardSpacing: {
+    marginTop: 16,
+  },
+  sectionTitle: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 16,
+  },
+  transferRow: {
+    marginTop: 16,
+  },
+  dialogButtonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  dialogButtonText: {
+    color: "#0B0F14",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+});
