@@ -2,79 +2,62 @@ import { useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Clock, ClipboardList, ChevronRight, Truck, Check, X } from "lucide-react-native";
+import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
-import { toast } from "@/lib/toast";
+import { listOrders, MedusaOrder } from "@/lib/medusa";
 
-const orders = [
-  {
-    id: "ORD-2024-001",
-    status: "Em trânsito",
-    statusTone: "info" as const,
-    date: "28/01/2024",
-    condo: "Residencial Aurora",
-    total: 489.7,
-    items: 2,
-    thumbnail: "https://images.unsplash.com/photo-1523292562811-8fa7962a78c8?w=200&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "ORD-2024-002",
-    status: "Pendente",
-    statusTone: "warning" as const,
-    date: "25/01/2024",
-    condo: "Edifício Central",
-    total: 299.9,
-    items: 1,
-    thumbnail: "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=200&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "ORD-2024-003",
-    status: "Entregue",
-    statusTone: "success" as const,
-    date: "20/01/2024",
-    condo: "Residencial Aurora",
-    total: 756.5,
-    items: 2,
-    thumbnail: "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=200&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "ORD-2024-004",
-    status: "Entregue",
-    statusTone: "success" as const,
-    date: "15/01/2024",
-    condo: "Condomínio Parque Verde",
-    total: 189.9,
-    items: 1,
-    thumbnail: "https://images.unsplash.com/photo-1523292562811-8fa7962a78c8?w=200&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "ORD-2024-005",
-    status: "Cancelado",
-    statusTone: "danger" as const,
-    date: "10/01/2024",
-    condo: "Edifício Central",
-    total: 599.8,
-    items: 1,
-    thumbnail: "https://images.unsplash.com/photo-1563453392212-326f5e854473?w=200&auto=format&fit=crop&q=60",
-  },
-];
+type StatusTone = "info" | "warning" | "success" | "danger";
+
+const resolveStatusLabel = (order: MedusaOrder) => {
+  if (order.status === "canceled" || order.fulfillment_status === "canceled") return "Cancelado";
+  if (order.fulfillment_status === "delivered") return "Entregue";
+  if (order.fulfillment_status === "shipped" || order.fulfillment_status === "partially_shipped") return "Em trânsito";
+  if (order.payment_status === "captured") return "Pago";
+  return "Processando";
+};
+
+const resolveStatusTone = (order: MedusaOrder): StatusTone => {
+  if (order.status === "canceled" || order.fulfillment_status === "canceled") return "danger";
+  if (order.fulfillment_status === "delivered") return "success";
+  if (order.fulfillment_status === "shipped" || order.fulfillment_status === "partially_shipped") return "info";
+  return "warning";
+};
 
 export default function Pedidos() {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  const { data } = useQuery({ queryKey: ["orders"], queryFn: listOrders });
+
+  const orders = useMemo(() => {
+    return (data?.orders || []).map((order) => {
+      const statusTone = resolveStatusTone(order);
+      return {
+        id: order.display_id || order.id,
+        status: resolveStatusLabel(order),
+        statusTone,
+        date: order.created_at ? new Date(order.created_at).toLocaleDateString("pt-BR") : "",
+        condo: order.shipping_address?.address_1 || "Condomínio",
+        total: order.total || 0,
+        items: order.items?.length || 0,
+        thumbnail: order.items?.[0]?.thumbnail || "",
+        rawId: order.id,
+      };
+    });
+  }, [data]);
 
   const { pendingCount, historyCount } = useMemo(() => {
     const pending = orders.filter((order) => ["info", "warning"].includes(order.statusTone)).length;
     const history = orders.filter((order) => ["success", "danger"].includes(order.statusTone)).length;
     return { pendingCount: pending, historyCount: history };
-  }, []);
+  }, [orders]);
 
   const visibleOrders = useMemo(() => {
     if (activeTab === "history") {
       return orders.filter((order) => ["success", "danger"].includes(order.statusTone));
     }
     return orders.filter((order) => ["info", "warning"].includes(order.statusTone));
-  }, [activeTab]);
+  }, [activeTab, orders]);
 
   return (
     <AuthenticatedLayout>
@@ -120,12 +103,13 @@ export default function Pedidos() {
           return (
             <Pressable
               key={order.id}
-              onPress={() => navigation.navigate("Rastreamento" as never, { id: order.id } as never)}
+              onPress={() => navigation.navigate("Rastreamento" as never, { id: order.rawId } as never)}
               style={styles.card}
             >
               <View style={styles.cardTopRow}>
                 <Text style={styles.cardDate}>{order.date}</Text>
-                <View style={[styles.statusPill, { backgroundColor: statusStyles.backgroundColor }]}>
+                <View style={[styles.statusPill, { backgroundColor: statusStyles.backgroundColor }]}
+                >
                   {order.statusTone === "warning" ? (
                     <Clock color={statusStyles.color} size={14} />
                   ) : order.statusTone === "success" ? (
@@ -144,7 +128,7 @@ export default function Pedidos() {
 
               <View style={styles.cardBottomRow}>
                 <View style={styles.itemsRow}>
-                  <Image source={{ uri: order.thumbnail }} style={styles.itemThumb} />
+                  {!!order.thumbnail && <Image source={{ uri: order.thumbnail }} style={styles.itemThumb} />}
                   <Text style={styles.itemsText}>{order.items} itens</Text>
                 </View>
                 <View style={styles.totalRow}>
@@ -164,7 +148,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 24,
+    paddingBottom: 12,
   },
   tabsContainer: {
     flexDirection: "row",
@@ -240,9 +224,9 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: "#E6E8EA",
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 10,
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 12,
   },
   cardCondo: {
     color: "#8C98A8",
@@ -250,10 +234,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   cardBottomRow: {
+    marginTop: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 14,
   },
   itemsRow: {
     flexDirection: "row",
@@ -261,10 +245,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   itemThumb: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    width: 36,
+    height: 36,
+    borderRadius: 12,
   },
   itemsText: {
     color: "#8C98A8",
@@ -273,10 +256,10 @@ const styles = StyleSheet.create({
   totalRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
   totalText: {
-    color: "#5DA2E6",
+    color: "#E6E8EA",
     fontSize: 14,
     fontWeight: "600",
   },

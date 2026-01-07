@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 12,
   },
   card: {
     backgroundColor: "rgba(24, 28, 36, 0.95)",

@@ -223,6 +223,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(24, 28, 36, 0.92)",
     borderWidth: 1,
     borderColor: "rgba(72, 80, 94, 0.6)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   activeBadge: {
     position: "absolute",

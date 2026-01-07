@@ -68,9 +68,6 @@ const RootNavigator = () => (
       headerTintColor: colors.text,
       headerTitleStyle: { color: colors.text, fontWeight: "700" },
       headerShadowVisible: false,
-      statusBarStyle: "light",
-      statusBarColor: colors.background,
-      statusBarTranslucent: false,
     }}
   >
     <Stack.Screen name="Index" component={IndexScreen} />

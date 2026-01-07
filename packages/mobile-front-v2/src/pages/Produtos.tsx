@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
-import { ScrollView, Text, View, Pressable, StyleSheet, useWindowDimensions } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Search } from "lucide-react-native";
+import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { ProductCard } from "@/components/ui/ProductCard";
@@ -9,84 +10,16 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
 import { useCondo } from "@/contexts/CondoContext";
 import { useCart } from "@/contexts/CartContext";
+import {
+  getProductCategory,
+  getProductImage,
+  getVariant,
+  getVariantPricing,
+  listProducts,
+  MedusaProduct,
+} from "@/lib/medusa";
 
-const categories = [
-  { id: "all", label: "Todos" },
-  { id: "limpeza", label: "Limpeza" },
-  { id: "seguranca", label: "Segurança" },
-  { id: "manutencao", label: "Manutenção" },
-  { id: "escritorio", label: "Escritório" },
-  { id: "jardim", label: "Jardim" },
-];
-
-const products = [
-  {
-    id: "1",
-    name: "Kit Limpeza Profissional",
-    description: "Conjunto completo para limpeza de áreas comuns",
-    price: 189.9,
-    originalPrice: 249.9,
-    image: "https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&auto=format&fit=crop&q=60",
-    category: "Limpeza",
-    inStock: true,
-  },
-  {
-    id: "2",
-    name: "Câmera de Segurança HD",
-    description: "Monitoramento 24h com visão noturna",
-    price: 299.9,
-    image: "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop&q=60",
-    category: "Segurança",
-    inStock: true,
-  },
-  {
-    id: "3",
-    name: "Aspirador Industrial",
-    description: "Alta potência para grandes áreas",
-    price: 899.9,
-    originalPrice: 1199.9,
-    image: "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=400&auto=format&fit=crop&q=60",
-    category: "Limpeza",
-    inStock: false,
-  },
-  {
-    id: "4",
-    name: "Kit Ferramentas Completo",
-    description: "100 peças para manutenção predial",
-    price: 459.9,
-    image: "https://images.unsplash.com/photo-1581092921461-eab62e97a2aa?w=400&auto=format&fit=crop&q=60",
-    category: "Manutenção",
-    inStock: true,
-  },
-  {
-    id: "5",
-    name: "Central de Alarme",
-    description: "Sistema de alarme com 8 zonas",
-    price: 649.9,
-    originalPrice: 799.9,
-    image: "https://images.unsplash.com/photo-1558002038-1055907df827?w=400&auto=format&fit=crop&q=60",
-    category: "Segurança",
-    inStock: true,
-  },
-  {
-    id: "6",
-    name: "Cortador de Grama",
-    description: "Motor potente e silencioso",
-    price: 1299.9,
-    image: "https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?w=400&auto=format&fit=crop&q=60",
-    category: "Jardim",
-    inStock: false,
-  },
-];
-
-const MAX_PRICE = 1500;
-
-const defaultFilters: ProductFilters = {
-  priceRange: [0, MAX_PRICE],
-  onlyDiscounted: false,
-  sortBy: "relevance",
-  inStock: false,
-};
+const MAX_PRICE_FALLBACK = 1500;
 
 const normalizeText = (value: string) =>
   value
@@ -97,19 +30,86 @@ const normalizeText = (value: string) =>
 export default function Produtos() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<ProductFilters>(defaultFilters);
+  const [filters, setFilters] = useState<ProductFilters>({
+    priceRange: [0, MAX_PRICE_FALLBACK],
+    onlyDiscounted: false,
+    sortBy: "relevance",
+    inStock: false,
+  });
   const { activeCondo } = useCondo();
   const { addItem } = useCart();
   const { width } = useWindowDimensions();
+  const { data, isLoading } = useQuery({ queryKey: ["products"], queryFn: listProducts });
   const cardGap = 12;
   const horizontalPadding = 28;
   const cardWidth = Math.floor((width - horizontalPadding * 2 - cardGap) / 2);
 
+  const products = useMemo(() => {
+    return (
+      data?.products?.map((product: MedusaProduct) => {
+        const variant = getVariant(product);
+        const pricing = getVariantPricing(variant);
+        return {
+          id: product.id,
+          name: product.title,
+          description: product.description || "Descrição não informada.",
+          price: pricing.finalPrice,
+          originalPrice: pricing.onSale ? pricing.basePrice ?? undefined : undefined,
+          image: getProductImage(product) || "",
+          category: getProductCategory(product),
+          inStock: (variant?.inventory_quantity ?? 0) > 0,
+          variantId: variant?.id || "",
+        };
+      }) || []
+    );
+  }, [data]);
+
+  const maxPrice = useMemo(() => {
+    const resolved = products.reduce((max, product) => Math.max(max, product.price), 0);
+    return resolved > 0 ? Math.ceil(resolved) : MAX_PRICE_FALLBACK;
+  }, [products]);
+
+  const defaultFilters = useMemo(
+    () => ({
+      priceRange: [0, maxPrice],
+      onlyDiscounted: false,
+      sortBy: "relevance",
+      inStock: false,
+    }),
+    [maxPrice]
+  );
+
+  const activeFiltersCount = [
+    filters.priceRange[0] > 0 || filters.priceRange[1] < maxPrice,
+    filters.onlyDiscounted,
+    filters.inStock,
+    filters.sortBy !== "relevance",
+  ].filter(Boolean).length;
+
+  useEffect(() => {
+    setFilters((prev) => {
+      const [min, currentMax] = prev.priceRange;
+      if (currentMax === maxPrice) return prev;
+      if (currentMax === MAX_PRICE_FALLBACK || currentMax > maxPrice) {
+        return { ...prev, priceRange: [min, maxPrice] };
+      }
+      return prev;
+    });
+  }, [maxPrice]);
+
+  const categories = useMemo(() => {
+    const unique = new Map<string, string>();
+    products.forEach((product) => {
+      if (!product.category) return;
+      const id = normalizeText(product.category);
+      if (!unique.has(id)) unique.set(id, product.category);
+    });
+    return [{ id: "all", label: "Todos" }, ...Array.from(unique.entries()).map(([id, label]) => ({ id, label }))];
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
-      const matchesCategory =
-        selectedCategory === "all" ||
-        normalizeText(product.category) === normalizeText(selectedCategory);
+      const matchesCategory = selectedCategory === "all" || normalizeText(product.category) === normalizeText(selectedCategory);
       const matchesSearch =
         normalizeText(product.name).includes(normalizeText(searchQuery)) ||
         normalizeText(product.description).includes(normalizeText(searchQuery));
@@ -134,22 +134,27 @@ export default function Produtos() {
     }
 
     return result;
-  }, [selectedCategory, searchQuery, filters]);
+  }, [selectedCategory, searchQuery, filters, products]);
 
-  const handleAddToCart = (productName: string) => {
+  const handleAddToCart = async (product: (typeof products)[number]) => {
     if (!activeCondo) {
       toast.error("Selecione um condomínio antes de adicionar itens ao carrinho.");
       return;
     }
-    addItem(1);
+    if (!product.variantId) {
+      toast.error("Produto indisponível no momento.");
+      return;
+    }
+    await addItem({
+      productId: product.id,
+      variantId: product.variantId,
+      name: product.name,
+      price: product.price,
+      category: product.category,
+      image: product.image,
+      quantity: 1,
+    });
   };
-
-  const activeFiltersCount = [
-    filters.priceRange[0] > 0 || filters.priceRange[1] < MAX_PRICE,
-    filters.onlyDiscounted,
-    filters.inStock,
-    filters.sortBy !== "relevance",
-  ].filter(Boolean).length;
 
   return (
     <AuthenticatedLayout>
@@ -175,7 +180,7 @@ export default function Produtos() {
               <ProductFiltersSheet
                 filters={filters}
                 onFiltersChange={setFilters}
-                maxPrice={MAX_PRICE}
+                maxPrice={maxPrice}
                 triggerStyle={styles.filterTrigger}
               />
             </View>
@@ -200,55 +205,42 @@ export default function Produtos() {
           style={styles.categoriesScroll}
           contentContainerStyle={styles.categoriesContent}
         >
-          <View style={styles.categoryRow}>
-            {categories.map((category) => (
-              <Pressable
-                key={category.id}
-                onPress={() => setSelectedCategory(category.id)}
-                style={[
-                  styles.categoryPill,
-                  selectedCategory === category.id ? styles.categoryPillActive : styles.categoryPillIdle,
-                ]}
+          {categories.map((category) => (
+            <Pressable
+              key={category.id}
+              onPress={() => setSelectedCategory(category.id)}
+              style={[styles.categoryChip, selectedCategory === category.id && styles.categoryChipActive]}
+            >
+              <Text
+                style={[styles.categoryChipText, selectedCategory === category.id && styles.categoryChipTextActive]}
               >
-                <Text
-                  style={[
-                    styles.categoryText,
-                    selectedCategory === category.id ? styles.categoryTextActive : styles.categoryTextIdle,
-                  ]}
-                >
-                  {category.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+                {category.label}
+              </Text>
+            </Pressable>
+          ))}
         </ScrollView>
 
-        <Text style={styles.resultsText}>
-          {filteredProducts.length} produto{filteredProducts.length !== 1 ? "s" : ""} encontrado
-          {filteredProducts.length !== 1 ? "s" : ""}
-        </Text>
+        {isLoading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color="#5DA2E6" />
+            <Text style={styles.loadingText}>Carregando produtos...</Text>
+          </View>
+        )}
 
-        <View style={styles.grid}>
-          {filteredProducts.map((product, index) => (
+        <View style={styles.productsGrid}>
+          {filteredProducts.map((product) => (
             <ProductCard
               key={product.id}
               {...product}
-              onAddToCart={() => handleAddToCart(product.name)}
-              style={[
-                styles.cardWrapper,
-                { width: cardWidth, marginRight: index % 2 === 0 ? cardGap : 0 },
-              ]}
+              style={{ width: cardWidth }}
+              onAddToCart={() => handleAddToCart(product)}
             />
           ))}
         </View>
 
-        {filteredProducts.length === 0 && (
+        {!isLoading && filteredProducts.length === 0 && (
           <View style={styles.emptyState}>
-            <Search color="hsl(215 15% 55%)" size={40} />
-            <Text style={styles.emptyTitle}>Nenhum produto encontrado</Text>
-            <Text style={styles.emptySubtitle}>
-              Tente ajustar os filtros ou buscar por outro termo
-            </Text>
+            <Text style={styles.emptyText}>Nenhum produto encontrado.</Text>
           </View>
         )}
       </ScrollView>
@@ -258,41 +250,38 @@ export default function Produtos() {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingHorizontal: 28,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  searchContainer: {
-    backgroundColor: "rgba(24, 28, 36, 0.96)",
-    borderColor: "rgba(86, 94, 110, 0.75)",
-    borderWidth: 1,
-    borderRadius: 16,
-    height: 52,
-    justifyContent: "center",
-    shadowColor: "#0B0F14",
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginTop: 12,
-    marginBottom: 12,
-    paddingHorizontal: 4,
+    gap: 12,
+  },
+  searchContainer: {
+    flex: 1,
+  },
+  searchFilter: {
+    position: "absolute",
+    right: 8,
+    top: "50%",
+    transform: [{ translateY: -16 }],
+  },
+  filterTrigger: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
   },
   filtersRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
     marginTop: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   filtersText: {
-    fontSize: 13,
     color: "#8C98A8",
+    fontSize: 13,
   },
   clearFiltersText: {
     color: "#5DA2E6",
@@ -301,81 +290,53 @@ const styles = StyleSheet.create({
   },
   categoriesScroll: {
     marginTop: 16,
-    marginHorizontal: -28,
   },
   categoriesContent: {
-    paddingHorizontal: 28,
+    gap: 10,
+    paddingBottom: 8,
   },
-  searchFilter: {
-    position: "absolute",
-    right: 8,
-  },
-  filterTrigger: {
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: "rgba(32, 36, 44, 0.95)",
-    borderWidth: 1,
-    borderColor: "rgba(92, 100, 116, 0.7)",
-  },
-  categoryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  categoryPill: {
+  categoryChip: {
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 999,
+    backgroundColor: "rgba(24, 28, 36, 0.9)",
     borderWidth: 1,
+    borderColor: "rgba(46, 54, 68, 0.5)",
   },
-  categoryPillActive: {
-    backgroundColor: "rgba(146, 154, 166, 0.55)",
-    borderColor: "rgba(146, 154, 166, 0.6)",
+  categoryChipActive: {
+    backgroundColor: "rgba(93, 162, 230, 0.2)",
+    borderColor: "rgba(93, 162, 230, 0.5)",
   },
-  categoryPillIdle: {
-    backgroundColor: "rgba(31, 35, 43, 0.78)",
-    borderColor: "rgba(62, 70, 84, 0.7)",
+  categoryChipText: {
+    color: "#8C98A8",
+    fontSize: 12,
   },
-  categoryText: {
-    fontSize: 13,
+  categoryChipTextActive: {
+    color: "#E6E8EA",
     fontWeight: "600",
   },
-  categoryTextActive: {
-    color: "#F3F4F6",
+  loadingRow: {
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
-  categoryTextIdle: {
-    color: "#8C98A8",
-  },
-  resultsText: {
+  loadingText: {
     color: "#8C98A8",
     fontSize: 13,
-    marginTop: 12,
   },
-  grid: {
-    marginTop: 12,
+  productsGrid: {
+    marginTop: 16,
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  cardWrapper: {
-    width: "100%",
-    marginBottom: 12,
+    gap: 12,
   },
   emptyState: {
+    paddingVertical: 32,
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 48,
   },
-  emptyTitle: {
-    color: "#E6E8EA",
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 12,
-  },
-  emptySubtitle: {
+  emptyText: {
     color: "#8C98A8",
     fontSize: 13,
-    textAlign: "center",
-    marginTop: 4,
   },
 });

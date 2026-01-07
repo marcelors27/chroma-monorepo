@@ -153,13 +153,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#0B0F14",
   },
   content: {
-    paddingBottom: 32,
+    paddingBottom: 12,
   },
   hero: {
     margin: 16,
     paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 24,
+    paddingBottom: 12,
     borderRadius: 28,
     overflow: "hidden",
   },

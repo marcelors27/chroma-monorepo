@@ -3,6 +3,7 @@ import type { StyleProp, ViewStyle } from "react-native";
 import { Plus } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import { ImageWithSkeleton } from "./ImageWithSkeleton";
+import fallbackImage from "@/assets/condo-background.jpg";
 
 interface ProductCardProps {
   id: string;
@@ -36,7 +37,7 @@ export function ProductCard({
       style={[styles.card, style]}
     >
       <View style={styles.media}>
-        <ImageWithSkeleton source={{ uri: image }} style={styles.mediaImage} />
+        <ImageWithSkeleton source={{ uri: image }} style={styles.mediaImage} defaultSource={fallbackImage} />
         {discount > 0 && (
           <View style={styles.discountTag}>
             <Text style={styles.discountText}>-{discount}%</Text>

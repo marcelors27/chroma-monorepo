@@ -10,7 +10,7 @@ const AUTH_BG = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=120
 export default function Auth() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { login, loginWithSocial, signup } = useAuth();
+  const { login, loginWithSocial, signup, authError } = useAuth();
 
   const [isLogin, setIsLogin] = useState((route.params as { mode?: string } | undefined)?.mode === "login");
   const [showPassword, setShowPassword] = useState(false);
@@ -36,7 +36,7 @@ export default function Auth() {
         toast.success(isLogin ? "Login realizado!" : "Conta criada!");
         navigation.reset({ index: 0, routes: [{ name: "MainTabs" as never }] });
       } else {
-        toast.error("Verifique seus dados e tente novamente");
+        toast.error(authError || "Verifique seus dados e tente novamente");
       }
     } catch {
       toast.error("Erro ao processar. Tente novamente.");
@@ -52,6 +52,8 @@ export default function Auth() {
       if (success) {
         toast.success("Login realizado!");
         navigation.reset({ index: 0, routes: [{ name: "MainTabs" as never }] });
+      } else {
+        toast.error("Login social indisponível no momento");
       }
     } catch {
       toast.error("Erro ao fazer login social");

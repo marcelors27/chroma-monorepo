@@ -1,6 +1,7 @@
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { ArrowRight, Newspaper, Package, TrendingUp } from "lucide-react-native";
+import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { NewsCard } from "@/components/ui/NewsCard";
@@ -8,6 +9,15 @@ import { ProductCard } from "@/components/ui/ProductCard";
 import { toast } from "@/lib/toast";
 import { useCondo } from "@/contexts/CondoContext";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  getProductCategory,
+  getProductImage,
+  getVariant,
+  getVariantPricing,
+  listProducts,
+  MedusaProduct,
+} from "@/lib/medusa";
 
 const featuredNews = {
   id: "featured",
@@ -37,44 +47,55 @@ const news = [
   },
 ];
 
-const featuredProducts = [
-  {
-    id: "1",
-    name: "Kit Limpeza Profissional",
-    description: "Conjunto completo para limpeza de áreas comuns",
-    price: 189.9,
-    originalPrice: 249.9,
-    image: "https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&auto=format&fit=crop&q=60",
-    category: "Limpeza",
-  },
-  {
-    id: "2",
-    name: "Câmera de Segurança HD",
-    description: "Monitoramento 24h com visão noturna",
-    price: 299.9,
-    image: "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop&q=60",
-    category: "Segurança",
-  },
-];
-
 export default function Index() {
   const navigation = useNavigation();
   const { activeCondo } = useCondo();
   const { addItem } = useCart();
+  const { user } = useAuth();
+  const { data } = useQuery({ queryKey: ["home-products"], queryFn: listProducts });
   const screenWidth = Dimensions.get("window").width;
   const productCardWidth = (screenWidth - 52) / 2;
 
-  const handleAddToCart = (productName: string) => {
+  const featuredProducts = (data?.products || [])
+    .map((product: MedusaProduct) => {
+      const variant = getVariant(product);
+      const pricing = getVariantPricing(variant);
+      return {
+        id: product.id,
+        name: product.title,
+        description: product.description || "Descrição não informada.",
+        price: pricing.finalPrice,
+        originalPrice: pricing.onSale ? pricing.basePrice ?? undefined : undefined,
+        image: getProductImage(product) || "",
+        category: getProductCategory(product),
+        variantId: variant?.id || "",
+      };
+    })
+    .slice(0, 2);
+
+  const handleAddToCart = async (product: (typeof featuredProducts)[number]) => {
     if (!activeCondo) {
       toast.error("Selecione um condomínio antes de adicionar itens ao carrinho.");
       return;
     }
-    addItem(1);
+    if (!product.variantId) {
+      toast.error("Produto indisponível no momento.");
+      return;
+    }
+    await addItem({
+      productId: product.id,
+      variantId: product.variantId,
+      name: product.name,
+      price: product.price,
+      category: product.category,
+      image: product.image,
+      quantity: 1,
+    });
   };
 
   return (
     <AuthenticatedLayout>
-      <Header subtitle="Olá, João" showCondoSelector />
+      <Header subtitle={`Olá, ${user?.name || ""}`.trim()} showCondoSelector />
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.metricsRow}>
@@ -144,7 +165,7 @@ export default function Index() {
                 key={product.id}
                 {...product}
                 style={{ width: productCardWidth }}
-                onAddToCart={() => handleAddToCart(product.name)}
+                onAddToCart={() => handleAddToCart(product)}
               />
             ))}
           </View>
@@ -157,7 +178,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
-    paddingBottom: 28,
+    paddingBottom: 12,
     paddingTop: 16,
   },
   metricsRow: {
@@ -200,21 +221,21 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     color: "#E6E8EA",
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
-    marginBottom: 4,
   },
   metricHint: {
-    color: "#7C8796",
+    color: "#8C98A8",
     fontSize: 12,
+    marginTop: 6,
   },
   section: {
-    marginTop: 20,
+    marginTop: 24,
   },
   sectionHeader: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   sectionTitleRow: {
@@ -224,8 +245,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: "#E6E8EA",
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "600",
   },
   linkRow: {
     flexDirection: "row",
@@ -234,13 +255,14 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: "#8C98A8",
-    fontSize: 14,
+    fontSize: 12,
   },
   listGap: {
+    marginTop: 12,
     gap: 12,
   },
   productRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 12,
   },
 });

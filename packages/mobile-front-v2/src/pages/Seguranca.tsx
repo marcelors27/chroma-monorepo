@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
@@ -6,8 +7,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/lib/toast";
+import { updatePassword } from "@/lib/medusa";
 
 export default function Seguranca() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const handleUpdatePassword = async () => {
+    if (!currentPassword || !newPassword) {
+      toast.error("Preencha todos os campos obrigatórios.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("As senhas não coincidem.");
+      return;
+    }
+    try {
+      await updatePassword({ old_password: currentPassword, password: newPassword });
+      toast.success("Senha alterada com sucesso!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível atualizar a senha.");
+    }
+  };
+
   return (
     <AuthenticatedLayout>
       <Header title="Segurança" showBackButton showCondoSelector />
@@ -15,12 +41,16 @@ export default function Seguranca() {
       <ScrollView style={styles.scrollContent}>
         <View style={styles.card}>
           <Label>Senha atual</Label>
-          <Input secureTextEntry marginTop={4} />
+          <Input value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry marginTop={4} />
           <Label marginTop={12}>Nova senha</Label>
-          <Input secureTextEntry marginTop={4} />
+          <Input value={newPassword} onChangeText={setNewPassword} secureTextEntry marginTop={4} />
           <Label marginTop={12}>Confirmar nova senha</Label>
-          <Input secureTextEntry marginTop={4} />
-          <Button onPress={() => toast.success("Senha alterada com sucesso!")} marginTop={16}>
+          <Input value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry marginTop={4} />
+          <Button
+            onPress={handleUpdatePassword}
+            marginTop={16}
+            textProps={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600", textAlign: "center" }}
+          >
             Atualizar senha
           </Button>
         </View>
@@ -48,7 +78,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 12,
   },
   card: {
     backgroundColor: "rgba(24, 28, 36, 0.95)",

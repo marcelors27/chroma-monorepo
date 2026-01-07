@@ -78,17 +78,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginBottom: 4,
+    flexWrap: "wrap",
   },
   title: {
     color: "#E6E8EA",
     fontSize: 14,
     fontWeight: "600",
+    flexShrink: 1,
+    minWidth: 0,
   },
   roleBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,
     backgroundColor: "rgba(93, 162, 230, 0.2)",
+    marginTop: 4,
   },
   roleText: {
     color: "#5DA2E6",

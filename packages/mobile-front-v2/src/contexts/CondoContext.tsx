@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { listCompanies } from "@/lib/medusa";
+import { toast } from "@/lib/toast";
 
 export interface Condo {
   id: string;
@@ -7,6 +9,7 @@ export interface Condo {
   address: string;
   units: number;
   role: string;
+  approved?: boolean;
 }
 
 interface CondoContextType {
@@ -15,51 +18,57 @@ interface CondoContextType {
   setActiveCondo: (condo: Condo | null) => void;
   isAllCondos: boolean;
   setAllCondos: () => void;
+  refreshCondos: () => Promise<void>;
 }
 
 const CondoContext = createContext<CondoContextType | undefined>(undefined);
 
-const defaultCondos: Condo[] = [
-  {
-    id: "1",
-    name: "Residencial Jardins",
-    address: "Rua das Flores, 123 - Centro",
-    units: 48,
-    role: "Síndico",
-  },
-  {
-    id: "2",
-    name: "Edifício Aurora",
-    address: "Av. Principal, 456 - Bairro Alto",
-    units: 120,
-    role: "Síndico",
-  },
-  {
-    id: "3",
-    name: "Condomínio Vista Mar",
-    address: "Rua da Praia, 789 - Orla",
-    units: 64,
-    role: "Subsíndico",
-  },
-];
-
 export function CondoProvider({ children }: { children: ReactNode }) {
-  const [condos] = useState<Condo[]>(defaultCondos);
+  const [condos, setCondos] = useState<Condo[]>([]);
   const [activeCondo, setActiveCondoState] = useState<Condo | null>(null);
+
+  const refreshCondos = async () => {
+    try {
+      const data = await listCompanies();
+      const mapped = (data?.companies || [])
+        .filter((company: any) => company?.approved)
+        .map((company: any) => ({
+          id: company.id,
+          name: company.fantasy_name || company.trade_name || company.name || "Condomínio",
+          address: company.metadata?.address || company.metadata?.city || "",
+          units: Number(company.metadata?.units) || 0,
+          role: company.metadata?.role || "Síndico",
+          approved: true,
+        }));
+      setCondos(mapped);
+      setActiveCondoState((current) => {
+        if (current && mapped.some((condo) => condo.id === current.id)) {
+          return current;
+        }
+        return mapped[0] || null;
+      });
+      return mapped;
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível carregar os condomínios.");
+      setCondos([]);
+      setActiveCondoState(null);
+      return [];
+    }
+  };
 
   useEffect(() => {
     const loadCondo = async () => {
+      const approved = await refreshCondos();
       const savedCondoId = await AsyncStorage.getItem("activeCondoId");
-      if (savedCondoId && savedCondoId !== "all") {
-        const found = condos.find((c) => c.id === savedCondoId);
-        if (found) {
-          setActiveCondoState(found);
-        }
+      if (!savedCondoId || savedCondoId === "all") return;
+      const found = approved.find((condo) => condo.id === savedCondoId);
+      if (found) {
+        setActiveCondoState(found);
       }
     };
 
     loadCondo();
-  }, [condos]);
+  }, []);
 
   const setActiveCondo = (condo: Condo | null) => {
     setActiveCondoState(condo);
@@ -85,6 +94,7 @@ export function CondoProvider({ children }: { children: ReactNode }) {
         setActiveCondo,
         isAllCondos,
         setAllCondos,
+        refreshCondos,
       }}
     >
       {children}

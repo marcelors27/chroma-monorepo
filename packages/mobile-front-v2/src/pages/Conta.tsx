@@ -1,10 +1,24 @@
 import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { User, Building2, CreditCard, Package, Bell, HelpCircle, LogOut, ChevronRight, Shield, FileText } from "lucide-react-native";
+import {
+  User,
+  Building2,
+  CreditCard,
+  Package,
+  Bell,
+  HelpCircle,
+  LogOut,
+  ChevronRight,
+  Shield,
+  FileText,
+} from "lucide-react-native";
+import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCondo } from "@/contexts/CondoContext";
 import { toast } from "@/lib/toast";
+import { listOrders } from "@/lib/medusa";
 
 const menuItems = [
   {
@@ -39,9 +53,20 @@ const menuItems = [
   },
 ];
 
+const getInitials = (name?: string) => {
+  if (!name) return "--";
+  const parts = name.trim().split(" ");
+  const first = parts[0]?.[0] || "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] || "" : "";
+  return `${first}${last}`.toUpperCase();
+};
+
 export default function Conta() {
   const navigation = useNavigation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const { condos } = useCondo();
+  const { data } = useQuery({ queryKey: ["orders"], queryFn: listOrders });
+  const ordersCount = data?.orders?.length || 0;
 
   const handleLogout = () => {
     logout();
@@ -56,24 +81,24 @@ export default function Conta() {
         <View style={styles.profileCard}>
           <View style={styles.profileRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>JS</Text>
+              <Text style={styles.avatarText}>{getInitials(user?.name)}</Text>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>João Silva</Text>
-              <Text style={styles.profileEmail}>joao.silva@email.com</Text>
+              <Text style={styles.profileName}>{user?.name || "Usuário"}</Text>
+              <Text style={styles.profileEmail}>{user?.email || ""}</Text>
               <View style={styles.profileBadge}>
-                <Text style={styles.profileBadgeText}>Cliente Premium</Text>
+                <Text style={styles.profileBadgeText}>Cliente</Text>
               </View>
             </View>
           </View>
 
           <View style={styles.metricsRow}>
             <View style={styles.metric}>
-              <Text style={styles.metricValue}>3</Text>
+              <Text style={styles.metricValue}>{condos.length}</Text>
               <Text style={styles.metricLabel}>Condomínios</Text>
             </View>
             <View style={styles.metric}>
-              <Text style={styles.metricValue}>12</Text>
+              <Text style={styles.metricValue}>{ordersCount}</Text>
               <Text style={styles.metricLabel}>Pedidos</Text>
             </View>
             <View style={styles.metric}>
@@ -85,11 +110,7 @@ export default function Conta() {
 
         {menuItems.map((section) => (
           <View key={section.id} style={styles.section}>
-            {section.title ? (
-              <Text style={styles.sectionTitle}>
-                {section.title}
-              </Text>
-            ) : null}
+            {section.title ? <Text style={styles.sectionTitle}>{section.title}</Text> : null}
             <View style={styles.sectionCard}>
               {section.items.map((item, index) => {
                 const Icon = item.icon;
@@ -97,10 +118,7 @@ export default function Conta() {
                   <Pressable
                     key={item.screen}
                     onPress={() => navigation.navigate(item.screen as never)}
-                    style={[
-                      styles.sectionRow,
-                      index !== section.items.length - 1 && styles.sectionRowDivider,
-                    ]}
+                    style={[styles.sectionRow, index !== section.items.length - 1 && styles.sectionRowDivider]}
                   >
                     <View style={styles.sectionIcon}>
                       <Icon color="hsl(220 10% 55%)" size={18} />
@@ -114,10 +132,7 @@ export default function Conta() {
           </View>
         ))}
 
-        <Pressable
-          onPress={handleLogout}
-          style={styles.logoutButton}
-        >
+        <Pressable onPress={handleLogout} style={styles.logoutButton}>
           <LogOut color="hsl(0 72% 51%)" size={18} />
           <Text style={styles.logoutText}>Sair da conta</Text>
         </Pressable>
@@ -132,7 +147,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 96,
+    paddingBottom: 12,
   },
   profileCard: {
     backgroundColor: "rgba(24, 28, 36, 0.95)",
@@ -200,53 +215,47 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     color: "#E6E8EA",
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
   },
   metricValueMuted: {
-    color: "#8C98A8",
-    fontSize: 18,
-    fontWeight: "600",
+    color: "#5DA2E6",
+    fontSize: 16,
+    fontWeight: "700",
   },
   metricLabel: {
     color: "#8C98A8",
     fontSize: 11,
-    marginTop: 4,
+    marginTop: 6,
   },
   section: {
-    marginTop: 16,
+    marginTop: 20,
   },
   sectionTitle: {
     color: "#8C98A8",
-    fontSize: 11,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    paddingHorizontal: 4,
+    fontSize: 12,
     marginBottom: 8,
+    textTransform: "uppercase",
   },
   sectionCard: {
     backgroundColor: "rgba(24, 28, 36, 0.95)",
-    borderRadius: 24,
+    borderRadius: 20,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(46, 54, 68, 0.6)",
   },
   sectionRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 18,
+    padding: 16,
   },
   sectionRowDivider: {
     borderBottomWidth: 1,
     borderBottomColor: "rgba(46, 54, 68, 0.6)",
   },
   sectionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: "rgba(34, 38, 46, 0.9)",
     alignItems: "center",
     justifyContent: "center",
@@ -254,27 +263,27 @@ const styles = StyleSheet.create({
   sectionLabel: {
     flex: 1,
     color: "#E6E8EA",
-    fontSize: 16,
+    fontSize: 13,
+    fontWeight: "600",
   },
   logoutButton: {
-    marginTop: 32,
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    marginTop: 24,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
+    gap: 10,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: "rgba(239, 68, 68, 0.12)",
   },
   logoutText: {
-    color: "#EF4444",
-    fontSize: 14,
+    color: "hsl(0 72% 51%)",
+    fontSize: 13,
     fontWeight: "600",
   },
   footerText: {
-    textAlign: "center",
-    color: "#8C98A8",
+    color: "#4B5563",
     fontSize: 11,
-    marginTop: 20,
+    textAlign: "center",
+    marginTop: 24,
   },
 });

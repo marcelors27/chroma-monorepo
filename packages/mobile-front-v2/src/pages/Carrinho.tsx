@@ -4,36 +4,76 @@ import { Minus, Plus, Trash2, QrCode, CreditCard, Receipt, RefreshCw, ChevronRig
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
-
-const cartItems = [
-  {
-    id: "1",
-    name: "Kit Limpeza Profissional",
-    quantity: 2,
-    price: 189.9,
-    image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "2",
-    name: "Câmera de Segurança HD",
-    quantity: 1,
-    price: 299.9,
-    image: "https://images.unsplash.com/photo-1500051638674-ff996a0ec29e?w=300&auto=format&fit=crop&q=60",
-  },
-];
+import { useCart } from "@/contexts/CartContext";
+import { useCondo } from "@/contexts/CondoContext";
+import { createRecurrence } from "@/lib/medusa";
 
 export default function Carrinho() {
   const [selectedPayment, setSelectedPayment] = useState<"pix" | "cartao" | "boleto">("pix");
   const [selectedRecurrence, setSelectedRecurrence] = useState<"unica" | "semanal" | "quinzenal" | "mensal">("unica");
-  const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const formattedTotal = total.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+  const { items, totalPrice, updateQuantity, removeItem, completeBackendCheckout, clearCart } = useCart();
+  const { activeCondo } = useCondo();
+
+  const formattedTotal = totalPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+
+  const handleCheckout = async () => {
+    if (!items.length) {
+      toast.error("Seu carrinho está vazio.");
+      return;
+    }
+    if (!activeCondo) {
+      toast.error("Selecione um condomínio antes de finalizar.");
+      return;
+    }
+
+    const paymentMethod = selectedPayment === "cartao" ? "credit" : selectedPayment;
+
+    try {
+      const shippingAddress = {
+        first_name: "Condomínio",
+        last_name: "Compras",
+        address_1: activeCondo.name || "Condomínio",
+        city: "São Paulo",
+        country_code: "br",
+        postal_code: "00000-000",
+        metadata: {
+          condo_id: activeCondo.id,
+        },
+      };
+
+      const orderId = await completeBackendCheckout(shippingAddress, paymentMethod);
+
+      if (selectedRecurrence !== "unica") {
+        const frequency = selectedRecurrence === "semanal" ? "weekly" : selectedRecurrence === "quinzenal" ? "biweekly" : "monthly";
+        await createRecurrence({
+          name: `Recorrência ${activeCondo.name}`,
+          frequency,
+          payment_method: paymentMethod,
+          items: items.map((item) => ({
+            variant_id: item.variantId,
+            product_id: item.productId,
+            quantity: item.quantity,
+            title: item.name,
+            price: item.price,
+            category: item.category,
+          })),
+          company_id: activeCondo.id,
+        });
+      }
+
+      await clearCart();
+      toast.success(`Pedido realizado com sucesso! ${orderId ? `#${orderId}` : ""}`.trim());
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível finalizar o pedido.");
+    }
+  };
 
   return (
     <AuthenticatedLayout>
-      <Header title="Carrinho" subtitle={`${cartItems.length} itens`} showNotification={false} showCondoSelector />
+      <Header title="Carrinho" subtitle={`${items.length} itens`} showNotification={false} showCondoSelector />
 
       <ScrollView style={styles.scrollContent}>
-        {cartItems.map((item) => (
+        {items.map((item) => (
           <View key={item.id} style={styles.itemCard}>
             <View style={styles.itemRow}>
               <Image source={{ uri: item.image }} style={styles.itemImage} />
@@ -43,23 +83,27 @@ export default function Carrinho() {
                   R$ {item.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </Text>
                 <View style={styles.quantityRow}>
-                  <Pressable style={styles.quantityButton}>
+                  <Pressable style={styles.quantityButton} onPress={() => updateQuantity(item.id, item.quantity - 1)}>
                     <Minus color="#C7CBD1" size={16} />
                   </Pressable>
-                  <Text style={styles.quantityText}>
-                    {item.quantity}
-                  </Text>
-                  <Pressable style={styles.quantityButton}>
+                  <Text style={styles.quantityText}>{item.quantity}</Text>
+                  <Pressable style={styles.quantityButton} onPress={() => updateQuantity(item.id, item.quantity + 1)}>
                     <Plus color="#E6E8EA" size={16} />
                   </Pressable>
                 </View>
               </View>
-              <Pressable onPress={() => toast.success("Item removido do carrinho")} style={styles.removeButton}>
+              <Pressable onPress={() => removeItem(item.id)} style={styles.removeButton}>
                 <Trash2 color="#E64646" size={20} />
               </Pressable>
             </View>
           </View>
         ))}
+
+        {items.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Seu carrinho está vazio.</Text>
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>Forma de pagamento</Text>
         <View style={styles.sectionList}>
@@ -106,9 +150,7 @@ export default function Carrinho() {
             return (
               <Pressable
                 key={option.id}
-                onPress={() =>
-                  setSelectedRecurrence(option.id as "unica" | "semanal" | "quinzenal" | "mensal")
-                }
+                onPress={() => setSelectedRecurrence(option.id as "unica" | "semanal" | "quinzenal" | "mensal")}
                 style={[styles.recurrenceCard, active ? styles.recurrenceCardActive : styles.recurrenceCardIdle]}
               >
                 <Text style={styles.recurrenceTitle}>{option.title}</Text>
@@ -131,10 +173,7 @@ export default function Carrinho() {
             <Text style={styles.summaryTotalLabel}>Total</Text>
             <Text style={styles.summaryTotalValue}>R$ {formattedTotal}</Text>
           </View>
-          <Pressable
-            onPress={() => toast.success("Pedido realizado com sucesso!")}
-            style={styles.checkoutButton}
-          >
+          <Pressable onPress={handleCheckout} style={styles.checkoutButton}>
             <Text style={styles.checkoutButtonText}>Finalizar Compra</Text>
             <ChevronRight color="#E6E8EA" size={18} />
           </Pressable>
@@ -148,7 +187,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 96,
+    paddingBottom: 12,
   },
   itemCard: {
     backgroundColor: "rgba(24, 28, 36, 0.95)",
@@ -207,6 +246,14 @@ const styles = StyleSheet.create({
   removeButton: {
     padding: 8,
   },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 24,
+  },
+  emptyText: {
+    color: "#8C98A8",
+    fontSize: 13,
+  },
   sectionTitle: {
     color: "#E6E8EA",
     fontSize: 18,
@@ -261,7 +308,7 @@ const styles = StyleSheet.create({
     borderColor: "#5DA2E6",
   },
   radioOuterIdle: {
-    borderColor: "#8C98A8",
+    borderColor: "rgba(124, 135, 150, 0.6)",
   },
   radioInner: {
     width: 12,
@@ -270,36 +317,35 @@ const styles = StyleSheet.create({
     backgroundColor: "#5DA2E6",
   },
   recurrenceHeader: {
+    marginTop: 20,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginTop: 28,
   },
   sectionTitleText: {
     color: "#E6E8EA",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
   },
   recurrenceGrid: {
-    marginTop: 16,
+    marginTop: 12,
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
   },
   recurrenceCard: {
-    width: "48%",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+    flexBasis: "48%",
+    padding: 14,
+    borderRadius: 18,
     borderWidth: 1,
   },
   recurrenceCardActive: {
-    backgroundColor: "rgba(34, 38, 46, 0.9)",
-    borderColor: "#5DA2E6",
+    backgroundColor: "rgba(93, 162, 230, 0.2)",
+    borderColor: "rgba(93, 162, 230, 0.5)",
   },
   recurrenceCardIdle: {
     backgroundColor: "rgba(24, 28, 36, 0.95)",
-    borderColor: "rgba(46, 54, 68, 0.6)",
+    borderColor: "rgba(46, 54, 68, 0.5)",
   },
   recurrenceTitle: {
     color: "#E6E8EA",
@@ -312,11 +358,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   summaryCard: {
+    marginTop: 20,
     backgroundColor: "rgba(24, 28, 36, 0.95)",
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    marginTop: 28,
+    borderRadius: 22,
+    padding: 18,
     borderWidth: 1,
     borderColor: "rgba(46, 54, 68, 0.6)",
   },
@@ -332,35 +377,37 @@ const styles = StyleSheet.create({
   summaryValue: {
     color: "#E6E8EA",
     fontSize: 13,
+    fontWeight: "600",
   },
   summaryDivider: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(46, 54, 68, 0.6)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(46, 54, 68, 0.5)",
+    paddingTop: 8,
+    marginTop: 8,
   },
   summaryTotalRow: {
+    marginTop: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 16,
   },
   summaryTotalLabel: {
     color: "#E6E8EA",
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "600",
   },
   summaryTotalValue: {
-    color: "#8C98A8",
-    fontSize: 18,
-    fontWeight: "600",
+    color: "#E6E8EA",
+    fontSize: 16,
+    fontWeight: "700",
   },
   checkoutButton: {
-    marginTop: 24,
-    paddingVertical: 16,
-    borderRadius: 20,
-    backgroundColor: "rgba(34, 38, 46, 0.9)",
+    marginTop: 16,
+    backgroundColor: "#5DA2E6",
+    paddingVertical: 14,
+    borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

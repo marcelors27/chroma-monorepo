@@ -1,45 +1,33 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Plus, Building2, Search } from "lucide-react-native";
+import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { CondoCard } from "@/components/ui/CondoCard";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/lib/toast";
-
-const condominios = [
-  {
-    id: "1",
-    name: "Residencial Jardins",
-    address: "Rua das Flores, 123 - Centro",
-    units: 48,
-    role: "Síndico",
-  },
-  {
-    id: "2",
-    name: "Edifício Aurora",
-    address: "Av. Principal, 456 - Bairro Alto",
-    units: 120,
-    role: "Síndico",
-  },
-  {
-    id: "3",
-    name: "Condomínio Vista Mar",
-    address: "Rua da Praia, 789 - Orla",
-    units: 64,
-    role: "Subsíndico",
-  },
-];
+import { listCompanies } from "@/lib/medusa";
 
 export default function Condominios() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
+  const { data } = useQuery({ queryKey: ["companies"], queryFn: listCompanies });
+
+  const condominios = useMemo(() => {
+    return (data?.companies || []).map((company: any) => ({
+      id: company.id,
+      name: company.fantasy_name || company.trade_name || company.name || "Condomínio",
+      address: company.metadata?.address || company.metadata?.city || "",
+      units: Number(company.metadata?.units) || 0,
+      role: company.metadata?.role || "Síndico",
+    }));
+  }, [data]);
 
   const filteredCondos = condominios.filter(
     (condo) =>
       condo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      condo.address.toLowerCase().includes(searchQuery.toLowerCase()),
+      condo.address.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -78,7 +66,7 @@ export default function Condominios() {
             <CondoCard
               key={condo.id}
               {...condo}
-              onEdit={() => toast.info("Use a tela de detalhes para editar")}
+              onEdit={() => navigation.navigate("CondominioDetalhes" as never, { id: condo.id } as never)}
               onClick={() => navigation.navigate("CondominioDetalhes" as never, { id: condo.id } as never)}
             />
           ))}
@@ -93,7 +81,7 @@ export default function Condominios() {
         )}
       </ScrollView>
 
-      <Pressable style={styles.fab}>
+      <Pressable style={styles.fab} onPress={() => navigation.navigate("CondominioDetalhes" as never)}>
         <Plus color="#FFFFFF" size={22} />
       </Pressable>
     </AuthenticatedLayout>
@@ -104,7 +92,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 12,
   },
   summaryCard: {
     backgroundColor: "rgba(24, 28, 36, 0.95)",

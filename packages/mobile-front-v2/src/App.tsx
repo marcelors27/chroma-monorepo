@@ -162,6 +162,9 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
+        sceneContainerStyle: {
+          backgroundColor: "#0B0F14",
+        },
         tabBarStyle: {
           backgroundColor: "rgba(18, 22, 28, 0.9)",
           borderTopWidth: 0,
@@ -256,7 +259,7 @@ function MainTabs() {
 function ProductsStackNavigator() {
   return (
     <ProductsStack.Navigator
-      screenOptions={{ headerShown: false, animation: "fade" }}
+      screenOptions={{ headerShown: false, animation: "fade", contentStyle: { backgroundColor: "#0B0F14" } }}
       initialRouteName="ProdutosIndex"
     >
       <ProductsStack.Screen name="ProdutosIndex" component={Produtos} />
@@ -273,7 +276,7 @@ function RootNavigator() {
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade", contentStyle: { backgroundColor: "#0B0F14" } }}>
       {!isAuthenticated ? (
         <>
           <Stack.Screen name="Landing" component={Landing} />
