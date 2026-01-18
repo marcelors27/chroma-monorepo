@@ -324,6 +324,12 @@ importers:
       '@babel/runtime':
         specifier: ^7.28.4
         version: 7.28.4
+      '@floating-ui/core':
+        specifier: ^1.7.3
+        version: 1.7.3
+      '@floating-ui/react-native':
+        specifier: ^0.10.7
+        version: 0.10.7(react-native@0.81.5)(react@19.1.0)
       '@react-native-async-storage/async-storage':
         specifier: ^2.2.0
         version: 2.2.0(react-native@0.81.5)
@@ -336,6 +342,9 @@ importers:
       '@react-native/assets-registry':
         specifier: 0.81.5
         version: 0.81.5
+      '@react-native/normalize-color':
+        specifier: ^2.1.0
+        version: 2.1.0
       '@react-native/normalize-colors':
         specifier: 0.81.5
         version: 0.81.5
@@ -360,16 +369,160 @@ importers:
       '@react-navigation/routers':
         specifier: ^6.1.9
         version: 6.1.9
+      '@tamagui/accordion':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/adapt':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/alert-dialog':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/animate':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/animate-presence':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/animations-css':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/animations-moti':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native-reanimated@4.1.6)(react-native@0.81.5)(react@19.1.0)
       '@tamagui/animations-react-native':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/avatar':
         specifier: ^1.143.1
         version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
       '@tamagui/babel-plugin':
         specifier: ^1.143.1
         version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/button':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/card':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/checkbox':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/checkbox-headless':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/cli-color':
+        specifier: ^1.143.1
+        version: 1.143.1
+      '@tamagui/collapsible':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/collection':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/colors':
+        specifier: ^1.143.1
+        version: 1.143.1
+      '@tamagui/compose-refs':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
       '@tamagui/config':
         specifier: ^1.143.1
         version: 1.143.1(react-dom@19.1.0)(react-native-reanimated@4.1.6)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/config-default':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/constants':
+        specifier: ^1.143.1
+        version: 1.143.1(react-native@0.81.5)(react@19.1.0)
       '@tamagui/core':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/create-context':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/create-theme':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/cubic-bezier-animator':
+        specifier: ^1.143.1
+        version: 1.143.1
+      '@tamagui/dialog':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/dismissable':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/elements':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/fake-react-native':
+        specifier: ^1.143.1
+        version: 1.143.1
+      '@tamagui/floating':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/focus-scope':
+        specifier: ^1.143.1
+        version: 1.143.1(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/focusable':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/font-inter':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/font-silkscreen':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/font-size':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/form':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/generate-themes':
+        specifier: ^1.143.1
+        version: 1.143.1(esbuild@0.25.12)(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/get-button-sized':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/get-font-sized':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/get-token':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/group':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/helpers':
+        specifier: ^1.143.1
+        version: 1.143.1(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/helpers-icon':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native-svg@15.15.1)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/helpers-node':
+        specifier: ^1.143.1
+        version: 1.143.1
+      '@tamagui/helpers-tamagui':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/image':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/input':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/is-equal-shallow':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/label':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/linear-gradient':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/list-item':
         specifier: ^1.143.1
         version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
       '@tamagui/lucide-icons':
@@ -378,6 +531,177 @@ importers:
       '@tamagui/metro-plugin':
         specifier: ^1.143.1
         version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/normalize-css-color':
+        specifier: ^1.143.1
+        version: 1.143.1
+      '@tamagui/polyfill-dev':
+        specifier: ^1.143.1
+        version: 1.143.1
+      '@tamagui/popover':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/popper':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/portal':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/progress':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/proxy-worm':
+        specifier: ^1.143.1
+        version: 1.143.1
+      '@tamagui/radio-group':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/radio-headless':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/react-native-media-driver':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/react-native-use-pressable':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/react-native-use-responder-events':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/react-native-web-internals':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/react-native-web-lite':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/remove-scroll':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/roving-focus':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/scroll-view':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/select':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/separator':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/shapes':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/sheet':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/shorthands':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/simple-hash':
+        specifier: ^1.143.1
+        version: 1.143.1
+      '@tamagui/slider':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/stacks':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/start-transition':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/static':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/static-sync':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/switch':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/switch-headless':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/tabs':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/text':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/theme':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/theme-builder':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/themes':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/timer':
+        specifier: ^1.143.1
+        version: 1.143.1
+      '@tamagui/toggle-group':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/tooltip':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/types':
+        specifier: ^1.143.1
+        version: 1.143.1
+      '@tamagui/use-async':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/use-callback-ref':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/use-constant':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/use-controllable-state':
+        specifier: ^1.143.1
+        version: 1.143.1(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/use-debounce':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/use-did-finish-ssr':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/use-direction':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/use-element-layout':
+        specifier: ^1.143.1
+        version: 1.143.1(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/use-escape-keydown':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/use-event':
+        specifier: ^1.143.1
+        version: 1.143.1(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/use-force-update':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/use-keyboard-visible':
+        specifier: ^1.143.1
+        version: 1.143.1(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/use-presence':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/use-previous':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
+      '@tamagui/use-window-dimensions':
+        specifier: ^1.143.1
+        version: 1.143.1(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/visually-hidden':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/web':
+        specifier: ^1.143.1
+        version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
+      '@tamagui/z-index-stack':
+        specifier: ^1.143.1
+        version: 1.143.1(react@19.1.0)
       '@tanstack/query-core':
         specifier: ^5.90.12
         version: 5.90.12
@@ -417,6 +741,9 @@ importers:
       color-string:
         specifier: ^1.9.1
         version: 1.9.1
+      color2k:
+        specifier: ^2.0.3
+        version: 2.0.3
       date-fns:
         specifier: ^3.6.0
         version: 3.6.0
@@ -595,237 +922,6 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
-
-  packages/mobile-store:
-    dependencies:
-      '@babel/runtime':
-        specifier: ^7.28.0
-        version: 7.28.4
-      '@expo/vector-icons':
-        specifier: ^15.0.3
-        version: 15.0.3(expo-font@14.0.10)(react-native@0.81.5)(react@19.1.0)
-      '@react-native-async-storage/async-storage':
-        specifier: ^2.2.0
-        version: 2.2.0(react-native@0.81.5)
-      '@react-native/assets-registry':
-        specifier: 0.81.5
-        version: 0.81.5
-      '@react-native/normalize-colors':
-        specifier: 0.81.5
-        version: 0.81.5
-      '@react-native/virtualized-lists':
-        specifier: 0.81.5
-        version: 0.81.5(react-native@0.81.5)(react@19.1.0)
-      '@react-navigation/bottom-tabs':
-        specifier: ^6.5.20
-        version: 6.6.1(@react-navigation/native@6.1.18)(react-native-safe-area-context@5.6.2)(react-native-screens@4.16.0)(react-native@0.81.5)(react@19.1.0)
-      '@react-navigation/core':
-        specifier: ^6.4.17
-        version: 6.4.17(react@19.1.0)
-      '@react-navigation/drawer':
-        specifier: ^6.6.7
-        version: 6.7.2(@react-navigation/native@6.1.18)(react-native-gesture-handler@2.28.0)(react-native-reanimated@4.1.6)(react-native-safe-area-context@5.6.2)(react-native-screens@4.16.0)(react-native@0.81.5)(react@19.1.0)
-      '@react-navigation/elements':
-        specifier: ^1.3.30
-        version: 1.3.31(@react-navigation/native@6.1.18)(react-native-safe-area-context@5.6.2)(react-native@0.81.5)(react@19.1.0)
-      '@react-navigation/native':
-        specifier: ^6.1.17
-        version: 6.1.18(react-native@0.81.5)(react@19.1.0)
-      '@react-navigation/native-stack':
-        specifier: ^6.9.26
-        version: 6.11.0(@react-navigation/native@6.1.18)(react-native-safe-area-context@5.6.2)(react-native-screens@4.16.0)(react-native@0.81.5)(react@19.1.0)
-      '@react-navigation/routers':
-        specifier: ^6.1.9
-        version: 6.1.9
-      '@tanstack/query-core':
-        specifier: ^5.51.1
-        version: 5.90.12
-      '@tanstack/react-query':
-        specifier: ^5.51.1
-        version: 5.90.12(react@19.1.0)
-      '@ungap/structured-clone':
-        specifier: ^1.3.0
-        version: 1.3.0
-      abort-controller:
-        specifier: ^3.0.0
-        version: 3.0.0
-      anser:
-        specifier: ^2.1.1
-        version: 2.3.5
-      ansi-regex:
-        specifier: ^6.0.1
-        version: 6.2.2
-      ansi-styles:
-        specifier: ^6.2.1
-        version: 6.2.3
-      base64-js:
-        specifier: ^1.5.1
-        version: 1.5.1
-      buffer:
-        specifier: ^6.0.3
-        version: 6.0.3
-      color:
-        specifier: ^4.2.3
-        version: 4.2.3
-      color-convert:
-        specifier: ^2.0.1
-        version: 2.0.1
-      color-name:
-        specifier: ^1.1.4
-        version: 1.1.4
-      color-string:
-        specifier: ^1.9.1
-        version: 1.9.1
-      decode-uri-component:
-        specifier: ^0.4.1
-        version: 0.4.1
-      escape-string-regexp:
-        specifier: ^5.0.0
-        version: 5.0.0
-      event-target-shim:
-        specifier: ^5.0.1
-        version: 5.0.1
-      expo:
-        specifier: ~54.0.0
-        version: 54.0.30(@babel/core@7.28.5)(react-native@0.81.5)(react@19.1.0)
-      expo-asset:
-        specifier: ~12.0.12
-        version: 12.0.12(expo@54.0.30)(react-native@0.81.5)(react@19.1.0)
-      expo-constants:
-        specifier: ~18.0.12
-        version: 18.0.12(expo@54.0.30)(react-native@0.81.5)
-      expo-document-picker:
-        specifier: ^14.0.8
-        version: 14.0.8(expo@54.0.30)
-      expo-font:
-        specifier: ~14.0.10
-        version: 14.0.10(expo@54.0.30)(react-native@0.81.5)(react@19.1.0)
-      expo-linear-gradient:
-        specifier: ~15.0.8
-        version: 15.0.8(expo@54.0.30)(react-native@0.81.5)(react@19.1.0)
-      expo-linking:
-        specifier: ^8.0.11
-        version: 8.0.11(expo@54.0.30)(react-native@0.81.5)(react@19.1.0)
-      expo-modules-core:
-        specifier: ^3.0.29
-        version: 3.0.29(react-native@0.81.5)(react@19.1.0)
-      expo-status-bar:
-        specifier: ^3.0.9
-        version: 3.0.9(react-native@0.81.5)(react@19.1.0)
-      filter-obj:
-        specifier: ^2.0.2
-        version: 2.0.2
-      hoist-non-react-statics:
-        specifier: ^3.3.2
-        version: 3.3.2
-      ieee754:
-        specifier: ^1.2.1
-        version: 1.2.1
-      invariant:
-        specifier: ^2.2.4
-        version: 2.2.4
-      is-arrayish:
-        specifier: ^0.3.2
-        version: 0.3.4
-      lodash.sortby:
-        specifier: ^4.7.0
-        version: 4.7.0
-      memoize-one:
-        specifier: ^6.0.0
-        version: 6.0.0
-      metro-runtime:
-        specifier: ^0.80.10
-        version: 0.80.12
-      nanoid:
-        specifier: ^5.0.7
-        version: 5.1.6
-      nullthrows:
-        specifier: ^1.1.1
-        version: 1.1.1
-      pretty-format:
-        specifier: ^29.7.0
-        version: 29.7.0
-      promise:
-        specifier: ^8.3.0
-        version: 8.3.0
-      punycode:
-        specifier: ^2.3.1
-        version: 2.3.1
-      query-string:
-        specifier: ^7.1.3
-        version: 7.1.3
-      react:
-        specifier: 19.1.0
-        version: 19.1.0
-      react-devtools-core:
-        specifier: ^6.1.5
-        version: 6.1.5
-      react-freeze:
-        specifier: ^1.0.4
-        version: 1.0.4(react@19.1.0)
-      react-is:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-native:
-        specifier: 0.81.5
-        version: 0.81.5(@babel/core@7.28.5)(react@19.1.0)
-      react-native-gesture-handler:
-        specifier: ^2.28.0
-        version: 2.28.0(react-native@0.81.5)(react@19.1.0)
-      react-native-is-edge-to-edge:
-        specifier: ^1.1.1
-        version: 1.1.7(react-native@0.81.5)(react@19.1.0)
-      react-native-reanimated:
-        specifier: ~4.1.6
-        version: 4.1.6(@babel/core@7.28.5)(react-native-worklets@0.7.1)(react-native@0.81.5)(react@19.1.0)
-      react-native-safe-area-context:
-        specifier: ^5.6.2
-        version: 5.6.2(react-native@0.81.5)(react@19.1.0)
-      react-native-screens:
-        specifier: ^4.16.0
-        version: 4.16.0(react-native@0.81.5)(react@19.1.0)
-      react-native-worklets:
-        specifier: ^0.7.1
-        version: 0.7.1(@babel/core@7.28.5)(react-native@0.81.5)(react@19.1.0)
-      react-refresh:
-        specifier: ^0.14.2
-        version: 0.14.2
-      regenerator-runtime:
-        specifier: ^0.14.1
-        version: 0.14.1
-      scheduler:
-        specifier: ^0.23.0
-        version: 0.23.2
-      semver:
-        specifier: ^7.7.3
-        version: 7.7.3
-      simple-swizzle:
-        specifier: ^0.2.2
-        version: 0.2.4
-      split-on-first:
-        specifier: ^3.0.0
-        version: 3.0.0
-      stacktrace-parser:
-        specifier: ^0.1.10
-        version: 0.1.11
-      strict-uri-encode:
-        specifier: ^2.0.0
-        version: 2.0.0
-      use-latest-callback:
-        specifier: ^0.2.6
-        version: 0.2.6(react@19.1.0)
-      warn-once:
-        specifier: ^0.1.1
-        version: 0.1.1
-      webidl-conversions:
-        specifier: ^7.0.0
-        version: 7.0.0
-      whatwg-fetch:
-        specifier: ^3.6.20
-        version: 3.6.20
-      whatwg-url-without-unicode:
-        specifier: ^8.0.0
-        version: 8.0.0
 
 packages:
 
@@ -3514,7 +3610,7 @@ packages:
     dependencies:
       expo-font: 14.0.10(expo@54.0.30)(react-native@0.81.5)(react@19.1.0)
       react: 19.1.0
-      react-native: 0.81.5(@babel/core@7.28.5)(react@19.1.0)
+      react-native: 0.81.5(@babel/core@7.28.5)(@types/react@18.3.27)(react@19.1.0)
     dev: false
 
   /@expo/ws-tunnel@1.0.6:
@@ -10351,23 +10447,6 @@ packages:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.28.5)(@types/react@18.3.27)(react@19.1.0)
 
-  /@react-native/virtualized-lists@0.81.5(react-native@0.81.5)(react@19.1.0):
-    resolution: {integrity: sha512-UVXgV/db25OPIvwZySeToXD/9sKKhOdkcWmmf4Jh8iBZuyfML+/5CasaZ1E7Lqg6g3uqVQq75NqIwkYmORJMPw==}
-    engines: {node: '>= 20.19.4'}
-    peerDependencies:
-      '@types/react': ^19.1.0
-      react: '*'
-      react-native: '*'
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-    dependencies:
-      invariant: 2.2.4
-      nullthrows: 1.1.1
-      react: 19.1.0
-      react-native: 0.81.5(@babel/core@7.28.5)(react@19.1.0)
-    dev: false
-
   /@react-navigation/bottom-tabs@6.6.1(@react-navigation/native@6.1.18)(react-native-safe-area-context@5.6.2)(react-native-screens@4.16.0)(react-native@0.81.5)(react@19.1.0):
     resolution: {integrity: sha512-9oD4cypEBjPuaMiu9tevWGiQ4w/d6l3HNhcJ1IjXZ24xvYDSs0mqjUcdt8SWUolCvRrYc/DmNBLlT83bk0bHTw==}
     peerDependencies:
@@ -10399,29 +10478,6 @@ packages:
       react: 19.1.0
       react-is: 16.13.1
       use-latest-callback: 0.2.6(react@19.1.0)
-    dev: false
-
-  /@react-navigation/drawer@6.7.2(@react-navigation/native@6.1.18)(react-native-gesture-handler@2.28.0)(react-native-reanimated@4.1.6)(react-native-safe-area-context@5.6.2)(react-native-screens@4.16.0)(react-native@0.81.5)(react@19.1.0):
-    resolution: {integrity: sha512-o4g2zgTZa2+oLd+8V33etrSM38KIqu8S/zCBTsdsHUoQyVE7JNRiv3Qgq/jMvEb8PZCqWmm7jHItcgzrBuwyOQ==}
-    peerDependencies:
-      '@react-navigation/native': ^6.0.0
-      react: '*'
-      react-native: '*'
-      react-native-gesture-handler: '>= 1.0.0'
-      react-native-reanimated: '>= 1.0.0'
-      react-native-safe-area-context: '>= 3.0.0'
-      react-native-screens: '>= 3.0.0'
-    dependencies:
-      '@react-navigation/elements': 1.3.31(@react-navigation/native@6.1.18)(react-native-safe-area-context@5.6.2)(react-native@0.81.5)(react@19.1.0)
-      '@react-navigation/native': 6.1.18(react-native@0.81.5)(react@19.1.0)
-      color: 4.2.3
-      react: 19.1.0
-      react-native: 0.81.5(@babel/core@7.28.5)(react@19.1.0)
-      react-native-gesture-handler: 2.28.0(react-native@0.81.5)(react@19.1.0)
-      react-native-reanimated: 4.1.6(@babel/core@7.28.5)(react-native-worklets@0.7.1)(react-native@0.81.5)(react@19.1.0)
-      react-native-safe-area-context: 5.6.2(react-native@0.81.5)(react@19.1.0)
-      react-native-screens: 4.16.0(react-native@0.81.5)(react@19.1.0)
-      warn-once: 0.1.1
     dev: false
 
   /@react-navigation/elements@1.3.31(@react-navigation/native@6.1.18)(react-native-safe-area-context@5.6.2)(react-native@0.81.5)(react@19.1.0):
@@ -16165,11 +16221,6 @@ packages:
     engines: {node: '>=0.10'}
     dev: false
 
-  /decode-uri-component@0.4.1:
-    resolution: {integrity: sha512-+8VxcR21HhTy8nOt6jf20w0c9CADrw1O8d+VZ/YzzCt4bJ3uBjw+D1q2osAB8RnpwwaeYBxy0HyKQxD5JBMuuQ==}
-    engines: {node: '>=14.16'}
-    dev: false
-
   /decompress-response@6.0.0:
     resolution: {integrity: sha512-aW35yZM6Bb/4oJlZncMH2LCoZtJXTRxES17vE3hoRiowU2kWHaJKFkSBDnDR+cm9J+9QhXmREyIfv0pji9ejCQ==}
     engines: {node: '>=10'}
@@ -17028,14 +17079,6 @@ packages:
       - supports-color
     dev: false
 
-  /expo-document-picker@14.0.8(expo@54.0.30):
-    resolution: {integrity: sha512-3tyQKpPqWWFlI8p9RiMX1+T1Zge5mEKeBuXWp1h8PEItFMUDSiOJbQ112sfdC6Hxt8wSxreV9bCRl/NgBdt+fA==}
-    peerDependencies:
-      expo: '*'
-    dependencies:
-      expo: 54.0.30(@babel/core@7.28.5)(react-native@0.81.5)(react@19.1.0)
-    dev: false
-
   /expo-file-system@19.0.21(expo@54.0.30)(react-native@0.81.5):
     resolution: {integrity: sha512-s3DlrDdiscBHtab/6W1osrjGL+C2bvoInPJD7sOwmxfJ5Woynv2oc+Fz1/xVXaE/V7HE/+xrHC/H45tu6lZzzg==}
     peerDependencies:
@@ -17173,55 +17216,6 @@ packages:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.28.5)(@types/react@18.3.27)(react@19.1.0)
       react-native-webview: 13.16.0(react-native@0.81.5)(react@19.1.0)
-      react-refresh: 0.14.2
-      whatwg-url-without-unicode: 8.0.0-3
-    transitivePeerDependencies:
-      - '@babel/core'
-      - bufferutil
-      - expo-router
-      - graphql
-      - supports-color
-      - utf-8-validate
-    dev: false
-
-  /expo@54.0.30(@babel/core@7.28.5)(react-native@0.81.5)(react@19.1.0):
-    resolution: {integrity: sha512-6q+aFfKL0SpT8prfdpR3V8HcN51ov0mCGuwQTzyuk6eeO9rg7a7LWbgPv9rEVXGZEuyULstL8LGNwHqusand7Q==}
-    hasBin: true
-    peerDependencies:
-      '@expo/dom-webview': '*'
-      '@expo/metro-runtime': '*'
-      react: '*'
-      react-native: '*'
-      react-native-webview: '*'
-    peerDependenciesMeta:
-      '@expo/dom-webview':
-        optional: true
-      '@expo/metro-runtime':
-        optional: true
-      react-native-webview:
-        optional: true
-    dependencies:
-      '@babel/runtime': 7.28.4
-      '@expo/cli': 54.0.20(expo@54.0.30)(react-native@0.81.5)
-      '@expo/config': 12.0.13
-      '@expo/config-plugins': 54.0.4
-      '@expo/devtools': 0.1.8(react-native@0.81.5)(react@19.1.0)
-      '@expo/fingerprint': 0.15.4
-      '@expo/metro': 54.2.0
-      '@expo/metro-config': 54.0.12(expo@54.0.30)
-      '@expo/vector-icons': 15.0.3(expo-font@14.0.10)(react-native@0.81.5)(react@19.1.0)
-      '@ungap/structured-clone': 1.3.0
-      babel-preset-expo: 54.0.9(@babel/core@7.28.5)(@babel/runtime@7.28.4)(expo@54.0.30)(react-refresh@0.14.2)
-      expo-asset: 12.0.12(expo@54.0.30)(react-native@0.81.5)(react@19.1.0)
-      expo-constants: 18.0.12(expo@54.0.30)(react-native@0.81.5)
-      expo-file-system: 19.0.21(expo@54.0.30)(react-native@0.81.5)
-      expo-font: 14.0.10(expo@54.0.30)(react-native@0.81.5)(react@19.1.0)
-      expo-keep-awake: 15.0.8(expo@54.0.30)(react@19.1.0)
-      expo-modules-autolinking: 3.0.23
-      expo-modules-core: 3.0.29(react-native@0.81.5)(react@19.1.0)
-      pretty-format: 29.7.0
-      react: 19.1.0
-      react-native: 0.81.5(@babel/core@7.28.5)(react@19.1.0)
       react-refresh: 0.14.2
       whatwg-url-without-unicode: 8.0.0-3
     transitivePeerDependencies:
@@ -17442,11 +17436,6 @@ packages:
   /filter-obj@1.1.0:
     resolution: {integrity: sha512-8rXg1ZnX7xzy2NGDVkBVaAy+lSlPNwad13BtgSlLuxfIslyt5Vg64U7tFcCt4WS1R0hvtnQybT/IyCkGZ3DpXQ==}
     engines: {node: '>=0.10.0'}
-    dev: false
-
-  /filter-obj@2.0.2:
-    resolution: {integrity: sha512-lO3ttPjHZRfjMcxWKb1j1eDhTFsu4meeR3lnMcnBFhk6RuLhvEiuALu2TlfL310ph4lCYYwgF/ElIjdP739tdg==}
-    engines: {node: '>=8'}
     dev: false
 
   /finalhandler@1.1.2:
@@ -19869,14 +19858,6 @@ packages:
     dependencies:
       flow-enums-runtime: 0.0.6
 
-  /metro-runtime@0.80.12:
-    resolution: {integrity: sha512-LIx7+92p5rpI0i6iB4S4GBvvLxStNt6fF0oPMaUd1Weku7jZdfkCZzmrtDD9CSQ6EPb0T9NUZoyXIxlBa3wOCw==}
-    engines: {node: '>=18'}
-    dependencies:
-      '@babel/runtime': 7.28.4
-      flow-enums-runtime: 0.0.6
-    dev: false
-
   /metro-runtime@0.83.3:
     resolution: {integrity: sha512-JHCJb9ebr9rfJ+LcssFYA2x1qPYuSD/bbePupIGhpMrsla7RCwC/VL3yJ9cSU+nUhU4c9Ixxy8tBta+JbDeZWw==}
     engines: {node: '>=20.19.4'}
@@ -21774,16 +21755,6 @@ packages:
       react-native: 0.81.5(@babel/core@7.28.5)(@types/react@18.3.27)(react@19.1.0)
     dev: false
 
-  /react-native-is-edge-to-edge@1.1.7(react-native@0.81.5)(react@19.1.0):
-    resolution: {integrity: sha512-EH6i7E8epJGIcu7KpfXYXiV2JFIYITtq+rVS8uEb+92naMRBdxhTuS8Wn2Q7j9sqyO0B+Xbaaf9VdipIAmGW4w==}
-    peerDependencies:
-      react: '*'
-      react-native: '*'
-    dependencies:
-      react: 19.1.0
-      react-native: 0.81.5(@babel/core@7.28.5)(react@19.1.0)
-    dev: false
-
   /react-native-is-edge-to-edge@1.2.1(react-native@0.81.5)(react@19.1.0):
     resolution: {integrity: sha512-FLbPWl/MyYQWz+KwqOZsSyj2JmLKglHatd3xLZWskXOpRaio4LfEDEz8E/A6uD8QoTHW6Aobw1jbEwK7KMgR7Q==}
     peerDependencies:
@@ -21967,61 +21938,6 @@ packages:
       - bufferutil
       - supports-color
       - utf-8-validate
-
-  /react-native@0.81.5(@babel/core@7.28.5)(react@19.1.0):
-    resolution: {integrity: sha512-1w+/oSjEXZjMqsIvmkCRsOc8UBYv163bTWKTI8+1mxztvQPhCRYGTvZ/PL1w16xXHneIj/SLGfxWg2GWN2uexw==}
-    engines: {node: '>= 20.19.4'}
-    hasBin: true
-    peerDependencies:
-      '@types/react': ^19.1.0
-      react: ^19.1.0
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-    dependencies:
-      '@jest/create-cache-key-function': 29.7.0
-      '@react-native/assets-registry': 0.81.5
-      '@react-native/codegen': 0.81.5(@babel/core@7.28.5)
-      '@react-native/community-cli-plugin': 0.81.5
-      '@react-native/gradle-plugin': 0.81.5
-      '@react-native/js-polyfills': 0.81.5
-      '@react-native/normalize-colors': 0.81.5
-      '@react-native/virtualized-lists': 0.81.5(react-native@0.81.5)(react@19.1.0)
-      abort-controller: 3.0.0
-      anser: 1.4.10
-      ansi-regex: 5.0.1
-      babel-jest: 29.7.0(@babel/core@7.28.5)
-      babel-plugin-syntax-hermes-parser: 0.29.1
-      base64-js: 1.5.1
-      commander: 12.1.0
-      flow-enums-runtime: 0.0.6
-      glob: 7.2.3
-      invariant: 2.2.4
-      jest-environment-node: 29.7.0
-      memoize-one: 5.2.1
-      metro-runtime: 0.83.3
-      metro-source-map: 0.83.3
-      nullthrows: 1.1.1
-      pretty-format: 29.7.0
-      promise: 8.3.0
-      react: 19.1.0
-      react-devtools-core: 6.1.5
-      react-refresh: 0.14.2
-      regenerator-runtime: 0.13.11
-      scheduler: 0.26.0
-      semver: 7.7.3
-      stacktrace-parser: 0.1.11
-      whatwg-fetch: 3.6.20
-      ws: 6.2.3
-      yargs: 17.7.2
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@react-native-community/cli'
-      - '@react-native/metro-config'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-    dev: false
 
   /react-refresh@0.14.2:
     resolution: {integrity: sha512-jCvmsr+1IUSMUyzOkRcvnVbX3ZYC6g9TDrDbFuFmRDq7PD4yaGbLKNQL6k2jnArV8hjYxh7hVhAZB6s9HDGpZA==}
@@ -23031,11 +22947,6 @@ packages:
   /split-on-first@1.1.0:
     resolution: {integrity: sha512-43ZssAJaMusuKWL8sKUBQXHWOpq8d6CfN/u1p4gUzfJkM05C8rxTmYrkIPTXapZpORA6LkkzcUulJ8FqA7Uudw==}
     engines: {node: '>=6'}
-    dev: false
-
-  /split-on-first@3.0.0:
-    resolution: {integrity: sha512-qxQJTx2ryR0Dw0ITYyekNQWpz6f8dGd7vffGNflQQ3Iqj9NJ6qiZ7ELpZsJ/QBhIVAiDfXdag3+Gp8RvWa62AA==}
-    engines: {node: '>=12'}
     dev: false
 
   /split2@4.2.0:
@@ -24390,11 +24301,6 @@ packages:
   /webidl-conversions@5.0.0:
     resolution: {integrity: sha512-VlZwKPCkYKxQgeSbH5EyngOmRp7Ww7I9rQLERETtf5ofd9pGeswWiOtogpEO850jziPRarreGxn5QIiTqpb2wA==}
     engines: {node: '>=8'}
-    dev: false
-
-  /webidl-conversions@7.0.0:
-    resolution: {integrity: sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==}
-    engines: {node: '>=12'}
     dev: false
 
   /whatwg-fetch@3.6.20:

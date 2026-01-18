@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/sheet";
 import CartDrawer from "@/components/CartDrawer";
 import { getActiveCondo, listCompanies, setActiveCondo } from "@/lib/medusa";
+import dashboardBg from "@/assets/dashboard-bg.jpg";
 
 type CondoOption = {
   id: string;
@@ -79,179 +80,188 @@ const AppLayout = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-background flex w-full">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex w-72 border-r-2 border-border flex-col flex-shrink-0">
-        <div className="p-6 border-b-2 border-border">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <Hexagon className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold text-primary">Chroma</span>
-          </Link>
-        </div>
+    <div className="min-h-screen w-full bg-background text-foreground relative overflow-hidden">
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: `linear-gradient(180deg, rgba(16, 20, 26, 0.92) 0%, rgba(16, 20, 26, 0.82) 45%, rgba(16, 20, 26, 0.95) 100%), url(${dashboardBg})`,
+        }}
+      />
 
-        {/* Condo Selector */}
-        <div className="p-4 border-b-2 border-border">
-          <p className="text-sm text-muted-foreground mb-2">Condomínio ativo</p>
-          <div className="relative" title={selectedCondo?.name || "Sem empresa aprovada"}>
-            <select 
-              className="w-full p-3 border-2 border-border bg-card font-medium text-foreground truncate pr-8"
-              value={selectedCondo?.id || ""}
-              disabled={!condos.length}
-              onChange={(e) => {
-                const condo = condos.find(c => c.id === e.target.value);
-                if (condo) {
-                  setSelectedCondo(condo);
-                  setActiveCondo(condo);
-                }
-              }}
+      <div className="relative z-10 flex min-h-screen w-full">
+        {/* Sidebar - Desktop */}
+        <aside className="hidden lg:flex w-72 border-r border-border/70 bg-background/80 backdrop-blur-xl flex-col flex-shrink-0">
+          <div className="p-6 border-b border-border/70">
+            <Link to="/dashboard" className="flex items-center gap-2">
+              <Hexagon className="h-8 w-8 text-primary" />
+              <span className="text-xl font-bold text-primary">Chroma</span>
+            </Link>
+          </div>
+
+          {/* Condo Selector */}
+          <div className="p-4 border-b border-border/70">
+            <p className="text-sm text-muted-foreground mb-2">Condomínio ativo</p>
+            <div className="relative" title={selectedCondo?.name || "Sem empresa aprovada"}>
+              <select 
+                className="w-full p-3 border border-border/60 bg-card/80 font-medium text-foreground truncate pr-8"
+                value={selectedCondo?.id || ""}
+                disabled={!condos.length}
+                onChange={(e) => {
+                  const condo = condos.find(c => c.id === e.target.value);
+                  if (condo) {
+                    setSelectedCondo(condo);
+                    setActiveCondo(condo);
+                  }
+                }}
+              >
+                {condos.length === 0 && (
+                  <option value="">Sem empresa aprovada</option>
+                )}
+                {condos.map((condo) => (
+                  <option key={condo.id} value={condo.id}>
+                    {condo.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <nav className="flex-1 p-4">
+            <ul className="space-y-2">
+              <NavItem icon={<Home />} label="Início" href="/home" active={isActive("/home")} />
+              <NavItem icon={<ShoppingCart />} label="Produtos" href="/dashboard" active={isActive("/dashboard")} />
+              <NavItem icon={<Package />} label="Meus Pedidos" href="/orders" active={isActive("/orders")} />
+              <NavItem icon={<Repeat />} label="Recorrentes" href="/recurrences" active={isActive("/recurrences")} />
+              <NavItem icon={<Hexagon />} label="Condomínios" href="/condos" active={isActive("/condos")} />
+              <NavItem icon={<Settings />} label="Configurações" href="/settings" active={isActive("/settings")} />
+            </ul>
+          </nav>
+
+          <div className="p-4 border-t border-border/70">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-2 border border-border/60 bg-background/40"
+              onClick={handleLogout}
             >
-              {condos.length === 0 && (
-                <option value="">Sem empresa aprovada</option>
-              )}
-              {condos.map((condo) => (
-                <option key={condo.id} value={condo.id}>
-                  {condo.name}
-                </option>
-              ))}
-            </select>
+              <LogOut className="h-4 w-4" />
+              Sair
+            </Button>
           </div>
-        </div>
+        </aside>
 
-        <nav className="flex-1 p-4">
-          <ul className="space-y-2">
-            <NavItem icon={<Home />} label="Início" href="/home" active={isActive("/home")} />
-            <NavItem icon={<ShoppingCart />} label="Produtos" href="/dashboard" active={isActive("/dashboard")} />
-            <NavItem icon={<Package />} label="Meus Pedidos" href="/orders" active={isActive("/orders")} />
-            <NavItem icon={<Repeat />} label="Recorrentes" href="/recurrences" active={isActive("/recurrences")} />
-            <NavItem icon={<Hexagon />} label="Condomínios" href="/condos" active={isActive("/condos")} />
-            <NavItem icon={<Settings />} label="Configurações" href="/settings" active={isActive("/settings")} />
-          </ul>
-        </nav>
-
-        <div className="p-4 border-t-2 border-border">
-          <Button 
-            variant="outline" 
-            className="w-full justify-start gap-2 border-2"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4" />
-            Sair
-          </Button>
-        </div>
-      </aside>
-
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-background border-b-2 border-border z-50">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-2">
-            <Hexagon className="h-6 w-6 text-primary" />
-            <span className="font-bold text-primary">Chroma</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CartDrawer />
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="border-2">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0 bg-card">
-                <div className="p-6 border-b-2 border-border">
-                  <div className="flex items-center gap-2">
-                    <Hexagon className="h-8 w-8 text-primary" />
-                    <span className="text-xl font-bold text-primary">Chroma</span>
-                  </div>
-                </div>
-                <div className="p-4 border-b-2 border-border">
-                  <p className="text-sm text-muted-foreground mb-2">Condomínio ativo</p>
-                  <div className="relative" title={selectedCondo?.name || "Sem empresa aprovada"}>
-                    <select 
-                      className="w-full p-3 border-2 border-border bg-background font-medium text-foreground rounded-none appearance-none cursor-pointer text-base min-h-[48px] touch-manipulation truncate pr-8"
-                      style={{ fontSize: '16px' }}
-                      value={selectedCondo?.id || ""}
-                      disabled={!condos.length}
-                      onChange={(e) => {
-                        const condo = condos.find(c => c.id === e.target.value);
-                        if (condo) setSelectedCondo(condo);
-                      }}
-                    >
-                      {condos.length === 0 && (
-                        <option value="">Sem empresa aprovada</option>
-                      )}
-                      {condos.map((condo) => (
-                        <option key={condo.id} value={condo.id} className="text-base py-2">
-                          {condo.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <nav className="p-4">
-                  <ul className="space-y-2">
-                    <NavItem 
-                      icon={<Home />} 
-                      label="Início" 
-                      href="/home" 
-                      active={isActive("/home")}
-                      onClick={() => setMobileMenuOpen(false)}
-                    />
-                    <NavItem 
-                      icon={<ShoppingCart />} 
-                      label="Produtos" 
-                      href="/dashboard" 
-                      active={isActive("/dashboard")}
-                      onClick={() => setMobileMenuOpen(false)}
-                    />
-                    <NavItem 
-                      icon={<Package />} 
-                      label="Meus Pedidos" 
-                      href="/orders" 
-                      active={isActive("/orders")}
-                      onClick={() => setMobileMenuOpen(false)}
-                    />
-                    <NavItem 
-                      icon={<Repeat />} 
-                      label="Recorrentes" 
-                      href="/recurrences" 
-                      active={isActive("/recurrences")}
-                      onClick={() => setMobileMenuOpen(false)}
-                    />
-                    <NavItem 
-                      icon={<Hexagon />} 
-                      label="Condomínios" 
-                      href="/condos" 
-                      active={isActive("/condos")}
-                      onClick={() => setMobileMenuOpen(false)}
-                    />
-                    <NavItem 
-                      icon={<Settings />} 
-                      label="Configurações" 
-                      href="/settings" 
-                      active={isActive("/settings")}
-                      onClick={() => setMobileMenuOpen(false)}
-                    />
-                  </ul>
-                </nav>
-                <div className="p-4 border-t-2 border-border mt-auto">
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start gap-2 border-2"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Sair
+        {/* Mobile Header */}
+        <div className="lg:hidden fixed top-0 left-0 right-0 bg-background/85 backdrop-blur-xl border-b border-border/70 z-50">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-2">
+              <Hexagon className="h-6 w-6 text-primary" />
+              <span className="font-bold text-primary">Chroma</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CartDrawer />
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon" className="border border-border/60 bg-background/40">
+                    <Menu className="h-5 w-5" />
                   </Button>
-                </div>
-              </SheetContent>
-            </Sheet>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 p-0 bg-card/95 backdrop-blur-xl">
+                  <div className="p-6 border-b border-border/70">
+                    <div className="flex items-center gap-2">
+                      <Hexagon className="h-8 w-8 text-primary" />
+                      <span className="text-xl font-bold text-primary">Chroma</span>
+                    </div>
+                  </div>
+                  <div className="p-4 border-b border-border/70">
+                    <p className="text-sm text-muted-foreground mb-2">Condomínio ativo</p>
+                    <div className="relative" title={selectedCondo?.name || "Sem empresa aprovada"}>
+                      <select 
+                        className="w-full p-3 border border-border/60 bg-background/40 font-medium text-foreground rounded-md appearance-none cursor-pointer text-base min-h-[48px] touch-manipulation truncate pr-8"
+                        style={{ fontSize: '16px' }}
+                        value={selectedCondo?.id || ""}
+                        disabled={!condos.length}
+                        onChange={(e) => {
+                          const condo = condos.find(c => c.id === e.target.value);
+                          if (condo) setSelectedCondo(condo);
+                        }}
+                      >
+                        {condos.length === 0 && (
+                          <option value="">Sem empresa aprovada</option>
+                        )}
+                        {condos.map((condo) => (
+                          <option key={condo.id} value={condo.id} className="text-base py-2">
+                            {condo.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <nav className="p-4">
+                    <ul className="space-y-2">
+                      <NavItem 
+                        icon={<Home />} 
+                        label="Início" 
+                        href="/home" 
+                        active={isActive("/home")}
+                        onClick={() => setMobileMenuOpen(false)}
+                      />
+                      <NavItem 
+                        icon={<ShoppingCart />} 
+                        label="Produtos" 
+                        href="/dashboard" 
+                        active={isActive("/dashboard")}
+                        onClick={() => setMobileMenuOpen(false)}
+                      />
+                      <NavItem 
+                        icon={<Package />} 
+                        label="Meus Pedidos" 
+                        href="/orders" 
+                        active={isActive("/orders")}
+                        onClick={() => setMobileMenuOpen(false)}
+                      />
+                      <NavItem 
+                        icon={<Repeat />} 
+                        label="Recorrentes" 
+                        href="/recurrences" 
+                        active={isActive("/recurrences")}
+                        onClick={() => setMobileMenuOpen(false)}
+                      />
+                      <NavItem 
+                        icon={<Hexagon />} 
+                        label="Condomínios" 
+                        href="/condos" 
+                        active={isActive("/condos")}
+                        onClick={() => setMobileMenuOpen(false)}
+                      />
+                      <NavItem 
+                        icon={<Settings />} 
+                        label="Configurações" 
+                        href="/settings" 
+                        active={isActive("/settings")}
+                        onClick={() => setMobileMenuOpen(false)}
+                      />
+                    </ul>
+                  </nav>
+                  <div className="p-4 border-t border-border/70 mt-auto">
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start gap-2 border border-border/60 bg-background/40"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sair
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 min-h-screen">
-        <Outlet context={{ selectedCondo }} />
-      </main>
+        {/* Main Content */}
+        <main className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 min-h-screen relative z-10">
+          <Outlet context={{ selectedCondo }} />
+        </main>
+      </div>
     </div>
   );
 };
@@ -273,17 +283,17 @@ const NavItem = ({
     <div 
       className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all relative ${
         active 
-          ? "bg-primary text-primary-foreground font-semibold" 
-          : "hover:bg-secondary"
+          ? "bg-primary/15 text-foreground font-semibold" 
+          : "hover:bg-secondary/60"
       }`}
     >
       {active && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-foreground" />
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
       )}
       {icon}
       <span className="font-medium">{label}</span>
       {active ? (
-        <div className="ml-auto w-2 h-2 rounded-full bg-primary-foreground" />
+        <div className="ml-auto w-2 h-2 rounded-full bg-primary" />
       ) : (
         <ChevronRight className="h-4 w-4 ml-auto opacity-50" />
       )}

@@ -1,13 +1,16 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Linking from "expo-linking";
 import {
   clearSession,
+  completeSocialAuth,
   getCustomerMe,
   getTokenValue,
   listCompanies,
   login as loginCustomer,
   MedusaCustomer,
   registerStore,
+  startSocialAuth,
 } from "@/lib/medusa";
 
 interface User {
@@ -40,6 +43,35 @@ const mapCustomerToUser = (customer: MedusaCustomer): User => ({
 const hasApprovedCompany = async () => {
   const data = await listCompanies();
   return (data?.companies || []).some((company: any) => company?.approved);
+};
+
+const waitForAuthRedirect = (authUrl: string, redirectBase: string) => {
+  return new Promise<string>((resolve, reject) => {
+    let resolved = false;
+    const timeout = setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      subscription.remove();
+      reject(new Error("Tempo de autenticação esgotado."));
+    }, 120000);
+
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      if (!url.startsWith(redirectBase)) return;
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
+      subscription.remove();
+      resolve(url);
+    });
+
+    Linking.openURL(authUrl).catch((err) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
+      subscription.remove();
+      reject(err);
+    });
+  });
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -80,6 +112,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadUser();
   }, []);
 
+  const finalizeLogin = async () => {
+    const approved = await hasApprovedCompany();
+    if (!approved) {
+      await clearSession();
+      setUser(null);
+      await AsyncStorage.removeItem(USER_STORAGE_KEY);
+      setAuthError("Seu acesso está em avaliação. Aguarde a aprovação do condomínio.");
+      return false;
+    }
+    const { customer } = await getCustomerMe();
+    if (!customer) {
+      setAuthError("Não foi possível finalizar o login.");
+      return false;
+    }
+    const mapped = mapCustomerToUser(customer);
+    setUser(mapped);
+    await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(mapped));
+    setAuthError(null);
+    return true;
+  };
+
   const login = async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
     if (!email || password.length < 6) return false;
@@ -94,26 +147,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return false;
     }
-    const approved = await hasApprovedCompany();
-    if (!approved) {
-      await clearSession();
-      setUser(null);
-      await AsyncStorage.removeItem(USER_STORAGE_KEY);
-      setAuthError("Seu acesso está em avaliação. Aguarde a aprovação do condomínio.");
-      return false;
-    }
-    const { customer } = await getCustomerMe();
-    if (!customer) return false;
-    const mapped = mapCustomerToUser(customer);
-    setUser(mapped);
-    await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(mapped));
-    setAuthError(null);
-    return true;
+    return finalizeLogin();
   };
 
   const loginWithSocial = async (provider: "google" | "apple"): Promise<boolean> => {
-    console.warn(`Login social (${provider}) ainda não implementado no backend.`);
-    return false;
+    setAuthError(null);
+    try {
+      const redirectBase = Linking.createURL("auth-callback");
+      const start = await startSocialAuth(provider, redirectBase);
+      if (!start?.token && start?.location) {
+        const redirectUrl = await waitForAuthRedirect(start.location, redirectBase);
+        const parsed = Linking.parse(redirectUrl);
+        const code = parsed.queryParams?.code;
+        const state = parsed.queryParams?.state;
+        if (!code || typeof code !== "string") {
+          setAuthError("Não foi possível concluir o login social.");
+          return false;
+        }
+        await completeSocialAuth(provider, { code, state: typeof state === "string" ? state : undefined });
+      }
+      return finalizeLogin();
+    } catch {
+      setAuthError("Não foi possível iniciar o login social.");
+      return false;
+    }
   };
 
   const signup = async (name: string, email: string, password: string): Promise<boolean> => {

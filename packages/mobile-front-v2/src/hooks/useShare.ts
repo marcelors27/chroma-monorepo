@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { Share } from "react-native";
-import * as Clipboard from "expo-clipboard";
 import { toast } from "@/lib/toast";
 
 interface ShareData {
@@ -25,9 +24,14 @@ export function useShare() {
 
     try {
       if (shareUrl) {
-        await Clipboard.setStringAsync(shareUrl);
-        toast.success("Link copiado para a área de transferência!");
-        return true;
+        try {
+          const Clipboard = await import("expo-clipboard");
+          await Clipboard.setStringAsync(shareUrl);
+          toast.success("Link copiado para a área de transferência!");
+          return true;
+        } catch {
+          // Clipboard module not available in this build.
+        }
       }
     } catch {
       toast.error("Não foi possível compartilhar");

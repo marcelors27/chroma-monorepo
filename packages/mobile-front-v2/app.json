@@ -1,31 +1,48 @@
 {
   "expo": {
-    "name": "Chroma Mobile Front V2",
+    "name": "Chroma Mobile Store",
     "slug": "chroma-mobile-front-v2",
-    "version": "0.1.0",
+    "scheme": "chroma-mobile",
+    "version": "0.2.3",
     "orientation": "portrait",
     "platforms": [
       "ios",
       "android",
       "web"
     ],
+    "statusBar": {
+      "style": "light",
+      "backgroundColor": "#000000"
+    },
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
       "**/*"
     ],
     "android": {
-      "package": "com.chroma.mobilefrontv2"
+      "package": "com.chroma.mobilestore",
+      "statusBar": {
+        "barStyle": "light-content",
+        "backgroundColor": "#000000"
+      }
     },
     "ios": {
-      "bundleIdentifier": "com.chroma.mobilefrontv2",
-      "buildNumber": "1",
+      "bundleIdentifier": "com.chroma.mobilestore",
+      "buildNumber": "2",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIStatusBarStyle": "UIStatusBarStyleLightContent",
+        "UIViewControllerBasedStatusBarAppearance": false
       }
     },
     "plugins": [
       "expo-asset",
       "expo-font"
-    ]
+    ],
+    "owner": "marcelors27",
+    "extra": {
+      "eas": {
+        "projectId": "bc274720-bc11-4e33-8dfe-7090b339aba4"
+      }
+    }
   }
 }

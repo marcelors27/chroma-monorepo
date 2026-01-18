@@ -277,6 +277,39 @@ export const login = async (email: string, password: string) => {
   return data.token;
 };
 
+export const startSocialAuth = async (provider: string, callbackUrl: string) => {
+  const data = await apiFetch<{ location?: string; token?: string }>(
+    `/auth/customer/${provider}`,
+    {
+      method: "POST",
+      auth: false,
+      body: JSON.stringify({ callback_url: callbackUrl }),
+    }
+  );
+  if (data?.token) {
+    await setToken(data.token);
+  }
+  return data;
+};
+
+export const completeSocialAuth = async (
+  provider: string,
+  params: { code: string; state?: string }
+) => {
+  const search = new URLSearchParams({
+    code: params.code,
+    ...(params.state ? { state: params.state } : {}),
+  });
+  const data = await apiFetch<{ token: string }>(
+    `/auth/customer/${provider}/callback?${search.toString()}`,
+    { auth: false }
+  );
+  if (data?.token) {
+    await setToken(data.token);
+  }
+  return data?.token || null;
+};
+
 export const registerStore = async (email: string, password: string) => {
   const register = await apiFetch<{ token: string }>("/auth/customer/emailpass/register", {
     method: "POST",

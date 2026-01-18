@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Apple, ArrowLeft, Chrome, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
@@ -89,14 +89,16 @@ export default function Auth() {
             <Text style={styles.socialText}>Continuar com Google</Text>
           </Pressable>
 
-          <Pressable
-            onPress={() => handleSocialLogin("apple")}
-            disabled={isLoading}
-            style={[styles.socialButton, isLoading && styles.buttonDisabled]}
-          >
-            <Apple color="#E6E8EA" size={20} />
-            <Text style={styles.socialText}>Continuar com Apple</Text>
-          </Pressable>
+          {Platform.OS === "ios" && (
+            <Pressable
+              onPress={() => handleSocialLogin("apple")}
+              disabled={isLoading}
+              style={[styles.socialButton, isLoading && styles.buttonDisabled]}
+            >
+              <Apple color="#E6E8EA" size={20} />
+              <Text style={styles.socialText}>Continuar com Apple</Text>
+            </Pressable>
+          )}
         </View>
 
         <View style={styles.dividerRow}>

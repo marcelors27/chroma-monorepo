@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import React, { useCallback, useEffect, useRef, type ErrorInfo, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
@@ -44,6 +44,34 @@ function LoadingScreen() {
       <Text style={styles.loadingText}>Carregando...</Text>
     </View>
   );
+}
+
+class ErrorBoundary extends React.Component<
+  { children: ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  state = { hasError: false as boolean, error: undefined as Error | undefined };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("App error boundary caught:", error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Algo deu errado</Text>
+          <Text style={styles.errorMessage}>{this.state.error?.message || "Erro desconhecido."}</Text>
+        </View>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 function FadeOnFocus({ children }: { children: ReactNode }) {
@@ -307,21 +335,23 @@ import { CondoProvider } from "@/contexts/CondoContext";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
-      <SafeAreaProvider>
-        <NotificationProvider>
-          <CondoProvider>
-            <CartProvider>
-              <AuthProvider>
-                <NavigationContainer>
-                  <RootNavigator />
-                </NavigationContainer>
-              </AuthProvider>
-            </CartProvider>
-          </CondoProvider>
-        </NotificationProvider>
-      </SafeAreaProvider>
-    </TamaguiProvider>
+    <ErrorBoundary>
+      <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
+        <SafeAreaProvider>
+          <NotificationProvider>
+            <CondoProvider>
+              <CartProvider>
+                <AuthProvider>
+                  <NavigationContainer>
+                    <RootNavigator />
+                  </NavigationContainer>
+                </AuthProvider>
+              </CartProvider>
+            </CondoProvider>
+          </NotificationProvider>
+        </SafeAreaProvider>
+      </TamaguiProvider>
+    </ErrorBoundary>
   </QueryClientProvider>
 );
 
@@ -338,6 +368,25 @@ const styles = StyleSheet.create({
     color: "#E6E8EA",
     fontSize: 16,
     fontWeight: "600",
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    backgroundColor: "#0B0F14",
+  },
+  errorTitle: {
+    color: "#E6E8EA",
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  errorMessage: {
+    color: "#9AA3AE",
+    fontSize: 14,
+    textAlign: "center",
   },
   fadeWrapper: {
     flex: 1,
