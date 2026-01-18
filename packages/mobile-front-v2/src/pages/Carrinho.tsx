@@ -38,6 +38,7 @@ export default function Carrinho() {
         postal_code: "00000-000",
         metadata: {
           condo_id: activeCondo.id,
+          company_id: activeCondo.id,
         },
       };
 

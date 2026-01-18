@@ -456,6 +456,16 @@ export const getNews = async (id: string) => {
   });
 };
 
+export const earnCompanyPoints = async (companyId: string, orderId: string) => {
+  return apiFetch<{ points_earned: number; points_balance: number; points_total: number }>(
+    `/store/companies/${companyId}/points`,
+    {
+      method: "POST",
+      body: JSON.stringify({ order_id: orderId }),
+    }
+  );
+};
+
 export const createCart = async () => {
   const cart = await apiFetch<{ cart: MedusaCart }>(withStoreQuery("/store/carts"), {
     method: "POST",

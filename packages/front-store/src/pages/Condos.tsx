@@ -66,6 +66,7 @@ interface Condo {
   // Contato
   phone: string;
   email: string;
+  billingEmails: string;
   website: string;
   administradoraEmail: string;
   // Dados do Prédio
@@ -94,6 +95,7 @@ const emptyFormData: Omit<Condo, 'id'> = {
   state: "",
   phone: "",
   email: "",
+  billingEmails: "",
   website: "",
   administradoraEmail: "",
   totalUnidades: "",
@@ -143,6 +145,9 @@ const Condos = () => {
       state: metadata.state || "",
       phone: metadata.phone || "",
       email: metadata.email || "",
+      billingEmails: Array.isArray(metadata.billing_emails)
+        ? metadata.billing_emails.join(", ")
+        : metadata.billing_emails || "",
       website: metadata.website || "",
       administradoraEmail: metadata.administradoraEmail || "",
       totalUnidades: metadata.totalUnidades || "",
@@ -170,6 +175,12 @@ const Condos = () => {
     state: data.state,
     phone: data.phone,
     email: data.email,
+    billing_emails: data.billingEmails
+      ? data.billingEmails
+          .split(/[;,]+/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : [],
     website: data.website,
     administradoraEmail: data.administradoraEmail,
     totalUnidades: data.totalUnidades,
@@ -743,6 +754,19 @@ const Condos = () => {
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="billingEmails">E-mails para boleto/PIX</Label>
+                        <Input
+                          id="billingEmails"
+                          placeholder="financeiro@condominio.com.br, sindico@condominio.com.br"
+                          className="h-12 border-2"
+                          value={formData.billingEmails}
+                          onChange={(e) => setFormData({ ...formData, billingEmails: e.target.value })}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Separe múltiplos e-mails por vírgula ou ponto e vírgula.
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="website">Website</Label>

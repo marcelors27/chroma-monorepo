@@ -25,6 +25,7 @@ type CondoOption = {
   id: string;
   name: string;
   cnpj?: string;
+  pointsBalance?: number;
 };
 
 const AppLayout = () => {
@@ -45,6 +46,7 @@ const AppLayout = () => {
             id: company.id,
             name: company.fantasy_name || company.trade_name || "Empresa",
             cnpj: company.cnpj || undefined,
+            pointsBalance: Number(company?.metadata?.points_balance || 0),
           }));
         setCondos(approved);
         setSelectedCondo((current) => {
@@ -124,6 +126,9 @@ const AppLayout = () => {
                 ))}
               </select>
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Pontos: {selectedCondo?.pointsBalance ?? 0}
+            </p>
           </div>
 
           <nav className="flex-1 p-4">
@@ -194,6 +199,9 @@ const AppLayout = () => {
                         ))}
                       </select>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Pontos: {selectedCondo?.pointsBalance ?? 0}
+                    </p>
                   </div>
                   <nav className="p-4">
                     <ul className="space-y-2">

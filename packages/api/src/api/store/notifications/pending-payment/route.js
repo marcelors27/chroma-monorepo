@@ -165,9 +165,26 @@ const POST = async (req, res) => {
     return res.status(404).json({ message: "Condomínio não encontrado." })
   }
 
+  const normalizeEmails = (value) => {
+    if (!value) return []
+    if (Array.isArray(value)) {
+      return value.map((email) => String(email).trim()).filter(Boolean)
+    }
+    if (typeof value === "string") {
+      return value
+        .split(/[;,]+/)
+        .map((email) => email.trim())
+        .filter(Boolean)
+    }
+    return []
+  }
+
   const contactEmail = company?.metadata?.email || null
   const adminEmail = company?.metadata?.administradoraEmail || null
-  const recipients = [contactEmail, adminEmail].filter(Boolean)
+  const billingEmails =
+    normalizeEmails(company?.metadata?.billing_emails) ||
+    normalizeEmails(company?.metadata?.billingEmails)
+  const recipients = [...billingEmails, contactEmail, adminEmail].filter(Boolean)
   const uniqueRecipients = Array.from(new Set(recipients))
 
   if (!uniqueRecipients.length) {

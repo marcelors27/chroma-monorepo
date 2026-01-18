@@ -6,6 +6,7 @@ import {
   createCart,
   createPaymentSessions,
   deleteLineItem,
+  earnCompanyPoints,
   ensureCart,
   mapCartToItems,
   retrieveCart,
@@ -187,6 +188,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (DEBUG) console.debug("[cart] completeBackendCheckout:start", { cartId, address, paymentMethod });
     if (!cartId) throw new Error("Carrinho não encontrado");
     try {
+      const applyPoints = async (orderId?: string | null) => {
+        if (!orderId) return;
+        const companyId = address?.metadata?.company_id || address?.metadata?.condo_id;
+        if (!companyId) return;
+        try {
+          await earnCompanyPoints(companyId, orderId);
+        } catch (err: any) {
+          if (DEBUG) console.debug("[cart] points:error", err?.message || err);
+        }
+      };
       const { providerId, data } = resolvePaymentProvider(paymentMethod);
       let cartSnapshot = await retrieveCart(cartId);
       if (!cartSnapshot?.id) {
@@ -206,6 +217,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const orderId = await completeCart(cartSnapshot.id);
       if (DEBUG) console.debug("[cart] completeBackendCheckout:success", { orderId });
       await refreshCart();
+      await applyPoints(orderId);
       return orderId;
     } catch (err: any) {
       if (DEBUG) console.debug("[cart] completeBackendCheckout:error", err?.message || err);

@@ -29,6 +29,7 @@ type CondoForm = {
   cnpj: string;
   phone: string;
   email: string;
+  billingEmails: string;
   adminName: string;
   adminPhone: string;
   monthlyFee: number;
@@ -50,6 +51,7 @@ const emptyForm: CondoForm = {
   cnpj: "",
   phone: "",
   email: "",
+  billingEmails: "",
   adminName: "",
   adminPhone: "",
   monthlyFee: 0,
@@ -97,6 +99,9 @@ export default function CondominioDetalhes() {
       cnpj: company.cnpj || "",
       phone: company.metadata?.phone || "",
       email: company.metadata?.email || "",
+      billingEmails: Array.isArray(company.metadata?.billing_emails)
+        ? company.metadata.billing_emails.join(", ")
+        : company.metadata?.billing_emails || "",
       adminName: company.metadata?.adminName || "",
       adminPhone: company.metadata?.adminPhone || "",
       monthlyFee: Number(company.metadata?.monthlyFee) || 0,
@@ -132,6 +137,12 @@ export default function CondominioDetalhes() {
         role: formData.role,
         phone: formData.phone,
         email: formData.email,
+        billing_emails: formData.billingEmails
+          ? formData.billingEmails
+              .split(/[;,]+/)
+              .map((item) => item.trim())
+              .filter(Boolean)
+          : [],
         adminName: formData.adminName,
         adminPhone: formData.adminPhone,
         monthlyFee: formData.monthlyFee,
@@ -243,6 +254,14 @@ export default function CondominioDetalhes() {
             editable={isEditing}
             onChangeText={(value) => handleChange("email", value)}
             marginTop={4}
+          />
+          <Label marginTop={12}>E-mails para boleto/PIX</Label>
+          <Input
+            value={formData.billingEmails}
+            editable={isEditing}
+            onChangeText={(value) => handleChange("billingEmails", value)}
+            marginTop={4}
+            placeholder="financeiro@condominio.com.br, sindico@condominio.com.br"
           />
           <Label marginTop={12}>Observações</Label>
           <Textarea

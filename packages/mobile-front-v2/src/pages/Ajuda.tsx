@@ -1,13 +1,34 @@
-import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
+import { Linking, ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
 
 const helpOptions = [
   { id: "1", title: "Perguntas frequentes", description: "Respostas rápidas" },
-  { id: "2", title: "Fale com suporte", description: "Atendimento especializado" },
+  { id: "2", title: "Fale com suporte", description: "Atendimento especializado", type: "whatsapp" },
   { id: "3", title: "Tutoriais", description: "Aprenda a usar o app" },
 ];
+
+const whatsappTarget = process.env.EXPO_PUBLIC_WHATSAPP_TARGET || "+55 51 981975736";
+
+const openWhatsapp = async () => {
+  const trimmed = whatsappTarget.trim();
+  if (!trimmed) {
+    toast.error("WhatsApp nao configurado.");
+    return;
+  }
+
+  const digits = trimmed.replace(/\D/g, "");
+  const isId = /[a-zA-Z]/.test(trimmed);
+  const url = isId ? `https://wa.me/message/${trimmed}` : `https://wa.me/${digits}`;
+
+  const canOpen = await Linking.canOpenURL(url);
+  if (!canOpen) {
+    toast.error("Nao foi possivel abrir o WhatsApp.");
+    return;
+  }
+  await Linking.openURL(url);
+};
 
 export default function Ajuda() {
   return (
@@ -18,7 +39,11 @@ export default function Ajuda() {
         {helpOptions.map((option) => (
           <Pressable
             key={option.id}
-            onPress={() => toast.info("Funcionalidade em desenvolvimento")}
+            onPress={() =>
+              option.type === "whatsapp"
+                ? openWhatsapp()
+                : toast.info("Funcionalidade em desenvolvimento")
+            }
             style={styles.card}
           >
             <Text style={styles.cardTitle}>{option.title}</Text>

@@ -6,7 +6,9 @@ import {
   createCart,
   createPaymentSessions,
   deleteLineItem,
+  earnCompanyPoints,
   ensureCart,
+  getActiveCondo,
   mapCartToItems,
   MedusaPaymentCollection,
   PendingPaymentDetails,
@@ -380,6 +382,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     if (DEBUG) console.debug("[cart] completeBackendCheckout:start", { cartId, address, paymentMethod });
     if (!cartId) throw new Error("Carrinho não encontrado");
     const isAsyncPayment = paymentMethod !== "credit";
+    const applyPoints = async (orderId?: string | null) => {
+      if (!orderId) return;
+      const companyId = address?.metadata?.company_id || getActiveCondo()?.id;
+      if (!companyId) return;
+      try {
+        await earnCompanyPoints(companyId, orderId);
+      } catch (err: any) {
+        if (DEBUG) console.debug("[cart] points:error", err?.message || err);
+      }
+    };
     try {
       const { providerId, data } = resolvePaymentProvider(paymentMethod);
       let cartSnapshot = await retrieveCart(cartId);
@@ -397,6 +409,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           if (DEBUG) console.debug("[cart] completeBackendCheckout:success", { orderId });
           await refreshCart();
           removePendingPayment({ cart_id: cartSnapshot.id });
+          await applyPoints(orderId);
           return { status: "completed", orderId };
         }
       }
@@ -434,6 +447,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             await refreshCart();
             removePendingPayment({ cart_id: cartSnapshot.id });
             await removePendingPaymentFromBackend({ cart_id: cartSnapshot.id });
+            await applyPoints(orderId);
             return { status: "completed", orderId };
           }
           throw err;
@@ -509,6 +523,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       await refreshCart();
       removePendingPayment({ cart_id: cartSnapshot.id });
       await removePendingPaymentFromBackend({ cart_id: cartSnapshot.id });
+      await applyPoints(orderId);
       return { status: "completed", orderId };
     } catch (err: any) {
       if (DEBUG) console.debug("[cart] completeBackendCheckout:error", err?.message || err);

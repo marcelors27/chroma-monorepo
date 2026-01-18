@@ -381,7 +381,23 @@ const runRecurringPurchases = async function runRecurringPurchases(container) {
             checkoutUrl,
           })
 
+          const normalizeEmails = (value) => {
+            if (!value) return []
+            if (Array.isArray(value)) {
+              return value.map((email) => String(email).trim()).filter(Boolean)
+            }
+            if (typeof value === "string") {
+              return value
+                .split(/[;,]+/)
+                .map((email) => email.trim())
+                .filter(Boolean)
+            }
+            return []
+          }
+
           const recipients = [
+            ...normalizeEmails(company?.metadata?.billing_emails),
+            ...normalizeEmails(company?.metadata?.billingEmails),
             company?.metadata?.email,
             company?.metadata?.administradoraEmail,
           ].filter(Boolean)

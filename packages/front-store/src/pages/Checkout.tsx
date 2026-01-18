@@ -19,6 +19,7 @@ import { useCart } from "@/contexts/CartContext";
 import {
   completeCart,
   createRecurrence,
+  earnCompanyPoints,
   fetchPendingPaymentsFromBackend,
   getActiveCondo,
   getPendingPayments,
@@ -127,6 +128,14 @@ const Checkout = () => {
             removePendingPayment({ cart_id: pendingCartId });
             await removePendingPaymentFromBackend({ cart_id: pendingCartId });
             await clearCart();
+            const activeCondo = getActiveCondo();
+            if (activeCondo?.id) {
+              try {
+                await earnCompanyPoints(activeCondo.id, newOrderId);
+              } catch {
+                // Ignore points failures in polling flow
+              }
+            }
           }
         }
       } catch {

@@ -1,6 +1,6 @@
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { ArrowRight, Newspaper, Package, TrendingUp } from "lucide-react-native";
+import { ArrowRight, MessageCircle, Newspaper, Package, Star, TrendingUp } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -35,6 +35,7 @@ export default function Index() {
   });
   const screenWidth = Dimensions.get("window").width;
   const productCardWidth = (screenWidth - 52) / 2;
+  const whatsappTarget = process.env.EXPO_PUBLIC_WHATSAPP_TARGET || "+55 51 981975736";
 
   const featuredProducts = (data?.products || [])
     .map((product: MedusaProduct) => {
@@ -78,6 +79,25 @@ export default function Index() {
     return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR });
   };
 
+  const openWhatsapp = async () => {
+    const trimmed = whatsappTarget.trim();
+    if (!trimmed) {
+      toast.error("WhatsApp nao configurado.");
+      return;
+    }
+
+    const digits = trimmed.replace(/\D/g, "");
+    const isId = /[a-zA-Z]/.test(trimmed);
+    const url = isId ? `https://wa.me/message/${trimmed}` : `https://wa.me/${digits}`;
+
+    const canOpen = await Linking.canOpenURL(url);
+    if (!canOpen) {
+      toast.error("Nao foi possivel abrir o WhatsApp.");
+      return;
+    }
+    await Linking.openURL(url);
+  };
+
   const newsItems = (newsData?.news || []) as MedusaNews[];
   const featuredNews = newsItems[0];
   const listNewsItems = newsItems.slice(1);
@@ -108,6 +128,16 @@ export default function Index() {
             </View>
             <Text style={styles.metricValue}>R$ 430</Text>
             <Text style={styles.metricHint}>Em descontos</Text>
+          </View>
+        </View>
+
+        <View style={styles.pointsCard}>
+          <View style={styles.pointsIconWrap}>
+            <Star color="#F8C25C" size={18} />
+          </View>
+          <View style={styles.pointsContent}>
+            <Text style={styles.pointsLabel}>Pontos do condomínio</Text>
+            <Text style={styles.pointsValue}>{activeCondo?.pointsBalance ?? 0}</Text>
           </View>
         </View>
 
@@ -171,6 +201,22 @@ export default function Index() {
             ))}
           </View>
         </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Ajuda rapida</Text>
+          </View>
+          <Pressable onPress={openWhatsapp} style={styles.helpCard}>
+            <View style={styles.helpIconWrap}>
+              <MessageCircle color="#5DA2E6" size={18} />
+            </View>
+            <View style={styles.helpContent}>
+              <Text style={styles.helpTitle}>Falar com a Chroma</Text>
+              <Text style={styles.helpSubtitle}>Atendimento via WhatsApp</Text>
+            </View>
+            <ArrowRight color="#8C98A8" size={16} />
+          </Pressable>
+        </View>
       </ScrollView>
     </AuthenticatedLayout>
   );
@@ -230,6 +276,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 6,
   },
+  pointsCard: {
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+    backgroundColor: "rgba(26, 30, 38, 0.92)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(70, 78, 90, 0.6)",
+  },
+  pointsIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(248, 194, 92, 0.18)",
+  },
+  pointsContent: {
+    flex: 1,
+  },
+  pointsLabel: {
+    color: "#8C98A8",
+    fontSize: 12,
+  },
+  pointsValue: {
+    color: "#E6E8EA",
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: 4,
+  },
   section: {
     marginTop: 24,
   },
@@ -265,5 +343,36 @@ const styles = StyleSheet.create({
   productRow: {
     flexDirection: "row",
     gap: 12,
+  },
+  helpCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    backgroundColor: "rgba(26, 30, 38, 0.92)",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(70, 78, 90, 0.6)",
+  },
+  helpIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(93, 162, 230, 0.18)",
+  },
+  helpContent: {
+    flex: 1,
+  },
+  helpTitle: {
+    color: "#E6E8EA",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  helpSubtitle: {
+    color: "#8C98A8",
+    fontSize: 12,
+    marginTop: 4,
   },
 });

@@ -10,6 +10,7 @@ export interface Condo {
   units: number;
   role: string;
   approved?: boolean;
+  pointsBalance?: number;
 }
 
 interface CondoContextType {
@@ -39,6 +40,7 @@ export function CondoProvider({ children }: { children: ReactNode }) {
           units: Number(company.metadata?.units) || 0,
           role: company.metadata?.role || "Síndico",
           approved: true,
+          pointsBalance: Number(company.metadata?.points_balance || 0),
         }));
       setCondos(mapped);
       setActiveCondoState((current) => {

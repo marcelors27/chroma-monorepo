@@ -24,6 +24,15 @@ type PendingCompany = {
   created_at?: string
 }
 
+type AdminCompany = {
+  id: string
+  customer_id: string
+  trade_name?: string | null
+  fantasy_name?: string | null
+  cnpj?: string | null
+  metadata?: Record<string, any>
+}
+
 type News = {
   id: string
   title: string
@@ -59,6 +68,10 @@ export default function App() {
   const [pendingCompanies, setPendingCompanies] = useState<PendingCompany[]>([])
   const [pendingCompaniesError, setPendingCompaniesError] = useState<string | null>(null)
   const [pendingCompanyActionId, setPendingCompanyActionId] = useState<string | null>(null)
+  const [companies, setCompanies] = useState<AdminCompany[]>([])
+  const [companiesError, setCompaniesError] = useState<string | null>(null)
+  const [companyEmailEdits, setCompanyEmailEdits] = useState<Record<string, string>>({})
+  const [companySavingId, setCompanySavingId] = useState<string | null>(null)
   const [news, setNews] = useState<News[]>([])
   const [newsError, setNewsError] = useState<string | null>(null)
   const [newsSaving, setNewsSaving] = useState(false)
@@ -115,11 +128,12 @@ export default function App() {
 
     const load = async () => {
       try {
-        const [productsRes, ordersRes, companiesRes, newsRes] = await Promise.all([
+        const [productsRes, ordersRes, companiesRes, newsRes, allCompaniesRes] = await Promise.all([
           fetch(`${MEDUSA_URL}/admin/products?limit=50`, { headers }),
           fetch(`${MEDUSA_URL}/admin/orders?limit=50`, { headers }),
           fetch(`${MEDUSA_URL}/admin/companies/pending`, { headers }),
           fetch(`${MEDUSA_URL}/admin/news?limit=50`, { headers }),
+          fetch(`${MEDUSA_URL}/admin/companies?limit=500`, { headers }),
         ])
 
         if (productsRes.ok) {
@@ -148,10 +162,28 @@ export default function App() {
           const body = await newsRes.text()
           setNewsError(body || "Não foi possível buscar notícias")
         }
+
+        if (allCompaniesRes.ok) {
+          const json = await allCompaniesRes.json()
+          const items = json.companies ?? []
+          setCompanies(items)
+          const nextEdits: Record<string, string> = {}
+          items.forEach((company: AdminCompany) => {
+            const raw = company?.metadata?.billing_emails
+            const value = Array.isArray(raw) ? raw.join(", ") : raw || ""
+            nextEdits[company.id] = value
+          })
+          setCompanyEmailEdits(nextEdits)
+          setCompaniesError(null)
+        } else {
+          const body = await allCompaniesRes.text()
+          setCompaniesError(body || "Não foi possível buscar empresas")
+        }
       } catch (err) {
         console.error("Erro ao buscar dados", err)
         setPendingCompaniesError("Erro ao buscar empresas pendentes")
         setNewsError("Erro ao buscar notícias")
+        setCompaniesError("Erro ao buscar empresas")
       }
     }
 
@@ -261,6 +293,39 @@ export default function App() {
       setNewsError(err?.message || "Erro ao criar notícia")
     } finally {
       setNewsSaving(false)
+    }
+  }
+
+  const handleCompanyEmailChange = (companyId: string, value: string) => {
+    setCompanyEmailEdits((prev) => ({ ...prev, [companyId]: value }))
+  }
+
+  const saveCompanyBillingEmails = async (company: AdminCompany) => {
+    setCompanySavingId(company.id)
+    setCompaniesError(null)
+    try {
+      const payload = {
+        customer_id: company.customer_id,
+        billing_emails: companyEmailEdits[company.id] || "",
+      }
+      const res = await fetch(`${MEDUSA_URL}/admin/companies/${company.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || "Não foi possível salvar os e-mails")
+      }
+      const json = await res.json()
+      const updated = json?.company
+      if (updated) {
+        setCompanies((prev) => prev.map((item) => (item.id === company.id ? updated : item)))
+      }
+    } catch (err: any) {
+      setCompaniesError(err?.message || "Erro ao salvar e-mails")
+    } finally {
+      setCompanySavingId(null)
     }
   }
 
@@ -395,6 +460,84 @@ export default function App() {
                             }}
                           >
                             Rejeitar
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="panel" style={{ marginTop: "1rem" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "0.75rem",
+              }}
+            >
+              <div>
+                <h3>Destinatários de boleto/PIX</h3>
+                <p className="muted" style={{ marginTop: "0.25rem" }}>
+                  Configure os e-mails que receberão boletos e códigos PIX por condomínio.
+                </p>
+              </div>
+              <span className="pill">{companies.length} empresas</span>
+            </div>
+
+            {companiesError && <div className="muted">Erro: {companiesError}</div>}
+
+            <div style={{ overflowX: "auto" }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Condomínio</th>
+                    <th>E-mails</th>
+                    <th>Pontos</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {companies.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: "center" }}>
+                        Nenhuma empresa encontrada.
+                      </td>
+                    </tr>
+                  ) : (
+                    companies.map((company) => (
+                      <tr key={company.id}>
+                        <td>{company.fantasy_name || company.trade_name || "Condomínio"}</td>
+                        <td style={{ minWidth: "320px" }}>
+                          <input
+                            value={companyEmailEdits[company.id] || ""}
+                            onChange={(e) => handleCompanyEmailChange(company.id, e.target.value)}
+                            placeholder="financeiro@condominio.com.br, sindico@condominio.com.br"
+                            style={{
+                              width: "100%",
+                              padding: "0.5rem 0.75rem",
+                              borderRadius: "10px",
+                              border: "1px solid var(--border)",
+                              background: "#0b1324",
+                              color: "var(--text)",
+                            }}
+                          />
+                          <span className="muted" style={{ fontSize: "0.8rem" }}>
+                            Separe por vírgula ou ponto e vírgula.
+                          </span>
+                        </td>
+                        <td>{Number(company?.metadata?.points_balance || 0)}</td>
+                        <td>
+                          <button
+                            className="btn"
+                            onClick={() => saveCompanyBillingEmails(company)}
+                            disabled={companySavingId === company.id}
+                            style={{ padding: "0.4rem 0.75rem" }}
+                          >
+                            {companySavingId === company.id ? "Salvando..." : "Salvar"}
                           </button>
                         </td>
                       </tr>

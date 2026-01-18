@@ -111,6 +111,7 @@ export type ActiveCondo = {
   id: string
   name: string
   cnpj?: string
+  points_balance?: number
 }
 
 export type PendingPayment = {
@@ -651,6 +652,16 @@ export const updateCompany = async (
     method: "PATCH",
     body: JSON.stringify(payload),
   })
+}
+
+export const earnCompanyPoints = async (companyId: string, orderId: string) => {
+  return apiFetch<{ points_earned: number; points_balance: number; points_total: number }>(
+    `/store/companies/${companyId}/points`,
+    {
+      method: "POST",
+      body: JSON.stringify({ order_id: orderId }),
+    }
+  )
 }
 
 export const transferCompany = async (
