@@ -24,6 +24,18 @@ type PendingCompany = {
   created_at?: string
 }
 
+type News = {
+  id: string
+  title: string
+  summary: string
+  category?: string | null
+  author?: string | null
+  source?: string | null
+  read_time?: number | null
+  published_at?: string | null
+  is_published?: boolean
+}
+
 const MEDUSA_URL = import.meta.env.VITE_MEDUSA_URL || "http://localhost:9000"
 const DEFAULT_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || "admin@chroma.local"
 const DEFAULT_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "supersecret"
@@ -47,6 +59,21 @@ export default function App() {
   const [pendingCompanies, setPendingCompanies] = useState<PendingCompany[]>([])
   const [pendingCompaniesError, setPendingCompaniesError] = useState<string | null>(null)
   const [pendingCompanyActionId, setPendingCompanyActionId] = useState<string | null>(null)
+  const [news, setNews] = useState<News[]>([])
+  const [newsError, setNewsError] = useState<string | null>(null)
+  const [newsSaving, setNewsSaving] = useState(false)
+  const [newsForm, setNewsForm] = useState({
+    title: "",
+    summary: "",
+    content: "",
+    category: "",
+    image_url: "",
+    author: "",
+    source: "",
+    read_time: "",
+    published_at: "",
+    is_published: true,
+  })
 
   const headers = useMemo(
     () => ({
@@ -88,10 +115,11 @@ export default function App() {
 
     const load = async () => {
       try {
-        const [productsRes, ordersRes, companiesRes] = await Promise.all([
+        const [productsRes, ordersRes, companiesRes, newsRes] = await Promise.all([
           fetch(`${MEDUSA_URL}/admin/products?limit=50`, { headers }),
           fetch(`${MEDUSA_URL}/admin/orders?limit=50`, { headers }),
           fetch(`${MEDUSA_URL}/admin/companies/pending`, { headers }),
+          fetch(`${MEDUSA_URL}/admin/news?limit=50`, { headers }),
         ])
 
         if (productsRes.ok) {
@@ -111,9 +139,19 @@ export default function App() {
           const body = await companiesRes.text()
           setPendingCompaniesError(body || "Não foi possível buscar empresas pendentes")
         }
+
+        if (newsRes.ok) {
+          const json = await newsRes.json()
+          setNews(json.news ?? [])
+          setNewsError(null)
+        } else {
+          const body = await newsRes.text()
+          setNewsError(body || "Não foi possível buscar notícias")
+        }
       } catch (err) {
         console.error("Erro ao buscar dados", err)
         setPendingCompaniesError("Erro ao buscar empresas pendentes")
+        setNewsError("Erro ao buscar notícias")
       }
     }
 
@@ -162,6 +200,67 @@ export default function App() {
       setPendingCompaniesError(err?.message || "Erro ao alterar status")
     } finally {
       setPendingCompanyActionId(null)
+    }
+  }
+
+  const handleNewsChange = (field: keyof typeof newsForm, value: string | boolean) => {
+    setNewsForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const resetNewsForm = () => {
+    setNewsForm({
+      title: "",
+      summary: "",
+      content: "",
+      category: "",
+      image_url: "",
+      author: "",
+      source: "",
+      read_time: "",
+      published_at: "",
+      is_published: true,
+    })
+  }
+
+  async function createNews(e: FormEvent) {
+    e.preventDefault()
+    if (!newsForm.title || !newsForm.summary || !newsForm.content) {
+      setNewsError("Preencha titulo, resumo e conteudo.")
+      return
+    }
+    setNewsSaving(true)
+    setNewsError(null)
+    try {
+      const payload = {
+        title: newsForm.title,
+        summary: newsForm.summary,
+        content: newsForm.content,
+        category: newsForm.category || null,
+        image_url: newsForm.image_url || null,
+        author: newsForm.author || null,
+        source: newsForm.source || null,
+        read_time: newsForm.read_time ? Number(newsForm.read_time) : null,
+        published_at: newsForm.published_at || null,
+        is_published: newsForm.is_published,
+      }
+      const res = await fetch(`${MEDUSA_URL}/admin/news`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || "Não foi possível criar notícia")
+      }
+      const json = await res.json()
+      if (json?.news) {
+        setNews((prev) => [json.news, ...prev])
+      }
+      resetNewsForm()
+    } catch (err: any) {
+      setNewsError(err?.message || "Erro ao criar notícia")
+    } finally {
+      setNewsSaving(false)
     }
   }
 
@@ -298,6 +397,237 @@ export default function App() {
                             Rejeitar
                           </button>
                         </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="panel" style={{ marginTop: "1rem" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "0.75rem",
+              }}
+            >
+              <div>
+                <h3>Notícias</h3>
+                <p className="muted" style={{ marginTop: "0.25rem" }}>
+                  Crie e acompanhe as notícias exibidas no app e no front-store.
+                </p>
+              </div>
+              <span className="pill">{news.length} registros</span>
+            </div>
+
+            {newsError && <div className="muted">Erro: {newsError}</div>}
+
+            <form className="panel grid" onSubmit={createNews} style={{ gap: "0.85rem", marginBottom: "1rem" }}>
+              <h4 style={{ marginBottom: "0.35rem" }}>Adicionar notícia</h4>
+              <label className="grid" style={{ gap: "0.35rem" }}>
+                <span className="muted">Título</span>
+                <input
+                  value={newsForm.title}
+                  onChange={(e) => handleNewsChange("title", e.target.value)}
+                  required
+                  style={{
+                    padding: "0.75rem",
+                    borderRadius: "10px",
+                    border: "1px solid var(--border)",
+                    background: "#0b1324",
+                    color: "var(--text)",
+                  }}
+                />
+              </label>
+
+              <label className="grid" style={{ gap: "0.35rem" }}>
+                <span className="muted">Resumo</span>
+                <textarea
+                  value={newsForm.summary}
+                  onChange={(e) => handleNewsChange("summary", e.target.value)}
+                  rows={3}
+                  required
+                  style={{
+                    padding: "0.75rem",
+                    borderRadius: "10px",
+                    border: "1px solid var(--border)",
+                    background: "#0b1324",
+                    color: "var(--text)",
+                  }}
+                />
+              </label>
+
+              <label className="grid" style={{ gap: "0.35rem" }}>
+                <span className="muted">Conteúdo (HTML)</span>
+                <textarea
+                  value={newsForm.content}
+                  onChange={(e) => handleNewsChange("content", e.target.value)}
+                  rows={6}
+                  required
+                  style={{
+                    padding: "0.75rem",
+                    borderRadius: "10px",
+                    border: "1px solid var(--border)",
+                    background: "#0b1324",
+                    color: "var(--text)",
+                  }}
+                />
+              </label>
+
+              <div style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                <label className="grid" style={{ gap: "0.35rem" }}>
+                  <span className="muted">Categoria</span>
+                  <input
+                    value={newsForm.category}
+                    onChange={(e) => handleNewsChange("category", e.target.value)}
+                    style={{
+                      padding: "0.75rem",
+                      borderRadius: "10px",
+                      border: "1px solid var(--border)",
+                      background: "#0b1324",
+                      color: "var(--text)",
+                    }}
+                  />
+                </label>
+
+                <label className="grid" style={{ gap: "0.35rem" }}>
+                  <span className="muted">Autor</span>
+                  <input
+                    value={newsForm.author}
+                    onChange={(e) => handleNewsChange("author", e.target.value)}
+                    style={{
+                      padding: "0.75rem",
+                      borderRadius: "10px",
+                      border: "1px solid var(--border)",
+                      background: "#0b1324",
+                      color: "var(--text)",
+                    }}
+                  />
+                </label>
+
+                <label className="grid" style={{ gap: "0.35rem" }}>
+                  <span className="muted">Fonte</span>
+                  <input
+                    value={newsForm.source}
+                    onChange={(e) => handleNewsChange("source", e.target.value)}
+                    style={{
+                      padding: "0.75rem",
+                      borderRadius: "10px",
+                      border: "1px solid var(--border)",
+                      background: "#0b1324",
+                      color: "var(--text)",
+                    }}
+                  />
+                </label>
+
+                <label className="grid" style={{ gap: "0.35rem" }}>
+                  <span className="muted">Tempo de leitura (min)</span>
+                  <input
+                    type="number"
+                    value={newsForm.read_time}
+                    onChange={(e) => handleNewsChange("read_time", e.target.value)}
+                    min={1}
+                    style={{
+                      padding: "0.75rem",
+                      borderRadius: "10px",
+                      border: "1px solid var(--border)",
+                      background: "#0b1324",
+                      color: "var(--text)",
+                    }}
+                  />
+                </label>
+
+                <label className="grid" style={{ gap: "0.35rem" }}>
+                  <span className="muted">Data de publicação</span>
+                  <input
+                    type="datetime-local"
+                    value={newsForm.published_at}
+                    onChange={(e) => handleNewsChange("published_at", e.target.value)}
+                    style={{
+                      padding: "0.75rem",
+                      borderRadius: "10px",
+                      border: "1px solid var(--border)",
+                      background: "#0b1324",
+                      color: "var(--text)",
+                    }}
+                  />
+                </label>
+              </div>
+
+              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <input
+                  type="checkbox"
+                  checked={newsForm.is_published}
+                  onChange={(e) => handleNewsChange("is_published", e.target.checked)}
+                />
+                <span className="muted">Publicar imediatamente</span>
+              </label>
+
+              <label className="grid" style={{ gap: "0.35rem" }}>
+                <span className="muted">Imagem (URL)</span>
+                <input
+                  value={newsForm.image_url}
+                  onChange={(e) => handleNewsChange("image_url", e.target.value)}
+                  style={{
+                    padding: "0.75rem",
+                    borderRadius: "10px",
+                    border: "1px solid var(--border)",
+                    background: "#0b1324",
+                    color: "var(--text)",
+                  }}
+                />
+              </label>
+
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <button className="btn" type="submit" disabled={newsSaving}>
+                  {newsSaving ? "Salvando..." : "Adicionar notícia"}
+                </button>
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={resetNewsForm}
+                  style={{
+                    background: "transparent",
+                    color: "var(--text)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  Limpar
+                </button>
+              </div>
+            </form>
+
+            <div style={{ overflowX: "auto" }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Título</th>
+                    <th>Categoria</th>
+                    <th>Publicado</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {news.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: "center" }}>
+                        Nenhuma notícia cadastrada.
+                      </td>
+                    </tr>
+                  ) : (
+                    news.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.title}</td>
+                        <td>{item.category || "Geral"}</td>
+                        <td>
+                          {item.published_at
+                            ? new Date(item.published_at).toLocaleDateString("pt-BR")
+                            : "—"}
+                        </td>
+                        <td>{item.is_published ? "Ativa" : "Rascunho"}</td>
                       </tr>
                     ))
                   )}

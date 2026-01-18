@@ -1,23 +1,26 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { toast } from "@/lib/toast";
+import { listNews } from "@/lib/medusa";
 
-export interface OrderNotification {
+type NotificationStatus = "confirmed" | "preparing" | "shipping" | "delivered" | "news";
+
+export interface AppNotification {
   id: string;
-  orderId: string;
+  orderId?: string;
   title: string;
   message: string;
-  status: 'confirmed' | 'preparing' | 'shipping' | 'delivered';
+  status: NotificationStatus;
   timestamp: Date;
   read: boolean;
 }
 
 interface NotificationContextType {
-  notifications: OrderNotification[];
+  notifications: AppNotification[];
   unreadCount: number;
   hasPermission: boolean;
   requestPermission: () => Promise<boolean>;
-  addNotification: (notification: Omit<OrderNotification, 'id' | 'timestamp' | 'read'>) => void;
+  addNotification: (notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearNotifications: () => void;
@@ -26,8 +29,12 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] = useState<OrderNotification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [hasPermission, setHasPermission] = useState(true);
+  const newsLastSeenRef = useRef<string | null>(null);
+  const newsPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const NEWS_LAST_SEEN_KEY = "chroma_mobile_news_last_seen";
+  const NEWS_POLLING_INTERVAL = 2 * 60 * 1000;
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -39,6 +46,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     };
 
     loadNotifications();
+  }, []);
+
+  useEffect(() => {
+    const loadNewsLastSeen = async () => {
+      const saved = await AsyncStorage.getItem(NEWS_LAST_SEEN_KEY);
+      newsLastSeenRef.current = saved;
+    };
+    loadNewsLastSeen();
   }, []);
 
   useEffect(() => {
@@ -54,8 +69,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
-  const addNotification = useCallback((notification: Omit<OrderNotification, 'id' | 'timestamp' | 'read'>) => {
-    const newNotification: OrderNotification = {
+  const addNotification = useCallback((notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
+    const newNotification: AppNotification = {
       ...notification,
       id: `notif-${Date.now()}`,
       timestamp: new Date(),
@@ -71,6 +86,42 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     });
 
   }, []);
+
+  useEffect(() => {
+    const checkNews = async () => {
+      try {
+        const response = await listNews({ limit: 1 });
+        const latest = response?.news?.[0];
+        if (!latest?.id) return;
+
+        const lastSeen = newsLastSeenRef.current;
+        if (lastSeen && lastSeen !== latest.id && hasPermission) {
+          addNotification({
+            title: "Nova noticia publicada",
+            message: latest.title,
+            status: "news",
+            orderId: latest.id,
+          });
+        }
+
+        if (!lastSeen || lastSeen !== latest.id) {
+          newsLastSeenRef.current = latest.id;
+          await AsyncStorage.setItem(NEWS_LAST_SEEN_KEY, latest.id);
+        }
+      } catch {
+        // ignore polling errors
+      }
+    };
+
+    checkNews();
+    newsPollingRef.current = setInterval(checkNews, NEWS_POLLING_INTERVAL);
+
+    return () => {
+      if (newsPollingRef.current) {
+        clearInterval(newsPollingRef.current);
+      }
+    };
+  }, [addNotification, hasPermission]);
 
   const markAsRead = useCallback((id: string) => {
     setNotifications(prev =>

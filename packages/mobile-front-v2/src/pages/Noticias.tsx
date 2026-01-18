@@ -2,65 +2,34 @@ import { useState, useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Search, X } from "lucide-react-native";
+import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { NewsCard } from "@/components/ui/NewsCard";
 import { Input } from "@/components/ui/input";
-
-const allNews = [
-  {
-    id: "featured",
-    title: "Nova lei de condomínios entra em vigor e traz mudanças importantes",
-    summary: "As principais alterações incluem regras sobre animais de estimação e reformas em unidades.",
-    source: "SíndicoNet",
-    date: "Há 2 horas",
-    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&auto=format&fit=crop&q=60",
-    category: "Legislação",
-  },
-  {
-    id: "1",
-    title: "Como reduzir custos de energia em condomínios",
-    summary: "Dicas práticas para diminuir a conta de luz nas áreas comuns.",
-    source: "Revista Síndico",
-    date: "5h atrás",
-    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&auto=format&fit=crop&q=60",
-    category: "Economia",
-  },
-  {
-    id: "2",
-    title: "Assembleia virtual: guia completo para síndicos",
-    summary: "Tudo que você precisa saber sobre assembleias online.",
-    source: "Portal do Síndico",
-    date: "1 dia atrás",
-    image: "https://images.unsplash.com/photo-1573164713988-8665fc963095?w=400&auto=format&fit=crop&q=60",
-    category: "Gestão",
-  },
-  {
-    id: "3",
-    title: "Manutenção preventiva: calendário anual para síndicos",
-    summary: "Organize as manutenções do seu condomínio com este guia completo.",
-    source: "Manutenção & Cia",
-    date: "2 dias atrás",
-    image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&auto=format&fit=crop&q=60",
-    category: "Manutenção",
-  },
-  {
-    id: "4",
-    title: "Segurança condominial: tendências para 2024",
-    summary: "Novas tecnologias e práticas para manter seu condomínio seguro.",
-    source: "Segurança Total",
-    date: "3 dias atrás",
-    image: "https://images.unsplash.com/photo-1558002038-1055907df827?w=400&auto=format&fit=crop&q=60",
-    category: "Segurança",
-  },
-];
-
-const categories = ["Todas", "Legislação", "Economia", "Gestão", "Manutenção", "Segurança"];
+import { listNews, MedusaNews } from "@/lib/medusa";
 
 export default function Noticias() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todas");
+  const { data } = useQuery({ queryKey: ["news-list"], queryFn: () => listNews({ limit: 100 }) });
+  const allNews = (data?.news || []) as MedusaNews[];
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    allNews.forEach((item) => {
+      if (item.category) set.add(item.category);
+    });
+    return ["Todas", ...Array.from(set)];
+  }, [allNews]);
+
+  const formatNewsDate = (date?: string | null) => {
+    if (!date) return "Agora";
+    return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR });
+  };
 
   const filteredNews = useMemo(() => {
     return allNews.filter((news) => {
@@ -128,7 +97,11 @@ export default function Noticias() {
             filteredNews.map((news, index) => (
               <NewsCard
                 key={news.id}
-                {...news}
+                title={news.title}
+                summary={news.summary}
+                source={news.source || news.author || "Chroma"}
+                date={formatNewsDate(news.published_at)}
+                image={news.image_url || undefined}
                 isHighlight={index === 0 && selectedCategory === "Todas" && !searchQuery}
                 onClick={() => navigation.navigate("NoticiaDetalhes" as never, { id: news.id } as never)}
               />

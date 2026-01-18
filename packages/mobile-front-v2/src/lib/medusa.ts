@@ -125,6 +125,22 @@ export type MedusaCustomer = {
   created_at?: string;
 };
 
+export type MedusaNews = {
+  id: string;
+  title: string;
+  summary: string;
+  content: string;
+  category?: string | null;
+  image_url?: string | null;
+  author?: string | null;
+  source?: string | null;
+  read_time?: number | null;
+  published_at?: string | null;
+  is_published?: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 export type RecurrenceItem = {
   variant_id: string;
   quantity: number;
@@ -422,6 +438,22 @@ export const retrieveProduct = async (id: string) => {
     });
   }
   return data;
+};
+
+export const listNews = async (params?: { limit?: number; offset?: number }) => {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+  const suffix = query.toString();
+  return apiFetch<{ news: MedusaNews[] }>(`/store/news${suffix ? `?${suffix}` : ""}`, {
+    method: "GET",
+  });
+};
+
+export const getNews = async (id: string) => {
+  return apiFetch<{ news: MedusaNews }>(`/store/news/${id}`, {
+    method: "GET",
+  });
 };
 
 export const createCart = async () => {

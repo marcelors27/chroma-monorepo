@@ -2,6 +2,8 @@ import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react
 import { useNavigation } from "@react-navigation/native";
 import { ArrowRight, Newspaper, Package, TrendingUp } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { NewsCard } from "@/components/ui/NewsCard";
@@ -15,37 +17,11 @@ import {
   getProductImage,
   getVariant,
   getVariantPricing,
+  listNews,
   listProducts,
+  MedusaNews,
   MedusaProduct,
 } from "@/lib/medusa";
-
-const featuredNews = {
-  id: "featured",
-  title: "Nova lei de condomínios entra em vigor e traz mudanças importantes",
-  summary: "As principais alterações incluem regras sobre animais de estimação e reformas em unidades.",
-  source: "SíndicoNet",
-  date: "Há 2 horas",
-  image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&auto=format&fit=crop&q=60",
-};
-
-const news = [
-  {
-    id: "1",
-    title: "Como reduzir custos de energia em condomínios",
-    summary: "Dicas práticas para diminuir a conta de luz nas áreas comuns.",
-    source: "Revista Síndico",
-    date: "5h atrás",
-    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "2",
-    title: "Assembleia virtual: guia completo para síndicos",
-    summary: "Tudo que você precisa saber sobre assembleias online.",
-    source: "Portal do Síndico",
-    date: "1 dia atrás",
-    image: "https://images.unsplash.com/photo-1573164713988-8665fc963095?w=400&auto=format&fit=crop&q=60",
-  },
-];
 
 export default function Index() {
   const navigation = useNavigation();
@@ -53,6 +29,10 @@ export default function Index() {
   const { addItem } = useCart();
   const { user } = useAuth();
   const { data } = useQuery({ queryKey: ["home-products"], queryFn: listProducts });
+  const { data: newsData } = useQuery({
+    queryKey: ["home-news"],
+    queryFn: () => listNews({ limit: 3 }),
+  });
   const screenWidth = Dimensions.get("window").width;
   const productCardWidth = (screenWidth - 52) / 2;
 
@@ -92,6 +72,15 @@ export default function Index() {
       quantity: 1,
     });
   };
+
+  const formatNewsDate = (date?: string | null) => {
+    if (!date) return "Agora";
+    return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR });
+  };
+
+  const newsItems = (newsData?.news || []) as MedusaNews[];
+  const featuredNews = newsItems[0];
+  const listNewsItems = newsItems.slice(1);
 
   return (
     <AuthenticatedLayout>
@@ -134,16 +123,28 @@ export default function Index() {
             </Pressable>
           </View>
 
-          <NewsCard
-            {...featuredNews}
-            isHighlight
-            onClick={() => navigation.navigate("NoticiaDetalhes" as never, { id: featuredNews.id } as never)}
-          />
+          {featuredNews && (
+            <NewsCard
+              title={featuredNews.title}
+              summary={featuredNews.summary}
+              source={featuredNews.source || featuredNews.author || "Chroma"}
+              date={formatNewsDate(featuredNews.published_at)}
+              image={featuredNews.image_url || undefined}
+              isHighlight
+              onClick={() =>
+                navigation.navigate("NoticiaDetalhes" as never, { id: featuredNews.id } as never)
+              }
+            />
+          )}
           <View style={styles.listGap}>
-            {news.map((item) => (
+            {listNewsItems.map((item) => (
               <NewsCard
                 key={item.id}
-                {...item}
+                title={item.title}
+                summary={item.summary}
+                source={item.source || item.author || "Chroma"}
+                date={formatNewsDate(item.published_at)}
+                image={item.image_url || undefined}
                 onClick={() => navigation.navigate("NoticiaDetalhes" as never, { id: item.id } as never)}
               />
             ))}

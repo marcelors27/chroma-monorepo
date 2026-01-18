@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Bell, Check, CheckCheck, Package, Trash2, Truck } from "lucide-react-native";
+import { Bell, Check, CheckCheck, Newspaper, Package, Trash2, Truck } from "lucide-react-native";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useNotifications, OrderNotification } from "@/contexts/NotificationContext";
+import { useNotifications, AppNotification } from "@/contexts/NotificationContext";
 import { Sheet, SheetContent, SheetHeader, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
@@ -12,6 +12,7 @@ const statusIcons = {
   preparing: Package,
   shipping: Truck,
   delivered: CheckCheck,
+  news: Newspaper,
 };
 
 const statusColors = {
@@ -19,13 +20,14 @@ const statusColors = {
   preparing: { color: "#F59E0B", backgroundColor: "rgba(245, 158, 11, 0.12)" },
   shipping: { color: "#A855F7", backgroundColor: "rgba(168, 85, 247, 0.12)" },
   delivered: { color: "#34D399", backgroundColor: "rgba(52, 211, 153, 0.12)" },
+  news: { color: "#5DA2E6", backgroundColor: "rgba(93, 162, 230, 0.12)" },
 };
 
 function NotificationItem({
   notification,
   onRead,
 }: {
-  notification: OrderNotification;
+  notification: AppNotification;
   onRead: () => void;
 }) {
   const Icon = statusIcons[notification.status];
@@ -124,7 +126,7 @@ export function NotificationPanel() {
               </View>
               <Text style={styles.emptyTitle}>Nenhuma notificação ainda</Text>
               <Text style={styles.emptySubtitle}>
-                Você será notificado sobre atualizações dos seus pedidos
+                Você sera notificado sobre novidades e atualizacoes dos pedidos
               </Text>
             </View>
           ) : (

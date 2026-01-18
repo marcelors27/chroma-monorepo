@@ -15,42 +15,24 @@ import {
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
 import homeBg from "@/assets/home-bg.jpg";
-import { getProductCategory, getProductImage, getVariant, getVariantPricing, listProducts, MedusaProduct } from "@/lib/medusa";
-
-const news = [
-  {
-    id: "1",
-    title: "Nova linha de produtos sustentáveis",
-    summary: "Chegaram produtos eco-friendly para seu condomínio. Confira as opções que ajudam o meio ambiente.",
-    date: "2024-12-15",
-    category: "Novidades",
-  },
-  {
-    id: "2",
-    title: "Dicas de economia para síndicos",
-    summary: "Aprenda como reduzir custos do condomínio com compras inteligentes e planejamento.",
-    date: "2024-12-10",
-    category: "Dicas",
-  },
-  {
-    id: "3",
-    title: "Promoção de fim de ano chegando",
-    summary: "Fique atento às ofertas especiais que estamos preparando para o período de festas.",
-    date: "2024-12-08",
-    category: "Promoções",
-  },
-  {
-    id: "4",
-    title: "Manutenção preventiva: por que investir?",
-    summary: "Entenda a importância de manter os equipamentos do condomínio sempre em dia.",
-    date: "2024-12-05",
-    category: "Dicas",
-  },
-];
+import {
+  getProductCategory,
+  getProductImage,
+  getVariant,
+  getVariantPricing,
+  listNews,
+  listProducts,
+  MedusaNews,
+  MedusaProduct,
+} from "@/lib/medusa";
 
 const Home = () => {
   const { addItem } = useCart();
   const { data, isLoading } = useQuery({ queryKey: ["home-products"], queryFn: listProducts });
+  const { data: newsData, isLoading: isNewsLoading } = useQuery({
+    queryKey: ["home-news"],
+    queryFn: () => listNews({ limit: 4 }),
+  });
 
   const promotions = useMemo(() => {
     const items = data?.products || [];
@@ -101,6 +83,8 @@ const Home = () => {
       month: 'short',
     });
   };
+
+  const newsItems = (newsData?.news || []) as MedusaNews[];
 
   return (
     <div 
@@ -226,14 +210,39 @@ const Home = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {news.map((item) => (
+          {isNewsLoading &&
+            Array.from({ length: 2 }).map((_, idx) => (
+              <Card key={`news-skeleton-${idx}`} className="border-2 animate-pulse">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="h-4 bg-muted rounded w-20" />
+                    <div className="h-3 bg-muted rounded w-16" />
+                  </div>
+                  <div className="h-5 bg-muted rounded w-3/4 mt-3" />
+                </CardHeader>
+                <CardContent>
+                  <div className="h-3 bg-muted rounded w-full" />
+                </CardContent>
+              </Card>
+            ))}
+
+          {!isNewsLoading && newsItems.length === 0 && (
+            <Card className="border-2">
+              <CardContent className="p-6 text-center text-muted-foreground">
+                Nenhuma notícia disponível no momento.
+              </CardContent>
+            </Card>
+          )}
+
+          {!isNewsLoading &&
+            newsItems.map((item) => (
             <Link key={item.id} to={`/news/${item.id}`}>
               <Card className="border-2 hover:border-primary transition-colors cursor-pointer h-full">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <Badge variant="secondary">{item.category}</Badge>
+                    <Badge variant="secondary">{item.category || "Geral"}</Badge>
                     <span className="text-xs text-muted-foreground">
-                      {formatDate(item.date)}
+                      {item.published_at ? formatDate(item.published_at) : "—"}
                     </span>
                   </div>
                   <CardTitle className="text-lg">{item.title}</CardTitle>

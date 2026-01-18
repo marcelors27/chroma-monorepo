@@ -1,43 +1,79 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { ArrowLeft, Share2, BookmarkPlus, Clock } from "lucide-react-native";
+import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
 import { useShare } from "@/hooks/useShare";
-
-const newsData = [
-  {
-    id: "featured",
-    title: "Nova lei de condomínios entra em vigor e traz mudanças importantes",
-    summary: "As principais alterações incluem regras sobre animais de estimação e reformas em unidades.",
-    source: "SíndicoNet",
-    date: "Há 2 horas",
-    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&auto=format&fit=crop&q=60",
-    content: [
-      "A nova legislação traz mudanças importantes para síndicos e moradores.",
-      "Entre os pontos principais, estão regras mais claras sobre reformas e animais de estimação.",
-      "Condomínios precisam atualizar seus regimentos internos para se adequar às novas regras.",
-    ],
-  },
-];
+import { getNews, MedusaNews } from "@/lib/medusa";
 
 export default function NoticiaDetalhes() {
   const navigation = useNavigation();
   const route = useRoute();
   const { share } = useShare();
-  const id = (route.params as { id?: string } | undefined)?.id ?? "featured";
-  const noticia = newsData.find((item) => item.id === id) ?? newsData[0];
+  const id = (route.params as { id?: string } | undefined)?.id ?? "";
+  const { data, isLoading } = useQuery({
+    queryKey: ["news-detail", id],
+    queryFn: () => getNews(id),
+    enabled: Boolean(id),
+  });
+  const noticia = data?.news as MedusaNews | undefined;
+
+  const formatNewsDate = (date?: string | null) => {
+    if (!date) return "Agora";
+    return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR });
+  };
+
+  const stripHtml = (content?: string | null) => {
+    if (!content) return "";
+    return content
+      .replace(/<\s*br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<\/h[1-6]>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/\n{2,}/g, "\n")
+      .trim();
+  };
+
+  const paragraphs = stripHtml(noticia?.content).split("\n").filter(Boolean);
 
   const handleShare = () => {
-    share({ title: noticia.title, text: noticia.summary, url: noticia.image });
+    if (!noticia) return;
+    share({ title: noticia.title, text: noticia.summary, url: noticia.image_url || undefined });
     toast.success("Link copiado!");
   };
+
+  if (isLoading) {
+    return (
+      <AuthenticatedLayout>
+        <ScrollView style={styles.scrollContent}>
+          <Text style={styles.title}>Carregando noticia...</Text>
+        </ScrollView>
+      </AuthenticatedLayout>
+    );
+  }
+
+  if (!noticia) {
+    return (
+      <AuthenticatedLayout>
+        <ScrollView style={styles.scrollContent}>
+          <Text style={styles.title}>Noticia nao encontrada.</Text>
+        </ScrollView>
+      </AuthenticatedLayout>
+    );
+  }
 
   return (
     <AuthenticatedLayout>
       <ScrollView style={styles.scrollContent}>
         <View style={styles.hero}>
-          <Image source={{ uri: noticia.image }} style={styles.heroImage} />
+          {noticia.image_url ? (
+            <Image source={{ uri: noticia.image_url }} style={styles.heroImage} />
+          ) : (
+            <View style={[styles.heroImage, styles.heroPlaceholder]} />
+          )}
           <View style={styles.backButtonWrap}>
             <Pressable onPress={() => navigation.goBack()} style={styles.iconButton}>
               <ArrowLeft color="white" size={18} />
@@ -55,10 +91,10 @@ export default function NoticiaDetalhes() {
 
         <View style={styles.contentBlock}>
           <View style={styles.metaRow}>
-            <Text style={styles.sourceText}>{noticia.source}</Text>
+            <Text style={styles.sourceText}>{noticia.source || noticia.author || "Chroma"}</Text>
             <View style={styles.timeRow}>
               <Clock color="hsl(215 15% 55%)" size={12} />
-              <Text style={styles.timeText}>{noticia.date}</Text>
+              <Text style={styles.timeText}>{formatNewsDate(noticia.published_at)}</Text>
             </View>
           </View>
           <Text style={styles.title}>{noticia.title}</Text>
@@ -66,7 +102,7 @@ export default function NoticiaDetalhes() {
         </View>
 
         <View style={styles.body}>
-          {noticia.content.map((paragraph, index) => (
+          {paragraphs.map((paragraph, index) => (
             <Text key={index} style={styles.paragraph}>
               {paragraph}
             </Text>
@@ -90,6 +126,9 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 224,
     borderRadius: 20,
+  },
+  heroPlaceholder: {
+    backgroundColor: "rgba(26, 30, 38, 0.92)",
   },
   backButtonWrap: {
     position: "absolute",
