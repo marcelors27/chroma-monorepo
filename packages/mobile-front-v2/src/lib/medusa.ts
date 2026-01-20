@@ -326,6 +326,26 @@ export const completeSocialAuth = async (
   return data?.token || null;
 };
 
+export const completeSocialAuthNative = async (
+  provider: string,
+  params: { identityToken: string; authorizationCode?: string; linkExisting?: boolean }
+) => {
+  const payload = {
+    identity_token: params.identityToken,
+    ...(params.authorizationCode ? { authorization_code: params.authorizationCode } : {}),
+    ...(params.linkExisting ? { link_existing: true } : {}),
+  };
+  const data = await apiFetch<{ token: string }>(`/auth/customer/${provider}/callback`, {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify(payload),
+  });
+  if (data?.token) {
+    await setToken(data.token);
+  }
+  return data?.token || null;
+};
+
 export const registerStore = async (email: string, password: string) => {
   const register = await apiFetch<{ token: string }>("/auth/customer/emailpass/register", {
     method: "POST",
@@ -556,8 +576,11 @@ export const addDefaultShippingMethod = async (cartId: string) => {
 
 export const createPaymentSessions = async (cartId: string) => {
   const data = await apiFetch<{ payment_collection: MedusaPaymentCollection }>(
-    withStoreQuery(`/store/carts/${cartId}/payment-sessions`),
-    { method: "POST" }
+    withStoreQuery("/store/payment-collections"),
+    {
+      method: "POST",
+      body: JSON.stringify({ cart_id: cartId }),
+    }
   );
   return data?.payment_collection;
 };
@@ -567,12 +590,22 @@ export const setPaymentSession = async (
   providerId: string,
   data?: Record<string, any>
 ) => {
-  const payload = data ? { provider_id: providerId, data } : { provider_id: providerId };
-  const res = await apiFetch<{ cart: MedusaCart }>(withStoreQuery(`/store/carts/${cartId}/payment-session`), {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return res?.cart;
+  const paymentCollection = await createPaymentSessions(cartId);
+  if (!paymentCollection?.id) {
+    throw new Error("Colecao de pagamento nao encontrada.");
+  }
+  const payload: Record<string, any> = { provider_id: providerId };
+  if (data && Object.keys(data).length) {
+    payload.data = data;
+  }
+  const res = await apiFetch<{ payment_collection: MedusaPaymentCollection }>(
+    withStoreQuery(`/store/payment-collections/${paymentCollection.id}/payment-sessions`),
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
+  return res?.payment_collection;
 };
 
 export const completeCart = async (cartId: string) => {

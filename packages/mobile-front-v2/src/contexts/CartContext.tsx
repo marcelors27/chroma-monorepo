@@ -4,7 +4,6 @@ import {
   addLineItem,
   completeCart,
   createCart,
-  createPaymentSessions,
   deleteLineItem,
   earnCompanyPoints,
   ensureCart,
@@ -178,10 +177,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const resolvePaymentProvider = (paymentMethod: string) => {
-    return {
-      providerId: "manual",
-      data: { payment_method: paymentMethod },
-    };
+    switch (paymentMethod) {
+      case "credit":
+        return {
+          providerId: "pp_stripe_stripe",
+          data: { payment_method_types: ["card"], capture_method: "automatic" },
+        };
+      case "boleto":
+        return {
+          providerId: "pp_stripe_stripe",
+          data: { payment_method_types: ["boleto"], capture_method: "automatic" },
+        };
+      case "pix":
+        return {
+          providerId: "pp_stripe_stripe",
+          data: { payment_method_types: ["pix"], capture_method: "automatic" },
+        };
+      default:
+        return { providerId: "manual" };
+    }
   };
 
   const completeBackendCheckout = async (address: Record<string, any>, paymentMethod: string) => {
@@ -203,8 +217,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (!cartSnapshot?.id) {
         throw new Error("Carrinho não encontrado");
       }
-      await createPaymentSessions(cartSnapshot.id);
-
       if (!cartSnapshot?.shipping_address?.address_1) {
         cartSnapshot = await setCartShippingAddress(cartSnapshot.id, address);
       }

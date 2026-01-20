@@ -14,6 +14,9 @@ const safeLog = (logger, payload) => {
   }
 }
 
+const isEmail = (value) => typeof value === "string" && value.includes("@")
+const isCustomerId = (value) => typeof value === "string" && value.startsWith("cus_")
+
 const getAuthServices = (scope) => {
   const services = {}
   try {
@@ -62,36 +65,38 @@ const resolveEmailFromIdentity = async (scope, auth_identity_id, logger) => {
     if (authIdentityService?.list) {
       const ids = await authIdentityService.list({ id: auth_identity_id })
       const identity = ids?.[0]
-      const candidate =
-        identity?.entity_id ||
-        identity?.user_metadata?.email ||
-        identity?.app_metadata?.email ||
-        null
-      if (candidate && String(candidate).includes("@")) return candidate
+      const entity = identity?.entity_id || null
+      if (isEmail(entity)) return entity
+      const email = identity?.user_metadata?.email || identity?.app_metadata?.email || null
+      if (isEmail(email)) return email
     }
     if (authIdentityService?.retrieve) {
       const identity = await authIdentityService.retrieve(auth_identity_id)
-      const candidate =
-        identity?.entity_id ||
-        identity?.user_metadata?.email ||
-        identity?.app_metadata?.email ||
-        null
-      if (candidate && String(candidate).includes("@")) return candidate
+      const entity = identity?.entity_id || null
+      if (isEmail(entity)) return entity
+      const email = identity?.user_metadata?.email || identity?.app_metadata?.email || null
+      if (isEmail(email)) return email
     }
     if (providerIdentityService?.list) {
       const providers = await providerIdentityService.list({ auth_identity_id })
-      const candidate = providers?.[0]?.entity_id || null
-      if (candidate && String(candidate).includes("@")) return candidate
+      const provider = providers?.[0]
+      const candidate = provider?.entity_id || null
+      if (isEmail(candidate)) return candidate
+      const providerEmail = provider?.user_metadata?.email
+      if (isEmail(providerEmail)) return providerEmail
     }
     try {
       const authModule = scope.resolve(Modules.AUTH)
       if (authModule?.listProviderIdentities) {
         const providers = await authModule.listProviderIdentities(
           { auth_identity_id },
-          { select: ["entity_id"] }
+          { select: ["entity_id", "user_metadata"] }
         )
-        const candidate = providers?.[0]?.entity_id || null
-        if (candidate && String(candidate).includes("@")) return candidate
+        const provider = providers?.[0]
+        const candidate = provider?.entity_id || null
+        if (isEmail(candidate)) return candidate
+        const providerEmail = provider?.user_metadata?.email
+        if (isEmail(providerEmail)) return providerEmail
       }
     } catch {}
   } catch (e) {
@@ -105,6 +110,8 @@ const ensureCustomerForIdentity = async (scope, auth_identity_id, email, logger)
 
   const tryEmail = async (mail) => {
     if (!mail) return null
+    if (isCustomerId(mail)) return mail
+    if (!isEmail(mail)) return null
     const existing = await findCustomerIdByEmail(scope, mail, logger)
     if (existing) return existing
     if (!auth_identity_id) return null
@@ -134,6 +141,9 @@ const ensureCustomerForIdentity = async (scope, auth_identity_id, email, logger)
       null
     const found = await tryEmail(candidate)
     if (found) return found
+    const email = identity?.user_metadata?.email || identity?.app_metadata?.email || null
+    const foundByEmail = await tryEmail(email)
+    if (foundByEmail) return foundByEmail
   }
   if (authIdentityService?.retrieve) {
     const identity = await authIdentityService.retrieve(auth_identity_id)
@@ -144,14 +154,21 @@ const ensureCustomerForIdentity = async (scope, auth_identity_id, email, logger)
       null
     const found = await tryEmail(candidate)
     if (found) return found
+    const email = identity?.user_metadata?.email || identity?.app_metadata?.email || null
+    const foundByEmail = await tryEmail(email)
+    if (foundByEmail) return foundByEmail
   }
 
   // provider identity
   if (providerIdentityService?.list) {
     const providers = await providerIdentityService.list({ auth_identity_id })
-    const candidate = providers?.[0]?.entity_id || email
+    const provider = providers?.[0]
+    const candidate = provider?.entity_id || null
     const found = await tryEmail(candidate)
     if (found) return found
+    const providerEmail = provider?.user_metadata?.email || email
+    const foundByEmail = await tryEmail(providerEmail)
+    if (foundByEmail) return foundByEmail
   }
 
   // fallback to provided email
@@ -196,7 +213,13 @@ const resolveCustomerId = async (req) => {
             http.jwtVerifyOptions || http.jwtOptions || {}
           )
           authIdentityId = authIdentityId || verified.auth_identity_id
+          if (verified.actor_id && isCustomerId(verified.actor_id)) {
+            customerId = customerId || verified.actor_id
+          }
           email = email || verified.entity_id || verified.email
+          if (email && !isEmail(email)) {
+            email = null
+          }
         } catch (e) {
           safeLog(logger, { msg: "customers/me jwt decode error", error: e?.message })
         }
@@ -204,7 +227,8 @@ const resolveCustomerId = async (req) => {
     }
   }
 
-  if (!customerId) {
+  if (!customerId || !isCustomerId(customerId)) {
+    customerId = null
     if (!email) {
       email = await resolveEmailFromIdentity(req.scope, authIdentityId, logger)
     }
@@ -226,6 +250,12 @@ const resolveCustomerId = async (req) => {
   }
 
   if (!customerId) {
+    safeLog(logger, {
+      msg: "customers/me resolveCustomerId failed",
+      auth_identity_id: authIdentityId,
+      actor_id: req.auth_context?.actor_id,
+      actor_type: req.auth_context?.actor_type,
+    })
     return null
   }
 
@@ -233,6 +263,17 @@ const resolveCustomerId = async (req) => {
 }
 
 const GET = async (req, res) => {
+  const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
+  try {
+    logger?.info?.(
+      JSON.stringify({
+        msg: "customers/me auth_context",
+        actor_type: req.auth_context?.actor_type,
+        actor_id: req.auth_context?.actor_id,
+        auth_identity_id: req.auth_context?.auth_identity_id,
+      })
+    )
+  } catch {}
   const customerId = await resolveCustomerId(req)
   if (!customerId) {
     return res.status(401).json({ message: "Unauthorized" })

@@ -1,9 +1,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
 import * as Linking from "expo-linking";
+import { Buffer } from "buffer";
 import {
   clearSession,
   completeSocialAuth,
+  completeSocialAuthNative,
   getCustomerMe,
   getTokenValue,
   listCompanies,
@@ -19,13 +23,27 @@ interface User {
   email: string;
 }
 
+type SocialLoginResult = {
+  success: boolean;
+  code?: "link_required";
+  email?: string;
+  credential?: { identityToken: string; authorizationCode?: string };
+};
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   authError: string | null;
   login: (email: string, password: string) => Promise<boolean>;
-  loginWithSocial: (provider: "google" | "apple") => Promise<boolean>;
+  loginWithSocial: (
+    provider: "google" | "apple",
+    options?: {
+      mode?: "login" | "signup";
+      linkExisting?: boolean;
+      credential?: { identityToken: string; authorizationCode?: string };
+    }
+  ) => Promise<SocialLoginResult>;
   signup: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
@@ -33,6 +51,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const USER_STORAGE_KEY = "chroma_front_v2_user";
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
 const mapCustomerToUser = (customer: MedusaCustomer): User => ({
   id: customer.id,
@@ -150,9 +169,121 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return finalizeLogin();
   };
 
-  const loginWithSocial = async (provider: "google" | "apple"): Promise<boolean> => {
+  const decodeJwtPayload = (token: string) => {
+    try {
+      const payload = token.split(".")[1];
+      const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+      const decoded = Buffer.from(normalized, "base64").toString("utf8");
+      return JSON.parse(decoded);
+    } catch {
+      return null;
+    }
+  };
+
+  const loginWithSocial = async (
+    provider: "google" | "apple",
+    options?: {
+      mode?: "login" | "signup";
+      linkExisting?: boolean;
+      credential?: { identityToken: string; authorizationCode?: string };
+    }
+  ): Promise<SocialLoginResult> => {
     setAuthError(null);
     try {
+      if (provider === "google" && Platform.OS === "android") {
+        if (!GOOGLE_WEB_CLIENT_ID) {
+          setAuthError("Google login não configurado.");
+          return { success: false };
+        }
+
+        let GoogleSignin;
+        try {
+          ({ GoogleSignin } = require("@react-native-google-signin/google-signin"));
+        } catch {
+          setAuthError("Google login indisponível no momento.");
+          return { success: false };
+        }
+
+        GoogleSignin.configure({
+          webClientId: GOOGLE_WEB_CLIENT_ID,
+          offlineAccess: true,
+          scopes: ["email", "profile"],
+        });
+
+        try {
+          await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+          const userInfo = await GoogleSignin.signIn();
+
+          if (!userInfo?.idToken) {
+            setAuthError("Não foi possível concluir o login com Google.");
+            return { success: false };
+          }
+
+          await completeSocialAuthNative("google", {
+            identityToken: userInfo.idToken,
+            authorizationCode: userInfo.serverAuthCode || undefined,
+          });
+        } catch {
+          setAuthError("Não foi possível iniciar o login social.");
+          return { success: false };
+        }
+
+        const success = await finalizeLogin();
+        return { success };
+      }
+
+      if (provider === "apple") {
+        const available = await AppleAuthentication.isAvailableAsync();
+        if (!available) {
+          setAuthError("Login com Apple está disponível apenas no iOS.");
+          return { success: false };
+        }
+
+        const credential =
+          options?.credential ||
+          (await AppleAuthentication.signInAsync({
+            requestedScopes: [
+              AppleAuthentication.AppleAuthenticationScope.EMAIL,
+              AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+            ],
+          }));
+
+        if (!credential.identityToken) {
+          setAuthError("Não foi possível concluir o login com Apple.");
+          return { success: false };
+        }
+
+        const mode = options?.mode || "login";
+        const linkExisting = options?.linkExisting ?? mode !== "signup";
+
+        try {
+          await completeSocialAuthNative("apple", {
+            identityToken: credential.identityToken,
+            authorizationCode: credential.authorizationCode || undefined,
+            linkExisting,
+          });
+        } catch (err: any) {
+          const message = err?.message || "";
+          if (message.includes("link_required")) {
+            const payload = decodeJwtPayload(credential.identityToken) || {};
+            return {
+              success: false,
+              code: "link_required",
+              email: payload.email,
+              credential: {
+                identityToken: credential.identityToken,
+                authorizationCode: credential.authorizationCode || undefined,
+              },
+            };
+          }
+          setAuthError("Não foi possível iniciar o login social.");
+          return { success: false };
+        }
+
+        const success = await finalizeLogin();
+        return { success };
+      }
+
       const redirectBase = Linking.createURL("auth-callback");
       const start = await startSocialAuth(provider, redirectBase);
       if (!start?.token && start?.location) {
@@ -162,14 +293,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const state = parsed.queryParams?.state;
         if (!code || typeof code !== "string") {
           setAuthError("Não foi possível concluir o login social.");
-          return false;
+          return { success: false };
         }
         await completeSocialAuth(provider, { code, state: typeof state === "string" ? state : undefined });
       }
-      return finalizeLogin();
+      const success = await finalizeLogin();
+      return { success };
     } catch {
       setAuthError("Não foi possível iniciar o login social.");
-      return false;
+      return { success: false };
     }
   };
 

@@ -15,6 +15,17 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState((route.params as { mode?: string } | undefined)?.mode === "login");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [linkPrompt, setLinkPrompt] = useState<{
+    email?: string;
+    credential?: { identityToken: string; authorizationCode?: string };
+  } | null>(null);
+
+  const maskEmail = (value?: string | null) => {
+    if (!value || !value.includes("@")) return "informado pela Apple";
+    const [user, domain] = value.split("@");
+    const visible = user.length <= 2 ? user : `${user.slice(0, 2)}***`;
+    return `${visible}@${domain}`;
+  };
 
   const [form, setForm] = useState({
     name: "",
@@ -33,7 +44,6 @@ export default function Auth() {
       }
 
       if (success) {
-        toast.success(isLogin ? "Login realizado!" : "Conta criada!");
         navigation.reset({ index: 0, routes: [{ name: "MainTabs" as never }] });
       } else {
         toast.error(authError || "Verifique seus dados e tente novamente");
@@ -48,9 +58,12 @@ export default function Auth() {
   const handleSocialLogin = async (provider: "google" | "apple") => {
     setIsLoading(true);
     try {
-      const success = await loginWithSocial(provider);
-      if (success) {
-        toast.success("Login realizado!");
+      const result = await loginWithSocial(provider, { mode: isLogin ? "login" : "signup" });
+      if (!isLogin && result.code === "link_required") {
+        setLinkPrompt({ email: result.email, credential: result.credential });
+        return;
+      }
+      if (result.success) {
         navigation.reset({ index: 0, routes: [{ name: "MainTabs" as never }] });
       } else {
         toast.error("Login social indisponível no momento");
@@ -59,6 +72,27 @@ export default function Auth() {
       toast.error("Erro ao fazer login social");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleConfirmLink = async () => {
+    if (!linkPrompt?.credential) return;
+    setIsLoading(true);
+    try {
+      const result = await loginWithSocial("apple", {
+        mode: "signup",
+        linkExisting: true,
+        credential: linkPrompt.credential,
+      });
+      if (result.success) {
+        toast.success("Conta vinculada!");
+        navigation.reset({ index: 0, routes: [{ name: "MainTabs" as never }] });
+      } else {
+        toast.error("Não foi possível vincular a conta.");
+      }
+    } finally {
+      setIsLoading(false);
+      setLinkPrompt(null);
     }
   };
 
@@ -171,6 +205,27 @@ export default function Auth() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {linkPrompt && (
+        <View style={styles.linkScreen}>
+          <View style={styles.linkCard}>
+            <Text style={styles.linkEyebrow}>Vincular conta</Text>
+            <Text style={styles.linkTitle}>Encontramos uma conta existente</Text>
+            <Text style={styles.linkText}>
+              Este e-mail já está cadastrado: {maskEmail(linkPrompt.email)}. Você deseja vincular
+              seu login Apple a essa conta?
+            </Text>
+            <View style={styles.linkActions}>
+              <Pressable style={styles.linkCancel} onPress={() => setLinkPrompt(null)} disabled={isLoading}>
+                <Text style={styles.linkCancelText}>Agora não</Text>
+              </Pressable>
+              <Pressable style={styles.linkConfirm} onPress={handleConfirmLink} disabled={isLoading}>
+                <Text style={styles.linkConfirmText}>Vincular</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
     </ImageBackground>
   );
 }
@@ -290,6 +345,67 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  linkScreen: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: "rgba(12, 15, 20, 0.78)",
+    justifyContent: "center",
+    padding: 24,
+  },
+  linkCard: {
+    backgroundColor: "rgba(28, 32, 40, 0.92)",
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "rgba(70, 78, 90, 0.6)",
+  },
+  linkEyebrow: {
+    color: "#8C98A8",
+    fontSize: 12,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    marginBottom: 10,
+  },
+  linkTitle: {
+    color: "#E6E8EA",
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+  linkText: {
+    color: "#C6CCD4",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  linkActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 16,
+  },
+  linkCancel: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginRight: 12,
+  },
+  linkCancelText: {
+    color: "#8C98A8",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  linkConfirm: {
+    backgroundColor: "#5DA2E6",
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 16,
+  },
+  linkConfirmText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
   },
   switchRow: {
     alignItems: "center",

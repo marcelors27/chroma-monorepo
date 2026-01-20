@@ -3,7 +3,7 @@
     "name": "Chroma Mobile Store",
     "slug": "chroma-mobile-front-v2",
     "scheme": "chroma-mobile",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "orientation": "portrait",
     "platforms": [
       "ios",
@@ -27,7 +27,8 @@
     },
     "ios": {
       "bundleIdentifier": "com.chroma.mobilestore",
-      "buildNumber": "2",
+      "buildNumber": "3",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UIStatusBarStyle": "UIStatusBarStyleLightContent",
@@ -36,7 +37,17 @@
     },
     "plugins": [
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "scopes": [
+            "profile",
+            "email"
+          ],
+          "iosUrlScheme": "com.googleusercontent.apps.633351241832-2t9hj3ptto4pdrk5akbmsi2f7otb2k9b"
+        }
+      ]
     ],
     "owner": "marcelors27",
     "extra": {

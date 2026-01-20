@@ -112,6 +112,18 @@ const resolveCustomerIdFromIdentity = async (scope, authIdentityId, logger) => {
         identity?.user_metadata?.customer_id ||
         null
       if (candidate) {
+        if (String(candidate).includes("@")) {
+          return candidate
+        }
+        if (identity?.user_metadata?.email) {
+          const emailId = await ensureCustomerForIdentity(
+            scope,
+            authIdentityId,
+            identity.user_metadata.email,
+            logger
+          )
+          if (emailId) return emailId
+        }
         return candidate
       }
     }
@@ -131,6 +143,18 @@ const resolveCustomerIdFromIdentity = async (scope, authIdentityId, logger) => {
         identity?.user_metadata?.customer_id ||
         null
       if (candidate) {
+        if (String(candidate).includes("@")) {
+          return candidate
+        }
+        if (identity?.user_metadata?.email) {
+          const emailId = await ensureCustomerForIdentity(
+            scope,
+            authIdentityId,
+            identity.user_metadata.email,
+            logger
+          )
+          if (emailId) return emailId
+        }
         return candidate
       }
     }
@@ -150,6 +174,19 @@ const resolveCustomerIdFromIdentity = async (scope, authIdentityId, logger) => {
           const emailId = await ensureCustomerForIdentity(scope, authIdentityId, candidate, logger)
           if (emailId) return emailId
         }
+        const providerEmail = providerIdentity?.user_metadata?.email
+        if (providerEmail) {
+          const emailId = await ensureCustomerForIdentity(scope, authIdentityId, providerEmail, logger)
+          if (emailId) return emailId
+        }
+        if (authIdentityService?.retrieve) {
+          const identity = await authIdentityService.retrieve(authIdentityId)
+          const email = identity?.user_metadata?.email
+          if (email) {
+            const emailId = await ensureCustomerForIdentity(scope, authIdentityId, email, logger)
+            if (emailId) return emailId
+          }
+        }
         return candidate
       }
     }
@@ -166,7 +203,7 @@ module.exports = () => {
       const path = req.path || ""
       const isAuthRoute = path.startsWith("/auth")
       const isCustomerRoute = path.startsWith("/customers")
-      const isCompanyRoute = path.startsWith("/companies")
+      const isCompanyRoute = path.startsWith("/companies") || path.startsWith("/store/companies")
       const isCartRoute = path.startsWith("/carts") || path.startsWith("/store/carts")
       const isShippingRoute = path.startsWith("/shipping-options") || path.startsWith("/store/shipping-options")
       const isPaymentCollectionRoute =

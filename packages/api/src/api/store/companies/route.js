@@ -110,6 +110,18 @@ const resolveCustomerIdFromIdentity = async (scope, authIdentityId, logger) => {
         identity?.user_metadata?.customer_id ||
         null
       if (candidate) {
+        if (String(candidate).includes("@")) {
+          return candidate
+        }
+        if (identity?.user_metadata?.email) {
+          const emailId = await ensureCustomerForIdentity(
+            scope,
+            authIdentityId,
+            identity.user_metadata.email,
+            logger
+          )
+          if (emailId) return emailId
+        }
         return candidate
       }
     }
@@ -129,6 +141,18 @@ const resolveCustomerIdFromIdentity = async (scope, authIdentityId, logger) => {
         identity?.user_metadata?.customer_id ||
         null
       if (candidate) {
+        if (String(candidate).includes("@")) {
+          return candidate
+        }
+        if (identity?.user_metadata?.email) {
+          const emailId = await ensureCustomerForIdentity(
+            scope,
+            authIdentityId,
+            identity.user_metadata.email,
+            logger
+          )
+          if (emailId) return emailId
+        }
         return candidate
       }
     }
@@ -147,6 +171,19 @@ const resolveCustomerIdFromIdentity = async (scope, authIdentityId, logger) => {
         if (candidate.includes("@")) {
           const emailId = await ensureCustomerForIdentity(scope, authIdentityId, candidate, logger)
           if (emailId) return emailId
+        }
+        const providerEmail = providerIdentity?.user_metadata?.email
+        if (providerEmail) {
+          const emailId = await ensureCustomerForIdentity(scope, authIdentityId, providerEmail, logger)
+          if (emailId) return emailId
+        }
+        if (authIdentityService?.retrieve) {
+          const identity = await authIdentityService.retrieve(authIdentityId)
+          const email = identity?.user_metadata?.email
+          if (email) {
+            const emailId = await ensureCustomerForIdentity(scope, authIdentityId, email, logger)
+            if (emailId) return emailId
+          }
         }
         return candidate
       }

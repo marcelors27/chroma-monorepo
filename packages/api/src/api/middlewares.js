@@ -161,15 +161,23 @@ const ensureCustomerForIdentity = async (scope, auth_identity_id, logger) => {
   let email = null
   if (providerIdentityService?.list) {
     const providers = await providerIdentityService.list({ auth_identity_id })
-    email = providers?.[0]?.entity_id || null
+    const provider = providers?.[0]
+    email = provider?.entity_id || null
+    if (!email || !String(email).includes("@")) {
+      email = provider?.user_metadata?.email || null
+    }
   }
   if (!email && authModule?.listProviderIdentities) {
     try {
       const providers = await authModule.listProviderIdentities(
         { auth_identity_id },
-        { select: ["entity_id"] }
+        { select: ["entity_id", "user_metadata"] }
       )
-      email = providers?.[0]?.entity_id || null
+      const provider = providers?.[0]
+      email = provider?.entity_id || null
+      if (!email || !String(email).includes("@")) {
+        email = provider?.user_metadata?.email || null
+      }
     } catch { }
   }
 
@@ -262,7 +270,6 @@ const middlewares = defineMiddlewares([
         allowUnauthenticated: false,
         allowUnregistered: true,
       }),
-      ensureCustomerActor(),
     ],
   },
   {

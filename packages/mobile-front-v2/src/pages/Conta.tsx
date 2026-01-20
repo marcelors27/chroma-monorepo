@@ -70,7 +70,6 @@ export default function Conta() {
 
   const handleLogout = () => {
     logout();
-    toast.success("Você saiu da conta");
   };
 
   return (
