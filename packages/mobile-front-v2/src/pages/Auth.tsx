@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { Apple, ArrowLeft, Chrome, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
+import { Apple, ArrowLeft, Chrome, Eye, EyeOff, Facebook, Lock, Mail, User } from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/lib/toast";
 
@@ -55,7 +55,7 @@ export default function Auth() {
     }
   };
 
-  const handleSocialLogin = async (provider: "google" | "apple") => {
+  const handleSocialLogin = async (provider: "google" | "apple" | "facebook") => {
     setIsLoading(true);
     try {
       const result = await loginWithSocial(provider, { mode: isLogin ? "login" : "signup" });
@@ -121,6 +121,15 @@ export default function Auth() {
           >
             <Chrome color="#E6E8EA" size={20} />
             <Text style={styles.socialText}>Continuar com Google</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => handleSocialLogin("facebook")}
+            disabled={isLoading}
+            style={[styles.socialButton, isLoading && styles.buttonDisabled]}
+          >
+            <Facebook color="#E6E8EA" size={20} />
+            <Text style={styles.socialText}>Continuar com Facebook</Text>
           </Pressable>
 
           {Platform.OS === "ios" && (

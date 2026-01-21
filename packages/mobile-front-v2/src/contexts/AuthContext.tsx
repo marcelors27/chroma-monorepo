@@ -37,7 +37,7 @@ interface AuthContextType {
   authError: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   loginWithSocial: (
-    provider: "google" | "apple",
+    provider: "google" | "apple" | "facebook",
     options?: {
       mode?: "login" | "signup";
       linkExisting?: boolean;
@@ -181,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithSocial = async (
-    provider: "google" | "apple",
+    provider: "google" | "apple" | "facebook",
     options?: {
       mode?: "login" | "signup";
       linkExisting?: boolean;
@@ -190,6 +190,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ): Promise<SocialLoginResult> => {
     setAuthError(null);
     try {
+      if (provider === "facebook") {
+        let LoginManager;
+        let AccessToken;
+        let Settings;
+        try {
+          ({ LoginManager, AccessToken, Settings } = require("react-native-fbsdk-next"));
+        } catch {
+          setAuthError("Facebook login indisponível no momento.");
+          return { success: false };
+        }
+
+        try {
+          Settings?.initializeSDK?.();
+          const result = await LoginManager.logInWithPermissions(["public_profile", "email"]);
+          if (result?.isCancelled) {
+            return { success: false };
+          }
+          const data = await AccessToken.getCurrentAccessToken();
+          const accessToken = data?.accessToken?.toString?.() || data?.accessToken;
+          if (!accessToken) {
+            setAuthError("Não foi possível concluir o login com Facebook.");
+            return { success: false };
+          }
+          await completeSocialAuthNative("facebook", { accessToken });
+        } catch {
+          setAuthError("Não foi possível iniciar o login social.");
+          return { success: false };
+        }
+
+        const success = await finalizeLogin();
+        return { success };
+      }
+
       if (provider === "google" && Platform.OS === "android") {
         if (!GOOGLE_WEB_CLIENT_ID) {
           setAuthError("Google login não configurado.");

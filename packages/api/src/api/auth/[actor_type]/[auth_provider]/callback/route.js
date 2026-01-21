@@ -139,7 +139,10 @@ const handle = async (req, res) => {
 
   let effectiveIdentity = authIdentity
   let linkedCustomerId = null
-  if (actor_type === "customer" && (auth_provider === "apple" || auth_provider === "google")) {
+  if (
+    actor_type === "customer" &&
+    (auth_provider === "apple" || auth_provider === "google" || auth_provider === "facebook")
+  ) {
     const email =
       (await resolveEmailFromIdentity(req.scope, authIdentity)) ||
       extractEmailFromIdToken(req)

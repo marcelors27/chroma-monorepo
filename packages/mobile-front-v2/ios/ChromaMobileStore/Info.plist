@@ -21,7 +21,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.2.4</string>
+    <string>0.2.5</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -39,15 +39,28 @@
           <string>com.googleusercontent.apps.633351241832-2t9hj3ptto4pdrk5akbmsi2f7otb2k9b</string>
         </array>
       </dict>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>fb1214447910638658</string>
+        </array>
+      </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>3</string>
+    <string>4</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+      <string>fbapi</string>
+      <string>fb-messenger-api</string>
+      <string>fbauth2</string>
+      <string>fbshareextension</string>
+    </array>
     <key>NSAppTransportSecurity</key>
     <dict>
       <key>NSAllowsArbitraryLoads</key>
@@ -55,6 +68,12 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>FacebookAppID</key>
+    <string>1214447910638658</string>
+    <key>FacebookClientToken</key>
+    <string>5432890c7e21f2d56a5e516327f6c85c</string>
+    <key>FacebookDisplayName</key>
+    <string>Chroma Mobile Store</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UILaunchStoryboardName</key>

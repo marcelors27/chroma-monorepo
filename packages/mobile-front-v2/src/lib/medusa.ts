@@ -328,12 +328,18 @@ export const completeSocialAuth = async (
 
 export const completeSocialAuthNative = async (
   provider: string,
-  params: { identityToken: string; authorizationCode?: string; linkExisting?: boolean }
+  params: {
+    identityToken?: string;
+    authorizationCode?: string;
+    linkExisting?: boolean;
+    accessToken?: string;
+  }
 ) => {
   const payload = {
-    identity_token: params.identityToken,
+    ...(params.identityToken ? { identity_token: params.identityToken } : {}),
     ...(params.authorizationCode ? { authorization_code: params.authorizationCode } : {}),
     ...(params.linkExisting ? { link_existing: true } : {}),
+    ...(params.accessToken ? { access_token: params.accessToken } : {}),
   };
   const data = await apiFetch<{ token: string }>(`/auth/customer/${provider}/callback`, {
     method: "POST",

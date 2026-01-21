@@ -852,6 +852,9 @@ importers:
       react-native:
         specifier: 0.81.5
         version: 0.81.5(@babel/core@7.28.5)(@types/react@18.3.27)(react@19.1.0)
+      react-native-fbsdk-next:
+        specifier: ^13.4.1
+        version: 13.4.1(expo@54.0.30)(react-native@0.81.5)
       react-native-gesture-handler:
         specifier: ^2.28.0
         version: 2.28.0(react-native@0.81.5)(react@19.1.0)
@@ -21778,6 +21781,20 @@ packages:
       react: 18.3.1
     optionalDependencies:
       fsevents: 2.3.3
+    dev: false
+
+  /react-native-fbsdk-next@13.4.1(expo@54.0.30)(react-native@0.81.5):
+    resolution: {integrity: sha512-Cto+oF0FJyvxKDjKyLKI5DgnLCeeRlXvVQb8qw0XesT1Xune1ijDWAnvt9fy6wXJ4G7K510xKkcSUsbK/KyPhg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      expo: '>=47.0.0'
+      react-native: '>=0.63.3'
+    peerDependenciesMeta:
+      expo:
+        optional: true
+    dependencies:
+      expo: 54.0.30(@babel/core@7.28.5)(react-native-webview@13.16.0)(react-native@0.81.5)(react@19.1.0)
+      react-native: 0.81.5(@babel/core@7.28.5)(@types/react@18.3.27)(react@19.1.0)
     dev: false
 
   /react-native-gesture-handler@2.28.0(react-native@0.81.5)(react@19.1.0):

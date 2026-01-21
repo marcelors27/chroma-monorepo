@@ -1,3 +1,6 @@
 <resources>
   <string name="app_name">Chroma Mobile Store</string>
+  <string name="facebook_app_id">1214447910638658</string>
+  <string name="facebook_client_token">5432890c7e21f2d56a5e516327f6c85c</string>
+  <string name="fb_login_protocol_scheme">fb1214447910638658</string>
 </resources>
