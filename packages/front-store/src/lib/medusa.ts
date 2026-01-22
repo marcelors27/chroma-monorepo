@@ -518,7 +518,7 @@ const withStoreQuery = (path: string) => {
 
 const withProductQuery = (path: string) => {
   const params = new URLSearchParams()
-  params.set("fields", "+variants.prices,+variants.calculated_price")
+  params.set("fields", "+variants.prices,+variants.calculated_price,+metadata")
   if (REGION_ID) params.set("region_id", REGION_ID)
   const query = params.toString()
   return path.includes("?") ? `${path}&${query}` : `${path}?${query}`

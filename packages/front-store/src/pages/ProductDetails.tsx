@@ -45,18 +45,65 @@ const ProductDetails = () => {
 
   const mediaItems: MediaItem[] = useMemo(() => {
     const items: MediaItem[] = [];
+    const seen = new Set<string>();
+    const pushItem = (type: MediaItem["type"], src?: string | null) => {
+      if (!src) return;
+      const trimmed = src.trim();
+      if (!trimmed || seen.has(`${type}:${trimmed}`)) return;
+      items.push({ type, src: trimmed });
+      seen.add(`${type}:${trimmed}`);
+    };
+    const normalizeList = (value: unknown): string[] => {
+      if (!value) return [];
+      if (Array.isArray(value)) {
+        return value.map((item) => String(item || "").trim()).filter(Boolean);
+      }
+      if (typeof value === "string") {
+        return value
+          .split(/\n|,/)
+          .map((entry) => entry.trim())
+          .filter(Boolean);
+      }
+      return [];
+    };
+    const toYoutubeEmbed = (url: string) => {
+      const match =
+        url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]+)/i) ||
+        [];
+      const id = match[1];
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    };
+
     if (product?.thumbnail) {
-      items.push({ type: "image", src: product.thumbnail });
+      pushItem("image", product.thumbnail);
     }
     const images = (product as any)?.images as any[];
     if (Array.isArray(images)) {
       images.forEach((img) => {
         const url = img?.url || img?.thumbnail || img;
         if (url && typeof url === "string") {
-          items.push({ type: "image", src: url });
+          pushItem("image", url);
         }
       });
     }
+
+    const metadata = (product as any)?.metadata as Record<string, unknown> | undefined;
+    const media = (metadata?.media || metadata?.midia || metadata?.media_assets) as
+      | Record<string, unknown>
+      | undefined;
+    const extraImages = normalizeList(media?.images || metadata?.media_images);
+    const extraVideos = normalizeList(media?.videos || metadata?.media_videos);
+    const extraYoutube = normalizeList(media?.youtube || metadata?.media_youtube);
+
+    extraImages.forEach((url) => pushItem("image", url));
+    extraVideos.forEach((url) => pushItem("video", url));
+    extraYoutube.forEach((url) => {
+      const embed = toYoutubeEmbed(url);
+      if (embed) {
+        pushItem("youtube", embed);
+      }
+    });
+
     if (!items.length) {
       items.push({ type: "image", src: getProductImage(product) });
     }

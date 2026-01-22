@@ -6,4 +6,9 @@ module.exports = [
     matcher: "/admin/news",
     middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
   },
+  {
+    method: ["DELETE"],
+    matcher: "/admin/news/:id",
+    middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
+  },
 ]
