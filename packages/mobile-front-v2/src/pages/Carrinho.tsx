@@ -6,7 +6,7 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
 import { useCart } from "@/contexts/CartContext";
 import { useCondo } from "@/contexts/CondoContext";
-import { createRecurrence } from "@/lib/medusa";
+import { createRecurrence, formatMoney } from "@/lib/medusa";
 
 export default function Carrinho() {
   const [selectedPayment, setSelectedPayment] = useState<"pix" | "cartao" | "boleto">("pix");
@@ -14,7 +14,7 @@ export default function Carrinho() {
   const { items, totalPrice, updateQuantity, removeItem, completeBackendCheckout, clearCart } = useCart();
   const { activeCondo } = useCondo();
 
-  const formattedTotal = totalPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+  const formattedTotal = formatMoney(totalPrice);
 
   const handleCheckout = async () => {
     if (!items.length) {
@@ -80,9 +80,7 @@ export default function Carrinho() {
               <Image source={{ uri: item.image }} style={styles.itemImage} />
               <View style={styles.itemContent}>
                 <Text style={styles.itemTitle}>{item.name}</Text>
-                <Text style={styles.itemPrice}>
-                  R$ {item.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </Text>
+                <Text style={styles.itemPrice}>{formatMoney(item.price)}</Text>
                 <View style={styles.quantityRow}>
                   <Pressable style={styles.quantityButton} onPress={() => updateQuantity(item.id, item.quantity - 1)}>
                     <Minus color="#C7CBD1" size={16} />
@@ -164,7 +162,7 @@ export default function Carrinho() {
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>R$ {formattedTotal}</Text>
+            <Text style={styles.summaryValue}>{formattedTotal}</Text>
           </View>
           <View style={styles.summaryDivider}>
             <Text style={styles.summaryLabel}>Frete</Text>
@@ -172,7 +170,7 @@ export default function Carrinho() {
           </View>
           <View style={styles.summaryTotalRow}>
             <Text style={styles.summaryTotalLabel}>Total</Text>
-            <Text style={styles.summaryTotalValue}>R$ {formattedTotal}</Text>
+            <Text style={styles.summaryTotalValue}>{formattedTotal}</Text>
           </View>
           <Pressable onPress={handleCheckout} style={styles.checkoutButton}>
             <Text style={styles.checkoutButtonText}>Finalizar Compra</Text>

@@ -5,6 +5,15 @@ const PUBLISHABLE_KEY = import.meta.env.VITE_MEDUSA_PUBLISHABLE_KEY
 const SALES_CHANNEL_ID = import.meta.env.VITE_MEDUSA_SALES_CHANNEL_ID
 const REGION_ID = import.meta.env.VITE_MEDUSA_REGION_ID
 const CURRENCY_CODE = import.meta.env.VITE_MEDUSA_CURRENCY_CODE
+const MEDIA_BASE_URL = import.meta.env.VITE_MEDIA_URL || MEDUSA_URL
+const MEDUSA_ORIGIN = (() => {
+  if (!MEDUSA_URL || !/^https?:\/\//i.test(MEDUSA_URL)) return null
+  try {
+    return new URL(MEDUSA_URL).origin
+  } catch {
+    return null
+  }
+})()
 const DEBUG = import.meta.env.VITE_DEBUG_FRONT === "true"
 
 const AUTH_TOKEN_KEY = "chroma_front_store_token"
@@ -36,6 +45,7 @@ export type MedusaVariant = {
   title: string
   prices: MedusaPrice[]
   inventory_quantity?: number
+  metadata?: Record<string, unknown>
   options?: {
     id?: string
     option_id?: string
@@ -518,7 +528,10 @@ const withStoreQuery = (path: string) => {
 
 const withProductQuery = (path: string) => {
   const params = new URLSearchParams()
-  params.set("fields", "+variants.prices,+variants.calculated_price,+metadata")
+  params.set(
+    "fields",
+    "+variants.prices,+variants.calculated_price,+variants.metadata,+metadata"
+  )
   if (REGION_ID) params.set("region_id", REGION_ID)
   const query = params.toString()
   return path.includes("?") ? `${path}&${query}` : `${path}?${query}`
@@ -797,7 +810,10 @@ export const deleteLineItem = async (cartId: string, lineId: string) => {
 }
 
 export const listOrders = async () => {
-  return apiFetch<{ orders: MedusaOrder[] }>("/store/orders", { method: "GET" })
+  const params = new URLSearchParams()
+  params.set("fields", "+items.product_id,+items.variant_id")
+  const suffix = params.toString()
+  return apiFetch<{ orders: MedusaOrder[] }>(`/store/orders?${suffix}`, { method: "GET" })
 }
 
 export const setCartShippingAddress = async (
@@ -889,7 +905,7 @@ export const mapCartToItems = (cart?: MedusaCart) => {
     variantId: item.variant_id || "",
     name: item.title,
     price: item.unit_price,
-    image: item.thumbnail || "",
+    image: resolveMediaUrl(item.thumbnail) || "",
     category: "",
     quantity: item.quantity,
   }))
@@ -899,6 +915,14 @@ export const formatPrice = (prices?: MedusaPrice[], currency = "brl") => {
   if (!prices?.length) return 0
   const price = prices.find((p) => p.currency_code === currency) || prices[0]
   return price.amount || 0
+}
+
+export const formatMoney = (amount?: number, currency = CURRENCY_CODE || "brl") => {
+  const safeAmount = typeof amount === "number" ? amount : 0
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(safeAmount / 100)
 }
 
 export const getVariantPricing = (
@@ -984,7 +1008,7 @@ export const getProductImage = (product?: MedusaProduct) => {
     if (!trimmed || trimmed === "0" || trimmed === "null" || trimmed === "undefined") {
       return null
     }
-    return trimmed
+    return resolveMediaUrl(trimmed)
   }
 
   const thumbnail = normalizeImageUrl(product?.thumbnail)
@@ -999,6 +1023,46 @@ export const getProductImage = (product?: MedusaProduct) => {
   }
 
   return "/placeholder.svg"
+}
+
+export const resolveMediaUrl = (value?: string | null) => {
+  if (!value || typeof value !== "string") return null
+  const trimmed = value.trim()
+  if (!trimmed || trimmed === "0" || trimmed === "null" || trimmed === "undefined") {
+    return null
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    if (MEDUSA_ORIGIN && MEDUSA_ORIGIN.startsWith("http://")) {
+      try {
+        const url = new URL(trimmed)
+        if (url.origin === MEDUSA_ORIGIN.replace("http://", "https://")) {
+          return `${MEDUSA_ORIGIN}${url.pathname}${url.search}${url.hash}`
+        }
+      } catch {
+        // fall through
+      }
+    }
+    try {
+      const url = new URL(trimmed)
+      if (url.pathname.includes("%2F")) {
+        const decodedPath = decodeURIComponent(url.pathname)
+        return `${url.origin}${decodedPath}${url.search}${url.hash}`
+      }
+    } catch {
+      // fall through
+    }
+    return trimmed
+  }
+  if (/^data:/i.test(trimmed) || /^blob:/i.test(trimmed)) {
+    return trimmed
+  }
+  if (trimmed.startsWith("//")) {
+    return `https:${trimmed}`
+  }
+  if (trimmed.startsWith("/")) {
+    return `${MEDIA_BASE_URL}${trimmed}`
+  }
+  return `${MEDIA_BASE_URL}/${trimmed}`
 }
 
 export const getProductCategory = (product?: MedusaProduct) => {

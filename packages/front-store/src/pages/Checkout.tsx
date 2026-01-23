@@ -25,6 +25,7 @@ import {
   getPendingPayments,
   mergePendingPayments,
   PendingPaymentDetails,
+  formatMoney,
   removePendingPayment,
   removePendingPaymentFromBackend,
   retrieveCart,
@@ -310,7 +311,7 @@ const Checkout = () => {
   const pixCode =
     pendingDetails?.pix_code ||
     "00020126580014br.gov.bcb.pix0136a1b2c3d4-e5f6-7890-abcd-ef1234567890520400005303986540" +
-      orderTotal.toFixed(2) +
+      (orderTotal / 100).toFixed(2) +
       "5802BR5925CONDOMINIO PARQUE FLORES6009SAO PAULO62070503***6304";
 
   const boletoLine =
@@ -440,7 +441,7 @@ const Checkout = () => {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground text-center mb-3">
-                Valor: <span className="font-bold text-foreground">R$ {orderTotal.toFixed(2).replace(".", ",")}</span>
+                Valor: <span className="font-bold text-foreground">{formatMoney(orderTotal)}</span>
               </p>
               <div className="space-y-2">
                 <p className="text-xs font-medium">PIX Copia e Cola:</p>
@@ -750,7 +751,7 @@ const Checkout = () => {
                           <p className="text-xs text-muted-foreground">Qtd: {item.quantity}</p>
                         </div>
                         <p className="font-medium text-sm">
-                          R$ {(item.price * item.quantity).toFixed(2).replace(".", ",")}
+                          {formatMoney(item.price * item.quantity)}
                         </p>
                       </div>
                     ))}
@@ -759,7 +760,7 @@ const Checkout = () => {
                   <div className="border-t-2 border-border pt-4 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span>R$ {totalPrice.toFixed(2).replace(".", ",")}</span>
+                      <span>{formatMoney(totalPrice)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Frete</span>
@@ -768,7 +769,7 @@ const Checkout = () => {
                     <div className="flex justify-between text-lg font-bold pt-2 border-t-2 border-border">
                       <span>Total</span>
                       <span className="text-primary">
-                        R$ {totalPrice.toFixed(2).replace(".", ",")}
+                        {formatMoney(totalPrice)}
                       </span>
                     </div>
                   </div>

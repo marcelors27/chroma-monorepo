@@ -2,10 +2,11 @@ import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
+import { formatMoney } from "@/lib/medusa";
 
 const invoices = [
-  { id: "NF-1001", status: "Disponível", total: 489.9 },
-  { id: "NF-1002", status: "Processando", total: 219.9 },
+  { id: "NF-1001", status: "Disponível", total: 48990 },
+  { id: "NF-1002", status: "Processando", total: 21990 },
 ];
 
 export default function NotasFiscais() {
@@ -18,7 +19,7 @@ export default function NotasFiscais() {
           <View key={invoice.id} style={styles.card}>
             <Text style={styles.cardTitle}>{invoice.id}</Text>
             <Text style={styles.cardStatus}>{invoice.status}</Text>
-            <Text style={styles.cardTotal}>R$ {invoice.total.toFixed(2)}</Text>
+            <Text style={styles.cardTotal}>{formatMoney(invoice.total)}</Text>
             <Pressable
               onPress={() =>
                 invoice.status === "Disponível"

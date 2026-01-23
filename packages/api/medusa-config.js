@@ -27,6 +27,16 @@ const AUTH_CORS =
   "http://localhost:3000,https://localhost:3000,http://localhost:8080,https://localhost:8080"
 const JWT_SECRET = "supersecret"
 const COOKIE_SECRET = "supersecret"
+const S3_BUCKET = process.env.S3_BUCKET
+const S3_REGION = process.env.S3_REGION || "auto"
+const S3_ENDPOINT = process.env.S3_ENDPOINT
+const S3_FILE_URL = process.env.S3_FILE_URL
+const S3_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID
+const S3_SECRET_ACCESS_KEY = process.env.S3_SECRET_ACCESS_KEY
+const S3_PREFIX = process.env.S3_PREFIX || ""
+const S3_CACHE_CONTROL = process.env.S3_CACHE_CONTROL
+const S3_DOWNLOAD_FILE_DURATION = process.env.S3_DOWNLOAD_FILE_DURATION
+const S3_FORCE_PATH_STYLE = process.env.S3_FORCE_PATH_STYLE === "true"
 
 module.exports = {
   projectConfig: {
@@ -60,12 +70,6 @@ module.exports = {
   },
   plugins: [
     `medusa-payment-manual`,
-    {
-      resolve: `medusa-file-local`,
-      options: {
-        upload_dir: "uploads",
-      },
-    },
   ],
   modules: {
     [Modules.AUTH]: {
@@ -210,6 +214,33 @@ module.exports = {
           {
             resolve: "@medusajs/notification-local",
             id: "local",
+          },
+        ],
+      },
+    },
+    [Modules.FILE]: {
+      resolve: "@medusajs/file",
+      options: {
+        providers: [
+          {
+            resolve: "@medusajs/file-s3",
+            id: "s3",
+            options: {
+              file_url: S3_FILE_URL,
+              access_key_id: S3_ACCESS_KEY_ID,
+              secret_access_key: S3_SECRET_ACCESS_KEY,
+              region: S3_REGION,
+              bucket: S3_BUCKET,
+              prefix: S3_PREFIX,
+              endpoint: S3_ENDPOINT,
+              cache_control: S3_CACHE_CONTROL,
+              download_file_duration: S3_DOWNLOAD_FILE_DURATION
+                ? Number(S3_DOWNLOAD_FILE_DURATION)
+                : undefined,
+              additional_client_config: S3_FORCE_PATH_STYLE
+                ? { forcePathStyle: true }
+                : {},
+            },
           },
         ],
       },

@@ -50,6 +50,7 @@ export default function Index() {
         image: getProductImage(product) || "",
         category: getProductCategory(product),
         variantId: variant?.id || "",
+        variantTitle: variant?.title || "",
       };
     })
     .slice(0, 2);
@@ -66,7 +67,7 @@ export default function Index() {
     await addItem({
       productId: product.id,
       variantId: product.variantId,
-      name: product.name,
+      name: product.variantTitle ? `${product.name} • ${product.variantTitle}` : product.name,
       price: product.price,
       category: product.category,
       image: product.image,

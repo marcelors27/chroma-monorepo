@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import {
@@ -29,6 +29,7 @@ import {
   getProductImage,
   getVariant,
   getVariantPricing,
+  formatMoney,
   resolveMediaUrl,
   retrieveProduct,
 } from "@/lib/medusa";
@@ -62,6 +63,7 @@ export default function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
   const id = (route.params as { id?: string } | undefined)?.id ?? "";
   const { data, isLoading } = useQuery({
@@ -70,41 +72,68 @@ export default function ProductDetails() {
     enabled: Boolean(id),
   });
 
+  const rawProduct = data?.product || null;
+  const variants = rawProduct?.variants || [];
+  const selectedVariant = useMemo(() => {
+    if (!variants.length) return undefined;
+    if (selectedVariantId) {
+      const match = variants.find((item) => item.id === selectedVariantId);
+      if (match) return match;
+    }
+    return variants[0];
+  }, [variants, selectedVariantId]);
+
   const product = useMemo(() => {
-    if (!data?.product) return null;
-    const raw = data.product;
-    const variant = getVariant(raw);
+    if (!rawProduct) return null;
+    const variant = selectedVariant || getVariant(rawProduct);
     const pricing = getVariantPricing(variant);
+    const variantImage =
+      typeof variant?.metadata === "object"
+        ? (variant.metadata as Record<string, unknown>)?.image
+        : undefined;
     const images =
-      raw.images?.map((img: any) => {
+      rawProduct.images?.map((img: any) => {
         const url = resolveMediaUrl(img?.url || img?.thumbnail || img);
         return url ? ({ type: "image", url } as MediaItem) : null;
       }).filter(Boolean) || [];
-    const fallbackImage = getProductImage(raw);
-    const media = images.length
-      ? (images as MediaItem[])
-      : fallbackImage
-        ? ([{ type: "image", url: fallbackImage }] as MediaItem[])
-        : [];
-    const featuresFromTags = raw.tags?.map((tag) => tag?.value).filter(Boolean) || [];
+    const fallbackImage = getProductImage(rawProduct);
+    const media: MediaItem[] = [];
+    if (variantImage && typeof variantImage === "string") {
+      const resolvedVariant = resolveMediaUrl(variantImage);
+      if (resolvedVariant) {
+        media.push({ type: "image", url: resolvedVariant });
+      }
+    }
+    media.push(...(images as MediaItem[]));
+    if (!media.length && fallbackImage) {
+      media.push({ type: "image", url: fallbackImage });
+    }
+    const featuresFromTags = rawProduct.tags?.map((tag) => tag?.value).filter(Boolean) || [];
     return {
-      id: raw.id,
-      name: raw.title,
-      description: raw.description || "Descrição não informada.",
-      fullDescription: raw.description || "Descrição não informada.",
+      id: rawProduct.id,
+      name: rawProduct.title,
+      description: rawProduct.description || "Descrição não informada.",
+      fullDescription: rawProduct.description || "Descrição não informada.",
       price: pricing.finalPrice,
       originalPrice: pricing.onSale ? pricing.basePrice ?? undefined : undefined,
       media,
-      category: getProductCategory(raw),
-      rating: Number(raw.metadata?.rating) || 4.6,
-      reviewCount: Number(raw.metadata?.reviewCount) || 0,
+      category: getProductCategory(rawProduct),
+      rating: Number(rawProduct.metadata?.rating) || 4.6,
+      reviewCount: Number(rawProduct.metadata?.reviewCount) || 0,
       features:
-        Array.isArray(raw.metadata?.features)
-          ? (raw.metadata?.features as string[])
+        Array.isArray(rawProduct.metadata?.features)
+          ? (rawProduct.metadata?.features as string[])
           : featuresFromTags,
       variantId: variant?.id || "",
+      variantTitle: variant?.title || "",
     };
-  }, [data]);
+  }, [rawProduct, selectedVariant]);
+
+  useEffect(() => {
+    if (variants.length && !selectedVariantId) {
+      setSelectedVariantId(variants[0].id);
+    }
+  }, [variants, selectedVariantId]);
 
   const discount = product?.originalPrice ? Math.round((1 - product.price / product.originalPrice) * 100) : 0;
   const ratingStars = useMemo(() => Array.from({ length: 5 }, (_, index) => index + 1), []);
@@ -169,7 +198,7 @@ export default function ProductDetails() {
     await addItem({
       productId: product.id,
       variantId: product.variantId,
-      name: product.name,
+      name: product.variantTitle ? `${product.name} • ${product.variantTitle}` : product.name,
       price: product.price,
       category: product.category,
       image: product.media[0]?.url || "",
@@ -264,12 +293,37 @@ export default function ProductDetails() {
 
           <Text style={styles.description}>{product.fullDescription}</Text>
 
+          {variants.length > 1 && (
+            <View style={styles.variantRow}>
+              <Text style={styles.sectionLabel}>Variação</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.variantList}>
+                {variants.map((item) => {
+                  const active = item.id === product.variantId;
+                  return (
+                    <Pressable
+                      key={item.id}
+                      onPress={() => {
+                        setSelectedVariantId(item.id);
+                        setGalleryIndex(0);
+                      }}
+                      style={[styles.variantChip, active && styles.variantChipActive]}
+                    >
+                      <Text style={[styles.variantChipText, active && styles.variantChipTextActive]}>
+                        {item.title || "Variação"}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
           <View style={styles.priceRow}>
             <View>
-              <Text style={styles.price}>R$ {product.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.price}>{formatMoney(product.price)}</Text>
               {product.originalPrice && (
                 <Text style={styles.originalPrice}>
-                  R$ {product.originalPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  {formatMoney(product.originalPrice)}
                 </Text>
               )}
             </View>
@@ -521,6 +575,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  variantRow: {
+    marginTop: 20,
+    gap: 10,
+  },
+  variantList: {
+    gap: 8,
+    paddingRight: 8,
+  },
+  variantChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(20, 24, 30, 0.85)",
+  },
+  variantChipActive: {
+    borderColor: "rgba(93, 162, 230, 0.6)",
+    backgroundColor: "rgba(93, 162, 230, 0.2)",
+  },
+  variantChipText: {
+    color: "#C7CBD1",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  variantChipTextActive: {
+    color: "#E6E8EA",
   },
   sectionLabel: {
     color: "#E6E8EA",

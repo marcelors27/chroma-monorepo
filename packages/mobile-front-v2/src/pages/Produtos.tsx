@@ -19,7 +19,7 @@ import {
   MedusaProduct,
 } from "@/lib/medusa";
 
-const MAX_PRICE_FALLBACK = 1500;
+const MAX_PRICE_FALLBACK = 1500 * 100;
 
 const normalizeText = (value: string) =>
   value
@@ -59,6 +59,7 @@ export default function Produtos() {
           category: getProductCategory(product),
           inStock: (variant?.inventory_quantity ?? 0) > 0,
           variantId: variant?.id || "",
+          variantTitle: variant?.title || "",
         };
       }) || []
     );
@@ -66,7 +67,8 @@ export default function Produtos() {
 
   const maxPrice = useMemo(() => {
     const resolved = products.reduce((max, product) => Math.max(max, product.price), 0);
-    return resolved > 0 ? Math.ceil(resolved) : MAX_PRICE_FALLBACK;
+    if (resolved <= 0) return MAX_PRICE_FALLBACK;
+    return Math.ceil(resolved / 100) * 100;
   }, [products]);
 
   const defaultFilters = useMemo(
@@ -148,7 +150,7 @@ export default function Produtos() {
     await addItem({
       productId: product.id,
       variantId: product.variantId,
-      name: product.name,
+      name: product.variantTitle ? `${product.name} • ${product.variantTitle}` : product.name,
       price: product.price,
       category: product.category,
       image: product.image,

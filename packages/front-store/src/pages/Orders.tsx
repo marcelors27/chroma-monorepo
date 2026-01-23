@@ -29,6 +29,7 @@ import {
   MedusaOrder,
   mergePendingPayments,
   PendingPayment,
+  formatMoney,
 } from "@/lib/medusa";
 
 type OrderStatus = "processing" | "shipped" | "delivered" | "cancelled";
@@ -78,8 +79,7 @@ const Orders = () => {
   };
 
   const formatLineItemPrice = (price?: number) => {
-    if (!price) return "0,00";
-    return price.toFixed(2).replace(".", ",");
+    return formatMoney(price || 0);
   };
 
   const formatUnixDate = (value?: number) => {
@@ -373,7 +373,7 @@ const Orders = () => {
                             {formatDate(order.created_at)} • {itemsCount} {itemsCount === 1 ? "item" : "itens"}
                           </p>
                           <p className="text-primary font-bold text-lg mt-2">
-                            R$ {total.toFixed(2).replace(".", ",")}
+                            {formatMoney(total)}
                           </p>
                         </div>
                       </div>
@@ -423,7 +423,7 @@ const Orders = () => {
                   Realizado em {formatDate(selectedOrder.created_at)}
                 </p>
                 <p className="text-lg font-bold text-primary">
-                  Total: R$ {((selectedOrder.total || 0) / 100).toFixed(2).replace(".", ",")}
+                  Total: {formatMoney(selectedOrder.total || 0)}
                 </p>
               </div>
 
@@ -435,11 +435,11 @@ const Orders = () => {
                       <div>
                         <p className="font-medium">{item.title}</p>
                         <p className="text-sm text-muted-foreground">
-                          Quantidade: {item.quantity} • R$ {formatLineItemPrice(item.unit_price)}
+                        Quantidade: {item.quantity} • {formatLineItemPrice(item.unit_price)}
                         </p>
                       </div>
                       <p className="font-semibold">
-                        R$ {formatLineItemPrice((item.unit_price || 0) * (item.quantity || 1))}
+                        {formatLineItemPrice((item.unit_price || 0) * (item.quantity || 1))}
                       </p>
                     </div>
                   ))}

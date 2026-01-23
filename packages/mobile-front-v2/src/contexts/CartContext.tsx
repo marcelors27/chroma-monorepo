@@ -100,7 +100,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       const updatedCart = existing
         ? await updateLineItem(cart.id, existing.id, nextQty)
-        : await addLineItem(cart.id, product.variantId, product.quantity || 1);
+        : await addLineItem(cart.id, product.variantId, product.quantity || 1, {
+            display_name: product.name,
+            category: product.category,
+          });
 
       setItems(mapCartToItems(updatedCart));
       setLastAddQty(product.quantity || 1);

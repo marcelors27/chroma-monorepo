@@ -24,6 +24,7 @@ import {
   listProducts,
   MedusaNews,
   MedusaProduct,
+  formatMoney,
 } from "@/lib/medusa";
 
 const Home = () => {
@@ -172,11 +173,11 @@ const Home = () => {
                     <div className="mt-3 flex items-baseline gap-2">
                       {showDiscount && (
                         <span className="text-muted-foreground line-through text-sm">
-                          R$ {promo.originalPrice?.toFixed(2)}
+                          {formatMoney(promo.originalPrice)}
                         </span>
                       )}
                       <span className="text-xl font-bold text-primary">
-                        R$ {promo.salePrice.toFixed(2)}
+                        {formatMoney(promo.salePrice)}
                       </span>
                     </div>
                     {promo.validUntil && (

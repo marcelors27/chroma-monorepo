@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import {
   getProductImage,
   getVariant,
   getVariantPricing,
+  formatMoney,
+  resolveMediaUrl,
   retrieveProduct,
 } from "@/lib/medusa";
 
@@ -27,6 +29,7 @@ const ProductDetails = () => {
   const { toast } = useToast();
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["product", id],
@@ -38,7 +41,13 @@ const ProductDetails = () => {
   });
 
   const product = data?.product;
-  const variant = useMemo(() => getVariant(product), [product]);
+  const variant = useMemo(() => {
+    const variants = product?.variants || [];
+    if (!variants.length) return undefined;
+    const selected =
+      selectedVariantId && variants.find((item) => item.id === selectedVariantId);
+    return selected || variants[0];
+  }, [product, selectedVariantId]);
   const pricing = useMemo(() => getVariantPricing(variant), [variant]);
   const price = pricing.finalPrice;
   const category = useMemo(() => getProductCategory(product), [product]);
@@ -49,9 +58,12 @@ const ProductDetails = () => {
     const pushItem = (type: MediaItem["type"], src?: string | null) => {
       if (!src) return;
       const trimmed = src.trim();
-      if (!trimmed || seen.has(`${type}:${trimmed}`)) return;
-      items.push({ type, src: trimmed });
-      seen.add(`${type}:${trimmed}`);
+      if (!trimmed) return;
+      const resolved =
+        type === "youtube" || type === "vimeo" ? trimmed : resolveMediaUrl(trimmed);
+      if (!resolved || seen.has(`${type}:${resolved}`)) return;
+      items.push({ type, src: resolved });
+      seen.add(`${type}:${resolved}`);
     };
     const normalizeList = (value: unknown): string[] => {
       if (!value) return [];
@@ -74,6 +86,14 @@ const ProductDetails = () => {
       return id ? `https://www.youtube.com/embed/${id}` : null;
     };
 
+    const variantImage =
+      typeof variant?.metadata === "object"
+        ? (variant.metadata as Record<string, unknown>)?.image
+        : undefined;
+
+    if (variantImage && typeof variantImage === "string") {
+      pushItem("image", variantImage);
+    }
     if (product?.thumbnail) {
       pushItem("image", product.thumbnail);
     }
@@ -108,7 +128,13 @@ const ProductDetails = () => {
       items.push({ type: "image", src: getProductImage(product) });
     }
     return items;
-  }, [product]);
+  }, [product, variant]);
+
+  useEffect(() => {
+    if (product?.variants?.length && !selectedVariantId) {
+      setSelectedVariantId(product.variants[0].id);
+    }
+  }, [product, selectedVariantId]);
 
   const specifications = useMemo(() => {
     const specs: string[] = [];
@@ -222,7 +248,7 @@ const ProductDetails = () => {
     addItem({
       productId: product.id,
       variantId: variant.id,
-      name: product.title,
+      name: variant.title ? `${product.title} • ${variant.title}` : product.title,
       price,
       category,
       image: mediaItems[0]?.src || getProductImage(product),
@@ -278,6 +304,7 @@ const ProductDetails = () => {
   const media = mediaItems;
   const mainMedia = media[currentImageIndex];
   const relatedProducts = [] as any[];
+  const variants = product?.variants || [];
 
   return (
     <div className="min-h-screen bg-background p-4 lg:p-8">
@@ -377,10 +404,30 @@ const ProductDetails = () => {
               <Badge variant="secondary">{category}</Badge>
             </div>
 
+            {variants.length > 1 && (
+              <div className="space-y-2">
+                <p className="font-semibold">Variação</p>
+                <select
+                  className="w-full border-2 border-border bg-background px-3 py-2 rounded-md"
+                  value={variant?.id || ""}
+                  onChange={(e) => {
+                    setSelectedVariantId(e.target.value);
+                    setCurrentImageIndex(0);
+                  }}
+                >
+                  {variants.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.title || "Variação"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div>
               <p className="text-sm text-muted-foreground mb-1">A partir de</p>
               <p className="text-3xl font-bold text-primary">
-                R$ {price.toFixed(2).replace(".", ",")}
+                {formatMoney(price)}
               </p>
             </div>
 
@@ -439,7 +486,7 @@ const ProductDetails = () => {
         </div>
 
         <div className="mt-10">
-          <ProductReviews />
+          <ProductReviews productId={product.id} />
         </div>
 
         {relatedProducts.length > 0 && (
@@ -450,7 +497,7 @@ const ProductDetails = () => {
                 <Link key={item.id} to={`/product/${item.id}`} className="border-2 border-border p-3 hover:border-primary transition-colors">
                   <img src={getProductImage(item)} alt={item.name} className="aspect-square object-cover mb-2" />
                   <p className="font-semibold">{item.name}</p>
-                  <p className="text-primary font-bold">R$ {item.price?.toFixed(2)}</p>
+                  <p className="text-primary font-bold">{formatMoney(item.price)}</p>
                 </Link>
               ))}
             </div>

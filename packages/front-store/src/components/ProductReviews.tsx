@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Star, User } from "lucide-react";
+import { listOrders } from "@/lib/medusa";
 
 interface Review {
   id: string;
@@ -73,6 +74,8 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
   const { toast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [canReview, setCanReview] = useState(false);
+  const [checkingEligibility, setCheckingEligibility] = useState(true);
   const [newReview, setNewReview] = useState({
     author: "",
     rating: 0,
@@ -82,6 +85,46 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
   useEffect(() => {
     const allReviews = getStoredReviews();
     setReviews(allReviews.filter((r) => r.productId === productId));
+  }, [productId]);
+
+  useEffect(() => {
+    if (!canReview) {
+      setShowForm(false);
+    }
+  }, [canReview]);
+
+  useEffect(() => {
+    let active = true;
+    const checkEligibility = async () => {
+      setCheckingEligibility(true);
+      try {
+        const data = await listOrders();
+        const orders = data?.orders || [];
+        const hasPurchased = orders.some((order) =>
+          (order.items || []).some((item) => item.product_id === productId)
+        );
+        if (active) {
+          setCanReview(hasPurchased);
+        }
+      } catch {
+        if (active) {
+          setCanReview(false);
+        }
+      } finally {
+        if (active) {
+          setCheckingEligibility(false);
+        }
+      }
+    };
+    if (productId) {
+      checkEligibility();
+    } else {
+      setCheckingEligibility(false);
+      setCanReview(false);
+    }
+    return () => {
+      active = false;
+    };
   }, [productId]);
 
   const averageRating = reviews.length > 0
@@ -135,13 +178,23 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
             </span>
           </div>
         </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? "Cancelar" : "Escrever avaliação"}
-        </Button>
+        <div className="flex items-center gap-3">
+          {!checkingEligibility && !canReview && (
+            <span className="text-sm text-muted-foreground">
+              Avaliações liberadas apenas após a compra.
+            </span>
+          )}
+          <Button
+            onClick={() => setShowForm(!showForm)}
+            disabled={!canReview || checkingEligibility}
+          >
+            {showForm ? "Cancelar" : "Escrever avaliação"}
+          </Button>
+        </div>
       </div>
 
       {/* Review Form */}
-      {showForm && (
+      {showForm && canReview && (
         <form onSubmit={handleSubmit} className="border-2 border-border p-4 space-y-4">
           <div>
             <label className="text-sm font-medium mb-2 block">Seu nome</label>

@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTrigger, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { formatMoney } from "@/lib/medusa";
 
 export interface ProductFilters {
   priceRange: [number, number];
@@ -31,7 +32,7 @@ const sortOptions = [
 export function ProductFiltersSheet({
   filters,
   onFiltersChange,
-  maxPrice = 2000,
+  maxPrice = 2000 * 100,
   triggerStyle,
 }: ProductFiltersSheetProps) {
   const [localFilters, setLocalFilters] = useState<ProductFilters>(filters);
@@ -126,10 +127,10 @@ export function ProductFiltersSheet({
                 }
                 maximumValue={localFilters.priceRange[1]}
                 minimumValue={0}
-                step={10}
+                step={100}
               />
               <Text style={styles.rangeValue}>
-                R$ {localFilters.priceRange[0].toLocaleString("pt-BR")}
+                {formatMoney(localFilters.priceRange[0])}
               </Text>
               <View style={styles.rangeDivider} />
               <Text style={styles.rangeLabel}>Máximo</Text>
@@ -143,14 +144,14 @@ export function ProductFiltersSheet({
                 }
                 maximumValue={maxPrice}
                 minimumValue={localFilters.priceRange[0]}
-                step={10}
+                step={100}
               />
               <View style={styles.priceRow}>
                 <Text style={styles.priceLabel}>
-                  R$ {localFilters.priceRange[0].toLocaleString("pt-BR")}
+                  {formatMoney(localFilters.priceRange[0])}
                 </Text>
                 <Text style={styles.priceLabel}>
-                  R$ {localFilters.priceRange[1].toLocaleString("pt-BR")}
+                  {formatMoney(localFilters.priceRange[1])}
                 </Text>
               </View>
             </View>

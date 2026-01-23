@@ -10,6 +10,7 @@ import { ShoppingCart, Trash2, Plus, Minus } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { formatMoney } from "@/lib/medusa";
 
 const CartDrawer = () => {
   const { items, totalItems, totalPrice, removeItem, updateQuantity, clearCart } = useCart();
@@ -65,7 +66,7 @@ const CartDrawer = () => {
                       <p className="text-xs text-accent font-medium">{item.category}</p>
                       <h4 className="font-bold text-sm truncate">{item.name}</h4>
                       <p className="text-primary font-bold">
-                        R$ {item.price.toFixed(2).replace(".", ",")}
+                        {formatMoney(item.price)}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
                         <Button
@@ -103,7 +104,7 @@ const CartDrawer = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-bold">Total:</span>
                   <span className="text-2xl font-bold text-primary">
-                    R$ {totalPrice.toFixed(2).replace(".", ",")}
+                    {formatMoney(totalPrice)}
                   </span>
                 </div>
                 <Button className="w-full" size="lg" onClick={handleCheckout}>

@@ -5,7 +5,7 @@ import { Clock, ClipboardList, ChevronRight, Truck, Check, X } from "lucide-reac
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
-import { listOrders, MedusaOrder } from "@/lib/medusa";
+import { formatMoney, listOrders, MedusaOrder } from "@/lib/medusa";
 
 type StatusTone = "info" | "warning" | "success" | "danger";
 
@@ -132,7 +132,7 @@ export default function Pedidos() {
                   <Text style={styles.itemsText}>{order.items} itens</Text>
                 </View>
                 <View style={styles.totalRow}>
-                  <Text style={styles.totalText}>R$ {order.total.toFixed(2)}</Text>
+                  <Text style={styles.totalText}>{formatMoney(order.total)}</Text>
                   <ChevronRight color="#8C98A8" size={18} />
                 </View>
               </View>

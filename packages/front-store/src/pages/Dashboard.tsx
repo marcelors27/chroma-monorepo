@@ -23,6 +23,7 @@ import {
   getVariantPricing,
   listProducts,
   MedusaProduct,
+  formatMoney,
 } from "@/lib/medusa";
 
 type SortOption = "name-asc" | "name-desc" | "price-asc" | "price-desc";
@@ -101,8 +102,12 @@ const Dashboard = () => {
     const filtered = products.filter((product) => {
       const matchesName = product.name.toLowerCase().includes(searchName.toLowerCase());
       const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory;
-      const matchesMinPrice = !minPrice || product.price >= parseFloat(minPrice);
-      const matchesMaxPrice = !maxPrice || product.price <= parseFloat(maxPrice);
+      const parsedMin = minPrice ? parseFloat(minPrice) : NaN;
+      const parsedMax = maxPrice ? parseFloat(maxPrice) : NaN;
+      const minAmount = Number.isFinite(parsedMin) ? parsedMin * 100 : null;
+      const maxAmount = Number.isFinite(parsedMax) ? parsedMax * 100 : null;
+      const matchesMinPrice = !minPrice || (minAmount !== null && product.price >= minAmount);
+      const matchesMaxPrice = !maxPrice || (maxAmount !== null && product.price <= maxAmount);
       const matchesOnSale = !onlyOnSale || product.onSale;
 
       return matchesName && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesOnSale;
@@ -428,11 +433,11 @@ const ProductCard = ({
       <div className="mt-auto mb-2 sm:mb-4">
         {product.onSale && product.originalPrice && (
           <p className="text-xs sm:text-sm text-muted-foreground line-through">
-            R$ {product.originalPrice.toFixed(2).replace(".", ",")}
+                          {formatMoney(product.originalPrice)}
           </p>
         )}
         <p className="text-lg sm:text-2xl font-bold text-primary">
-          R$ {product.price.toFixed(2).replace(".", ",")}
+          {formatMoney(product.price)}
         </p>
       </div>
       <Button

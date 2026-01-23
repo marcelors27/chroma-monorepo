@@ -6,6 +6,15 @@ const SALES_CHANNEL_ID = process.env.EXPO_PUBLIC_MEDUSA_SALES_CHANNEL_ID;
 const REGION_ID = process.env.EXPO_PUBLIC_MEDUSA_REGION_ID;
 const CURRENCY_CODE = process.env.EXPO_PUBLIC_MEDUSA_CURRENCY_CODE || "brl";
 const DEBUG = process.env.EXPO_PUBLIC_DEBUG_FRONT === "true";
+const MEDIA_BASE_URL = process.env.EXPO_PUBLIC_MEDIA_URL || MEDUSA_URL;
+const MEDUSA_ORIGIN = (() => {
+  if (!MEDUSA_URL || !/^https?:\/\//i.test(MEDUSA_URL)) return null;
+  try {
+    return new URL(MEDUSA_URL).origin;
+  } catch {
+    return null;
+  }
+})();
 
 const AUTH_TOKEN_KEY = "chroma_mobile_store_token";
 const CART_ID_KEY = "chroma_mobile_store_cart_id";
@@ -41,6 +50,7 @@ export type MedusaVariant = {
   title: string;
   prices: MedusaPrice[];
   inventory_quantity?: number;
+  metadata?: Record<string, unknown>;
   options?: {
     id?: string;
     option_id?: string;
@@ -269,7 +279,7 @@ const withStoreQuery = (path: string) => {
 
 const withProductQuery = (path: string) => {
   const params = new URLSearchParams();
-  params.set("fields", "+variants.prices,+variants.calculated_price");
+  params.set("fields", "+variants.prices,+variants.calculated_price,+variants.metadata,+metadata");
   if (REGION_ID) params.set("region_id", REGION_ID);
   const query = params.toString();
   return path.includes("?") ? `${path}&${query}` : `${path}?${query}`;
@@ -524,10 +534,15 @@ export const ensureCart = async () => {
   return createCart();
 };
 
-export const addLineItem = async (cartId: string, variantId: string, quantity: number) => {
+export const addLineItem = async (
+  cartId: string,
+  variantId: string,
+  quantity: number,
+  metadata?: Record<string, any>
+) => {
   const data = await apiFetch<{ cart: MedusaCart }>(withStoreQuery(`/store/carts/${cartId}/line-items`), {
     method: "POST",
-    body: JSON.stringify({ variant_id: variantId, quantity }),
+    body: JSON.stringify({ variant_id: variantId, quantity, metadata }),
   });
   return data?.cart;
 };
@@ -627,10 +642,10 @@ export const mapCartToItems = (cart?: MedusaCart) => {
     id: item.id,
     productId: item.product_id || "",
     variantId: item.variant_id || "",
-    name: item.title,
+    name: (item.metadata?.display_name as string) || item.title,
     price: item.unit_price,
     category: item.metadata?.category || "Geral",
-    image: normalizeImageUrl(item.thumbnail) || "",
+    image: resolveMediaUrl(item.thumbnail) || "",
     quantity: item.quantity,
   }));
 };
@@ -639,6 +654,14 @@ export const formatPrice = (prices?: MedusaPrice[], currency = CURRENCY_CODE) =>
   if (!prices?.length) return 0;
   const match = prices.find((price) => price.currency_code === currency);
   return (match?.amount || 0).toFixed(2);
+};
+
+export const formatMoney = (amount?: number, currency = CURRENCY_CODE) => {
+  const safeAmount = typeof amount === "number" ? amount : 0;
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(safeAmount / 100);
 };
 
 export const getVariantPricing = (
@@ -672,37 +695,55 @@ export const getVariant = (product?: MedusaProduct) => {
   return product?.variants?.[0];
 };
 
-const normalizeImageUrl = (value: unknown) => {
-  if (typeof value !== "string") return null;
+export const resolveMediaUrl = (value?: string | null) => {
+  if (!value || typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed || trimmed === "0" || trimmed === "null" || trimmed === "undefined") {
     return null;
   }
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+  if (/^https?:\/\//i.test(trimmed)) {
+    if (MEDUSA_ORIGIN && MEDUSA_ORIGIN.startsWith("http://")) {
+      try {
+        const url = new URL(trimmed);
+        if (url.origin === MEDUSA_ORIGIN.replace("http://", "https://")) {
+          return `${MEDUSA_ORIGIN}${url.pathname}${url.search}${url.hash}`;
+        }
+      } catch {
+        // fall through
+      }
+    }
+    try {
+      const url = new URL(trimmed);
+      if (url.pathname.includes("%2F")) {
+        const decodedPath = decodeURIComponent(url.pathname);
+        return `${url.origin}${decodedPath}${url.search}${url.hash}`;
+      }
+    } catch {
+      // fall through
+    }
+    if (/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?/i.test(trimmed)) {
+      return trimmed.replace(/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?/i, MEDUSA_URL);
+    }
     if (trimmed.startsWith("http://images.unsplash.com")) {
       return trimmed.replace("http://", "https://");
     }
-    if (trimmed.includes("://localhost") || trimmed.includes("://127.0.0.1") || trimmed.includes("://0.0.0.0")) {
-      return trimmed.replace(/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?/i, MEDUSA_URL);
-    }
     return trimmed;
   }
-  if (trimmed.startsWith("/")) {
-    return `${MEDUSA_URL}${trimmed}`;
+  const normalizedPath = trimmed.includes("%2F") ? decodeURIComponent(trimmed) : trimmed;
+  if (normalizedPath.startsWith("/")) {
+    return `${MEDIA_BASE_URL}${normalizedPath}`;
   }
-  return trimmed;
+  return `${MEDIA_BASE_URL}/${normalizedPath}`;
 };
 
-export const resolveMediaUrl = (value?: string | null) => normalizeImageUrl(value) || null;
-
 export const getProductImage = (product?: MedusaProduct) => {
-  const thumbnail = normalizeImageUrl(product?.thumbnail);
+  const thumbnail = resolveMediaUrl(product?.thumbnail);
   if (thumbnail) return thumbnail;
 
   const images = product?.images;
   if (Array.isArray(images)) {
     for (const image of images) {
-      const url = normalizeImageUrl((image as any)?.url || (image as any)?.thumbnail || image);
+      const url = resolveMediaUrl((image as any)?.url || (image as any)?.thumbnail || image);
       if (url) return url;
     }
   }

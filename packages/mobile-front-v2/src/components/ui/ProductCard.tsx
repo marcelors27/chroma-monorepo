@@ -4,6 +4,7 @@ import { Plus } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import { ImageWithSkeleton } from "./ImageWithSkeleton";
 import fallbackImage from "@/assets/condo-background.jpg";
+import { formatMoney } from "@/lib/medusa";
 
 interface ProductCardProps {
   id: string;
@@ -58,13 +59,9 @@ export function ProductCard({
 
         <View style={styles.footer}>
           <View>
-            <Text style={styles.price}>
-              R$ {price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-            </Text>
+            <Text style={styles.price}>{formatMoney(price)}</Text>
             {originalPrice && (
-              <Text style={styles.originalPrice}>
-                R$ {originalPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-              </Text>
+              <Text style={styles.originalPrice}>{formatMoney(originalPrice)}</Text>
             )}
           </View>
 
