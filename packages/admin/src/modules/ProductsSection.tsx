@@ -15,6 +15,8 @@ import type { Dispatch, SetStateAction } from "react"
 import { MediaPayload, Product, SalesChannel, StockLocation } from "../types"
 import { formatMoney } from "../utils/format"
 
+type VariantLocation = { id: string; name: string; stocked?: number | null }
+
 type ProductsSectionProps = {
   medusaUrl: string
   token: string | null
@@ -51,9 +53,7 @@ export default function ProductsSection({
   )
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set())
-  const [variantLocations, setVariantLocations] = useState<
-    Record<string, { id: string; name: string; stocked?: number | null }[]>
-  >({})
+  const [variantLocations, setVariantLocations] = useState<Record<string, VariantLocation[]>>({})
   const [productForm, setProductForm] = useState({
     title: "",
     description: "",
@@ -160,7 +160,7 @@ export default function ProductsSection({
       }
       const json = await res.json()
       const inventoryItems = json?.variant?.inventory_items || json?.variant?.inventory_items || []
-      const locations: { id: string; name: string; stocked?: number | null }[] = []
+      const locations: VariantLocation[] = []
       inventoryItems.forEach((item: any) => {
         const levels = item?.location_levels || []
         levels.forEach((level: any) => {
@@ -1574,11 +1574,14 @@ export default function ProductsSection({
                                       </td>
                                     </tr>
                                   ) : (
-                                    variants.map((item) => {
+                                    variants.map((item, index) => {
+                                      const variantId = item.id
                                       const itemPrice = item.prices?.[0]
-                                      const locations = variantLocations[item.id] || []
+                                      const locations: VariantLocation[] = variantId
+                                        ? variantLocations[variantId] || []
+                                        : []
                                       return (
-                                        <tr key={item.id}>
+                                        <tr key={variantId ?? `variant-${index}`}>
                                           <td>{item.title || "—"}</td>
                                           <td>{item.sku || "—"}</td>
                                           <td>{item.inventory_quantity ?? "—"}</td>
@@ -1593,7 +1596,11 @@ export default function ProductsSection({
                                               <button
                                                 className="btn btn-secondary btn-sm btn-icon"
                                                 type="button"
-                                                onClick={() => loadVariantLocations(item.id)}
+                                                onClick={() => {
+                                                  if (variantId) {
+                                                    loadVariantLocations(variantId)
+                                                  }
+                                                }}
                                                 title="Carregar locais"
                                                 aria-label="Carregar locais"
                                               >
