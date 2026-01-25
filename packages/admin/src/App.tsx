@@ -8,6 +8,7 @@ import PaymentsSection from "./modules/PaymentsSection"
 import ProductsSection from "./modules/ProductsSection"
 import PromotionsSection from "./modules/PromotionsSection"
 import StockSection from "./modules/StockSection"
+import UsersSection from "./modules/UsersSection"
 import ToastContainer from "./modules/ToastContainer"
 import {
   AdminCompany,
@@ -19,6 +20,7 @@ import {
   Region,
   SalesChannel,
   SectionId,
+  StoreUser,
   StockLocation,
 } from "./types"
 
@@ -50,6 +52,8 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [priceLists, setPriceLists] = useState<PriceList[]>([])
   const [priceListsError, setPriceListsError] = useState<string | null>(null)
+  const [storeUsers, setStoreUsers] = useState<StoreUser[]>([])
+  const [storeUsersError, setStoreUsersError] = useState<string | null>(null)
   const [salesChannels, setSalesChannels] = useState<SalesChannel[]>([])
   const [regions, setRegions] = useState<Region[]>([])
   const [stockLocations, setStockLocations] = useState<StockLocation[]>([])
@@ -113,6 +117,7 @@ export default function App() {
           newsRes,
           allCompaniesRes,
           priceListsRes,
+          storeUsersRes,
           salesChannelsRes,
           regionsRes,
           stockLocationsRes,
@@ -123,6 +128,7 @@ export default function App() {
           fetch(`${MEDUSA_URL}/admin/news?limit=50`, { headers }),
           fetch(`${MEDUSA_URL}/admin/companies?limit=500`, { headers }),
           fetch(`${MEDUSA_URL}/admin/price-lists?limit=50`, { headers }),
+          fetch(`${MEDUSA_URL}/admin/store-users?limit=500`, { headers }),
           fetch(`${MEDUSA_URL}/admin/sales-channels?limit=200`, { headers }),
           fetch(`${MEDUSA_URL}/admin/regions?limit=200`, { headers }),
           fetch(stockLocationsUrl, { headers }),
@@ -181,6 +187,15 @@ export default function App() {
           setPriceListsError(body || "Não foi possível buscar promoções")
         }
 
+        if (storeUsersRes.ok) {
+          const json = await storeUsersRes.json()
+          setStoreUsers(json.users ?? [])
+          setStoreUsersError(null)
+        } else {
+          const body = await storeUsersRes.text()
+          setStoreUsersError(body || "Não foi possível buscar usuários")
+        }
+
         if (salesChannelsRes.ok) {
           const json = await salesChannelsRes.json()
           setSalesChannels(json.sales_channels ?? [])
@@ -205,6 +220,7 @@ export default function App() {
         setNewsError("Erro ao buscar notícias")
         setCompaniesError("Erro ao buscar empresas")
         setPriceListsError("Erro ao buscar promoções")
+        setStoreUsersError("Erro ao buscar usuários")
         setCatalogError("Erro ao buscar dados de catálogo")
       }
     }
@@ -351,6 +367,7 @@ export default function App() {
                 { id: "pedidos", label: "Pedidos", count: orders.length },
                 { id: "promocoes", label: "Promoções", count: priceLists.length },
                 { id: "canais", label: "Canais de vendas", count: salesChannels.length },
+                { id: "usuarios", label: "Usuários", count: storeUsers.length },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -470,6 +487,17 @@ export default function App() {
                 headers={headers}
                 salesChannels={salesChannels}
                 setSalesChannels={setSalesChannels}
+              />
+            )}
+
+            {activeSection === "usuarios" && (
+              <UsersSection
+                medusaUrl={MEDUSA_URL}
+                headers={headers}
+                users={storeUsers}
+                setUsers={setStoreUsers}
+                usersError={storeUsersError}
+                setUsersError={setStoreUsersError}
               />
             )}
           </main>

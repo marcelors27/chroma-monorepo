@@ -40,6 +40,30 @@ export type AdminCompany = {
   metadata?: Record<string, any>
 }
 
+export type UserCompany = {
+  id: string
+  trade_name?: string | null
+  fantasy_name?: string | null
+  cnpj?: string | null
+  approved?: boolean
+  created_at?: string
+  metadata?: Record<string, any>
+}
+
+export type StoreUser = {
+  id: string
+  email: string
+  first_name?: string | null
+  last_name?: string | null
+  phone?: string | null
+  created_at?: string
+  metadata?: Record<string, any>
+  companies?: UserCompany[]
+  disabled?: boolean
+  source?: "customer" | "identity"
+  auth_identity_id?: string
+}
+
 export type News = {
   id: string
   title: string
@@ -72,6 +96,7 @@ export type SectionId =
   | "pedidos"
   | "promocoes"
   | "canais"
+  | "usuarios"
 
 export type SalesChannel = {
   id: string

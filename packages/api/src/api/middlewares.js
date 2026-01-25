@@ -256,11 +256,43 @@ const storeLoginCompanyGuard = () => {
   }
 }
 
+const storeLoginDisabledGuard = () => {
+  return async (req, res, next) => {
+    try {
+      const email = req.body?.email || req.body?.username
+      if (!email) return next()
+
+      const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
+      const customer = await fetchCustomerByEmail(req.scope, email, logger)
+      if (customer?.metadata?.disabled) {
+        return res.status(403).json({ message: "Usuario desativado" })
+      }
+
+      const { authIdentityService } = getAuthServices(req.scope)
+      if (authIdentityService?.list) {
+        const identities = await authIdentityService.list({ entity_id: email })
+        const identity = identities?.[0]
+        if (identity?.app_metadata?.disabled || identity?.user_metadata?.disabled) {
+          return res.status(403).json({ message: "Usuario desativado" })
+        }
+      }
+    } catch {
+      return res.status(403).json({ message: "Usuario desativado" })
+    }
+    next()
+  }
+}
+
 const middlewares = defineMiddlewares([
   {
     method: ["POST"],
     matcher: ["/auth/store/emailpass"],
-    middlewares: [storeLoginCompanyGuard()],
+    middlewares: [storeLoginDisabledGuard(), storeLoginCompanyGuard()],
+  },
+  {
+    method: ["POST"],
+    matcher: ["/auth/customer/emailpass"],
+    middlewares: [storeLoginDisabledGuard()],
   },
   {
     method: ["ALL"],
@@ -349,6 +381,11 @@ const middlewares = defineMiddlewares([
   {
     method: ["ALL"],
     matcher: ["/admin/companies", "/admin/companies/*"],
+    middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
+  },
+  {
+    method: ["ALL"],
+    matcher: ["/admin/store-users", "/admin/store-users/*"],
     middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
   },
   {
