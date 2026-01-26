@@ -21,7 +21,9 @@ import {
   getVariant,
   getVariantPricing,
   listNews,
+  listMarketingBanners,
   listProducts,
+  MedusaMarketingBanner,
   MedusaNews,
   MedusaProduct,
   formatMoney,
@@ -33,6 +35,10 @@ const Home = () => {
   const { data: newsData, isLoading: isNewsLoading } = useQuery({
     queryKey: ["home-news"],
     queryFn: () => listNews({ limit: 4 }),
+  });
+  const { data: bannerData } = useQuery({
+    queryKey: ["home-banners"],
+    queryFn: () => listMarketingBanners({ limit: 4 }),
   });
 
   const promotions = useMemo(() => {
@@ -86,6 +92,41 @@ const Home = () => {
   };
 
   const newsItems = (newsData?.news || []) as MedusaNews[];
+  const banners = (bannerData?.banners || []) as MedusaMarketingBanner[];
+
+  const resolveBannerHref = (banner: MedusaMarketingBanner) => {
+    if (!banner?.link_type) return null;
+    if (banner.link_type === "url") return banner.link_value || null;
+    if (banner.link_type === "product" && banner.link_value) {
+      return `/product/${banner.link_value}`;
+    }
+    if (banner.link_type === "area") {
+      switch (banner.link_value) {
+        case "home":
+          return "/home";
+        case "catalog":
+          return "/dashboard";
+        case "orders":
+          return "/orders";
+        case "condos":
+          return "/condos";
+        case "recurrences":
+          return "/recurrences";
+        case "checkout":
+          return "/checkout";
+        case "settings":
+          return "/settings";
+        default:
+          return null;
+      }
+    }
+    return null;
+  };
+
+  const isVideo = (url?: string | null) => {
+    if (!url) return false;
+    return /\.(mp4|webm|mov)$/i.test(url);
+  };
 
   return (
     <div 
@@ -105,6 +146,91 @@ const Home = () => {
           Confira as melhores ofertas e novidades para seu condomínio
         </p>
       </div>
+
+      {banners.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">Campanhas em destaque</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {banners.map((banner) => {
+              const href = resolveBannerHref(banner);
+              const desktopMedia = banner.animation_url || banner.image_url || "";
+              const mobileMedia =
+                banner.animation_mobile_url || banner.image_mobile_url || desktopMedia;
+              const content = (
+                <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
+                  {desktopMedia && (
+                    <>
+                      {isVideo(desktopMedia) ? (
+                        <video
+                          className="hidden md:block w-full h-[260px] object-cover"
+                          src={desktopMedia}
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                        />
+                      ) : (
+                        <img
+                          className="hidden md:block w-full h-[260px] object-cover"
+                          src={desktopMedia}
+                          alt={banner.title}
+                        />
+                      )}
+                      {isVideo(mobileMedia) ? (
+                        <video
+                          className="md:hidden w-full h-[200px] object-cover"
+                          src={mobileMedia}
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                        />
+                      ) : (
+                        <img
+                          className="md:hidden w-full h-[200px] object-cover"
+                          src={mobileMedia}
+                          alt={banner.title}
+                        />
+                      )}
+                    </>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent" />
+                  <div className="absolute inset-0 p-6 flex flex-col justify-end gap-2 text-white">
+                    <h3 className="text-2xl font-bold">{banner.title}</h3>
+                    {banner.subtitle && <p className="text-sm text-white/80">{banner.subtitle}</p>}
+                    {href && (
+                      <span className="text-xs uppercase tracking-widest text-white/70">
+                        Saiba mais
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+
+              if (!href) {
+                return (
+                  <div key={banner.id}>
+                    {content}
+                  </div>
+                );
+              }
+
+              const isExternal = /^https?:\/\//i.test(href);
+              return isExternal ? (
+                <a key={banner.id} href={href} target="_blank" rel="noreferrer">
+                  {content}
+                </a>
+              ) : (
+                <Link key={banner.id} to={href}>
+                  {content}
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Promotions Section */}
       <section>

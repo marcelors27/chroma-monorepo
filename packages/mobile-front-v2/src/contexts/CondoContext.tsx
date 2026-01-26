@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { listCompanies } from "@/lib/medusa";
+import { getTokenValue, listCompanies } from "@/lib/medusa";
 import { toast } from "@/lib/toast";
 
 export interface Condo {
@@ -20,15 +20,32 @@ interface CondoContextType {
   isAllCondos: boolean;
   setAllCondos: () => void;
   refreshCondos: () => Promise<void>;
+  hasApprovedCondo: boolean;
+  isLoading: boolean;
 }
 
 const CondoContext = createContext<CondoContextType | undefined>(undefined);
 
-export function CondoProvider({ children }: { children: ReactNode }) {
+export function CondoProvider({
+  children,
+  isAuthenticated,
+}: {
+  children: ReactNode;
+  isAuthenticated: boolean;
+}) {
   const [condos, setCondos] = useState<Condo[]>([]);
   const [activeCondo, setActiveCondoState] = useState<Condo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const refreshCondos = async () => {
+    const token = await getTokenValue();
+    if (!isAuthenticated || !token) {
+      setCondos([]);
+      setActiveCondoState(null);
+      setIsLoading(false);
+      return [];
+    }
+    setIsLoading(true);
     try {
       const data = await listCompanies();
       const mapped = (data?.companies || [])
@@ -55,11 +72,20 @@ export function CondoProvider({ children }: { children: ReactNode }) {
       setCondos([]);
       setActiveCondoState(null);
       return [];
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
     const loadCondo = async () => {
+      const token = await getTokenValue();
+      if (!isAuthenticated || !token) {
+        setCondos([]);
+        setActiveCondoState(null);
+        setIsLoading(false);
+        return;
+      }
       const approved = await refreshCondos();
       const savedCondoId = await AsyncStorage.getItem("activeCondoId");
       if (!savedCondoId || savedCondoId === "all") return;
@@ -70,7 +96,7 @@ export function CondoProvider({ children }: { children: ReactNode }) {
     };
 
     loadCondo();
-  }, []);
+  }, [isAuthenticated]);
 
   const setActiveCondo = (condo: Condo | null) => {
     setActiveCondoState(condo);
@@ -87,6 +113,7 @@ export function CondoProvider({ children }: { children: ReactNode }) {
   };
 
   const isAllCondos = activeCondo === null;
+  const hasApprovedCondo = condos.length > 0;
 
   return (
     <CondoContext.Provider
@@ -97,6 +124,8 @@ export function CondoProvider({ children }: { children: ReactNode }) {
         isAllCondos,
         setAllCondos,
         refreshCondos,
+        hasApprovedCondo,
+        isLoading,
       }}
     >
       {children}

@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  ImageBackground,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Apple, ArrowLeft, Chrome, Eye, EyeOff, Facebook, Lock, Mail, User } from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +44,7 @@ export default function Auth() {
   });
 
   const handleSubmit = async () => {
+    if (isLoading) return;
     setIsLoading(true);
     try {
       let success = false;
@@ -44,7 +55,7 @@ export default function Auth() {
       }
 
       if (success) {
-        navigation.reset({ index: 0, routes: [{ name: "MainTabs" as never }] });
+        return;
       } else {
         toast.error(authError || "Verifique seus dados e tente novamente");
       }
@@ -64,7 +75,7 @@ export default function Auth() {
         return;
       }
       if (result.success) {
-        navigation.reset({ index: 0, routes: [{ name: "MainTabs" as never }] });
+        return;
       } else {
         toast.error("Login social indisponível no momento");
       }
@@ -86,7 +97,7 @@ export default function Auth() {
       });
       if (result.success) {
         toast.success("Conta vinculada!");
-        navigation.reset({ index: 0, routes: [{ name: "MainTabs" as never }] });
+        return;
       } else {
         toast.error("Não foi possível vincular a conta.");
       }
@@ -214,6 +225,12 @@ export default function Auth() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#E6E8EA" style={styles.loadingIcon} />
+        </View>
+      )}
 
       {linkPrompt && (
         <View style={styles.linkScreen}>
@@ -364,6 +381,20 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(12, 15, 20, 0.78)",
     justifyContent: "center",
     padding: 24,
+  },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: "rgba(8, 12, 18, 0.35)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 20,
+  },
+  loadingIcon: {
+    opacity: 0.7,
   },
   linkCard: {
     backgroundColor: "rgba(28, 32, 40, 0.92)",

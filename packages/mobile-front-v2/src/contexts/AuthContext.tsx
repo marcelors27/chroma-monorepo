@@ -59,9 +59,18 @@ const mapCustomerToUser = (customer: MedusaCustomer): User => ({
   email: customer.email || "",
 });
 
+const isAccessPendingError = (err: any) => {
+  const message = err?.message || "";
+  return message.includes("403") || /forbidden|access pending/i.test(message);
+};
+
 const hasApprovedCompany = async () => {
-  const data = await listCompanies();
-  return (data?.companies || []).some((company: any) => company?.approved);
+  try {
+    const data = await listCompanies();
+    return (data?.companies || []).some((company: any) => company?.approved);
+  } catch {
+    return false;
+  }
 };
 
 const waitForAuthRedirect = (authUrl: string, redirectBase: string) => {
@@ -120,10 +129,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(mapped);
           await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(mapped));
         }
-      } catch {
-        await clearSession();
-        setUser(null);
-        await AsyncStorage.removeItem(USER_STORAGE_KEY);
+      } catch (err) {
+        if (isAccessPendingError(err)) {
+          setAuthError("Seu acesso está em avaliação. Aguarde a aprovação do condomínio.");
+        } else {
+          await clearSession();
+          setUser(null);
+          await AsyncStorage.removeItem(USER_STORAGE_KEY);
+        }
       }
       setIsLoading(false);
     };
@@ -340,12 +353,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (name: string, email: string, password: string): Promise<boolean> => {
     if (!name || !email || password.length < 6) return false;
-    await registerStore(email, password);
+    const existingToken = await getTokenValue();
+    if (!existingToken) {
+      await registerStore(email, password);
+    }
     setAuthError("Seu acesso está em avaliação. Aguarde a aprovação do condomínio.");
-    const { customer } = await getCustomerMe();
-    const mapped = customer ? mapCustomerToUser(customer) : { id: "new", name, email };
-    setUser(mapped);
-    await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(mapped));
+    const fallback = { id: "new", name, email };
+    setUser(fallback);
+    await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(fallback));
     return true;
   };
 

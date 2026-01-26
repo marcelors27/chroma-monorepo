@@ -76,6 +76,24 @@ export type News = {
   is_published?: boolean
 }
 
+export type MarketingBanner = {
+  id: string
+  title: string
+  subtitle?: string | null
+  image_url?: string | null
+  image_mobile_url?: string | null
+  animation_url?: string | null
+  animation_mobile_url?: string | null
+  link_type?: string | null
+  link_value?: string | null
+  sort_order?: number | null
+  active_from?: string | null
+  active_until?: string | null
+  is_active?: boolean
+  created_at?: string | null
+  updated_at?: string | null
+}
+
 export type PriceList = {
   id: string
   title?: string
@@ -90,6 +108,7 @@ export type PriceList = {
 export type SectionId =
   | "dashboard"
   | "noticias"
+  | "marketing"
   | "pagamentos"
   | "produtos"
   | "estoque"

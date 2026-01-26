@@ -7,7 +7,7 @@ import { NavigationContainer, useFocusEffect } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, StyleSheet, Text, View } from "react-native";
 import { Home, Package, ClipboardList, ShoppingCart, User } from "lucide-react-native";
 import { TamaguiProvider } from "tamagui";
 import tamaguiConfig from "../tamagui.config";
@@ -31,6 +31,8 @@ import DadosPessoais from "./pages/DadosPessoais";
 import Notificacoes from "./pages/Notificacoes";
 import Seguranca from "./pages/Seguranca";
 import Ajuda from "./pages/Ajuda";
+import AccessPending from "./pages/AccessPending";
+import { useCondo } from "@/contexts/CondoContext";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +43,7 @@ const ProductsStack = createNativeStackNavigator();
 function LoadingScreen() {
   return (
     <View style={styles.loading}>
+      <ActivityIndicator size="large" color="#E6E8EA" style={styles.loadingIcon} />
       <Text style={styles.loadingText}>Carregando...</Text>
     </View>
   );
@@ -298,8 +301,9 @@ function ProductsStackNavigator() {
 
 function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { hasApprovedCondo, isLoading: condosLoading } = useCondo();
 
-  if (isLoading) {
+  if (isLoading || condosLoading) {
     return <LoadingScreen />;
   }
 
@@ -310,11 +314,18 @@ function RootNavigator() {
           <Stack.Screen name="Landing" component={Landing} />
           <Stack.Screen name="Auth" component={Auth} />
         </>
+      ) : !hasApprovedCondo ? (
+        <>
+          <Stack.Screen name="Condominios" component={Condominios} />
+          <Stack.Screen name="CondominioDetalhes" component={CondominioDetalhes} />
+          <Stack.Screen name="AccessPending" component={AccessPending} />
+        </>
       ) : (
         <>
           <Stack.Screen name="MainTabs" component={MainTabs} />
           <Stack.Screen name="Condominios" component={Condominios} />
           <Stack.Screen name="CondominioDetalhes" component={CondominioDetalhes} />
+          <Stack.Screen name="AccessPending" component={AccessPending} />
           <Stack.Screen name="Recorrencias" component={Recorrencias} />
           <Stack.Screen name="Rastreamento" component={Rastreamento} />
           <Stack.Screen name="Noticias" component={Noticias} />
@@ -333,21 +344,26 @@ function RootNavigator() {
 
 import { CondoProvider } from "@/contexts/CondoContext";
 
+function CondoProviderWithAuth({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  return <CondoProvider isAuthenticated={isAuthenticated}>{children}</CondoProvider>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ErrorBoundary>
       <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
         <SafeAreaProvider>
           <NotificationProvider>
-            <CondoProvider>
-              <CartProvider>
-                <AuthProvider>
+            <AuthProvider>
+              <CondoProviderWithAuth>
+                <CartProvider>
                   <NavigationContainer>
                     <RootNavigator />
                   </NavigationContainer>
-                </AuthProvider>
-              </CartProvider>
-            </CondoProvider>
+                </CartProvider>
+              </CondoProviderWithAuth>
+            </AuthProvider>
           </NotificationProvider>
         </SafeAreaProvider>
       </TamaguiProvider>
@@ -368,6 +384,10 @@ const styles = StyleSheet.create({
     color: "#E6E8EA",
     fontSize: 16,
     fontWeight: "600",
+    marginTop: 12,
+  },
+  loadingIcon: {
+    opacity: 0.7,
   },
   errorContainer: {
     flex: 1,

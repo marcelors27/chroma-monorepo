@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { toast } from "@/lib/toast";
 import { createCompany, listCompanies, updateCompany } from "@/lib/medusa";
+import { useCondo } from "@/contexts/CondoContext";
 
 type CondoForm = {
   id?: string;
@@ -59,6 +60,23 @@ const emptyForm: CondoForm = {
   notes: "",
 };
 
+const formatCNPJ = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 14);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+  if (digits.length <= 12) {
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+  }
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+};
+
+const formatCEP = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+};
+
 export default function CondominioDetalhes() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -66,6 +84,8 @@ export default function CondominioDetalhes() {
   const id = (route.params as { id?: string } | undefined)?.id;
   const isNew = !id;
   const { data } = useQuery({ queryKey: ["companies"], queryFn: listCompanies });
+  const { hasApprovedCondo } = useCondo();
+  const isFirstAccess = !hasApprovedCondo;
 
   const company = useMemo(() => {
     if (!id) return null;
@@ -78,6 +98,9 @@ export default function CondominioDetalhes() {
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [formData, setFormData] = useState<CondoForm>(emptyForm);
+  const [isLoadingCNPJ, setIsLoadingCNPJ] = useState(false);
+  const [isLoadingCEP, setIsLoadingCEP] = useState(false);
+  const canSaveNew = Boolean(formData.name.trim()) && formData.cnpj.replace(/\D/g, "").length === 14;
 
   useEffect(() => {
     if (!company) {
@@ -112,6 +135,81 @@ export default function CondominioDetalhes() {
 
   const handleChange = (field: keyof CondoForm, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const fetchCompanyByCNPJ = async (cnpj: string) => {
+    const cleanCNPJ = cnpj.replace(/\D/g, "");
+    if (cleanCNPJ.length !== 14) return;
+    if (isLoadingCNPJ) return;
+    setIsLoadingCNPJ(true);
+    try {
+      const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanCNPJ}`);
+      if (!response.ok) {
+        toast.error("CNPJ não encontrado. Verifique os dados.");
+        return;
+      }
+      const data = await response.json();
+      setFormData((prev) => ({
+        ...prev,
+        name: data.nome_fantasia || data.razao_social || prev.name,
+        address: data.logradouro || prev.address,
+        neighborhood: data.bairro || prev.neighborhood,
+        city: data.municipio || prev.city,
+        state: data.uf || prev.state,
+        zip: data.cep ? formatCEP(data.cep) : prev.zip,
+        phone: data.ddd_telefone_1 ? data.ddd_telefone_1 : prev.phone,
+        email: data.email || prev.email,
+      }));
+      toast.success("Dados do CNPJ preenchidos automaticamente.");
+    } catch {
+      toast.error("Não foi possível consultar o CNPJ.");
+    } finally {
+      setIsLoadingCNPJ(false);
+    }
+  };
+
+  const fetchAddressByCEP = async (cep: string) => {
+    const cleanCEP = cep.replace(/\D/g, "");
+    if (cleanCEP.length !== 8) return;
+    if (isLoadingCEP) return;
+    setIsLoadingCEP(true);
+    try {
+      const response = await fetch(`https://brasilapi.com.br/api/cep/v1/${cleanCEP}`);
+      if (!response.ok) {
+        toast.error("CEP não encontrado. Verifique os dados.");
+        return;
+      }
+      const data = await response.json();
+      setFormData((prev) => ({
+        ...prev,
+        address: data.street || prev.address,
+        neighborhood: data.neighborhood || prev.neighborhood,
+        city: data.city || prev.city,
+        state: data.state || prev.state,
+        zip: data.cep ? formatCEP(data.cep) : prev.zip,
+      }));
+      toast.success("Endereço preenchido automaticamente.");
+    } catch {
+      toast.error("Não foi possível consultar o CEP.");
+    } finally {
+      setIsLoadingCEP(false);
+    }
+  };
+
+  const handleCNPJChange = (value: string) => {
+    const formatted = formatCNPJ(value);
+    setFormData((prev) => ({ ...prev, cnpj: formatted }));
+    if (formatted.replace(/\D/g, "").length === 14) {
+      fetchCompanyByCNPJ(formatted);
+    }
+  };
+
+  const handleCEPChange = (value: string) => {
+    const formatted = formatCEP(value);
+    setFormData((prev) => ({ ...prev, zip: formatted }));
+    if (formatted.replace(/\D/g, "").length === 8) {
+      fetchAddressByCEP(formatted);
+    }
   };
 
   const handleSave = async () => {
@@ -182,7 +280,11 @@ export default function CondominioDetalhes() {
 
   return (
     <AuthenticatedLayout>
-      <Header title={formData.name || "Novo condomínio"} showBackButton showCondoSelector />
+      <Header
+        title={formData.name || "Novo condomínio"}
+        showBackButton
+        showCondoSelector={!isFirstAccess}
+      />
 
       <ScrollView style={styles.scrollContent}>
         <View style={styles.summaryCard}>
@@ -220,6 +322,14 @@ export default function CondominioDetalhes() {
 
         <View style={[styles.card, styles.cardSpacing]}>
           <Text style={styles.sectionTitle}>Dados principais</Text>
+          <Label>CNPJ</Label>
+          <Input
+            value={formData.cnpj}
+            editable={isEditing}
+            onChangeText={handleCNPJChange}
+            marginTop={4}
+            placeholder="00.000.000/0000-00"
+          />
           <Label>Nome</Label>
           <Input
             value={formData.name}
@@ -227,18 +337,40 @@ export default function CondominioDetalhes() {
             onChangeText={(value) => handleChange("name", value)}
             marginTop={4}
           />
-          <Label marginTop={12}>CNPJ</Label>
+          <Label marginTop={12}>CEP</Label>
           <Input
-            value={formData.cnpj}
+            value={formData.zip}
             editable={isEditing}
-            onChangeText={(value) => handleChange("cnpj", value)}
+            onChangeText={handleCEPChange}
             marginTop={4}
+            placeholder="00000-000"
           />
           <Label marginTop={12}>Endereço</Label>
           <Input
             value={formData.address}
             editable={isEditing}
             onChangeText={(value) => handleChange("address", value)}
+            marginTop={4}
+          />
+          <Label marginTop={12}>Bairro</Label>
+          <Input
+            value={formData.neighborhood}
+            editable={isEditing}
+            onChangeText={(value) => handleChange("neighborhood", value)}
+            marginTop={4}
+          />
+          <Label marginTop={12}>Cidade</Label>
+          <Input
+            value={formData.city}
+            editable={isEditing}
+            onChangeText={(value) => handleChange("city", value)}
+            marginTop={4}
+          />
+          <Label marginTop={12}>Estado</Label>
+          <Input
+            value={formData.state}
+            editable={isEditing}
+            onChangeText={(value) => handleChange("state", value)}
             marginTop={4}
           />
           <Label marginTop={12}>Telefone</Label>
@@ -271,16 +403,30 @@ export default function CondominioDetalhes() {
             marginTop={4}
             minHeight={120}
           />
-          <View style={styles.actionRow}>
-            <Button variant={isEditing ? "secondary" : "default"} onPress={() => setIsEditing((prev) => !prev)} flex={1}>
-              {isEditing ? "Cancelar" : "Editar"}
-            </Button>
-            {isEditing && (
-              <Button onPress={handleSave} flex={1}>
+          {isNew ? (
+            <View style={styles.saveRow}>
+              <Button
+                onPress={handleSave}
+                disabled={!canSaveNew}
+                backgroundColor={!canSaveNew ? "#5DA2E6" : undefined}
+                opacity={!canSaveNew ? 0.6 : 1}
+                width="100%"
+              >
                 Salvar
               </Button>
-            )}
-          </View>
+            </View>
+          ) : (
+            <View style={styles.actionRow}>
+              <Button variant={isEditing ? "secondary" : "default"} onPress={() => setIsEditing((prev) => !prev)} flex={1}>
+                {isEditing ? "Cancelar" : "Editar"}
+              </Button>
+              {isEditing && (
+                <Button onPress={handleSave} flex={1}>
+                  Salvar
+                </Button>
+              )}
+            </View>
+          )}
         </View>
 
         {!isNew && (
@@ -399,6 +545,9 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: "row",
     gap: 12,
+    marginTop: 16,
+  },
+  saveRow: {
     marginTop: 16,
   },
   transferRow: {

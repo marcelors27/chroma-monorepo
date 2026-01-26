@@ -70,11 +70,16 @@ export function Button({
   children,
   ...props
 }: ButtonProps) {
+  const textColor = props.disabled
+    ? "$color"
+    : variant === "ghost" || variant === "outline"
+      ? "$color"
+      : "$background";
   return (
     <BaseButton variant={variant} sizeVariant={size} {...props}>
       {typeof children === "string" ? (
         <Text
-          color={variant === "ghost" || variant === "outline" ? "$color" : "$background"}
+          color={textColor}
           fontSize={13}
           fontWeight="600"
           textAlign="center"

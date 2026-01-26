@@ -151,6 +151,24 @@ export type MedusaNews = {
   updated_at?: string | null;
 };
 
+export type MedusaMarketingBanner = {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  image_url?: string | null;
+  image_mobile_url?: string | null;
+  animation_url?: string | null;
+  animation_mobile_url?: string | null;
+  link_type?: string | null;
+  link_value?: string | null;
+  sort_order?: number | null;
+  active_from?: string | null;
+  active_until?: string | null;
+  is_active?: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 export type RecurrenceItem = {
   variant_id: string;
   quantity: number;
@@ -490,6 +508,17 @@ export const getNews = async (id: string) => {
   return apiFetch<{ news: MedusaNews }>(`/store/news/${id}`, {
     method: "GET",
   });
+};
+
+export const listMarketingBanners = async (params?: { limit?: number; offset?: number }) => {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+  const suffix = query.toString();
+  return apiFetch<{ banners: MedusaMarketingBanner[] }>(
+    `/store/marketing-banners${suffix ? `?${suffix}` : ""}`,
+    { method: "GET" }
+  );
 };
 
 export const earnCompanyPoints = async (companyId: string, orderId: string) => {

@@ -1,8 +1,9 @@
-import { FormEvent, useEffect, useMemo, useState } from "react"
+import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react"
 
 import ChannelsSection from "./modules/ChannelsSection"
 import DashboardSection from "./modules/DashboardSection"
 import NewsSection from "./modules/NewsSection"
+import MarketingSection from "./modules/MarketingSection"
 import OrdersSection from "./modules/OrdersSection"
 import PaymentsSection from "./modules/PaymentsSection"
 import ProductsSection from "./modules/ProductsSection"
@@ -10,8 +11,11 @@ import PromotionsSection from "./modules/PromotionsSection"
 import StockSection from "./modules/StockSection"
 import UsersSection from "./modules/UsersSection"
 import ToastContainer from "./modules/ToastContainer"
+import adminAuthBg from "./assets/admin-auth-bg.jpg"
+import adminDashboardBg from "./assets/admin-dashboard-bg.jpg"
 import {
   AdminCompany,
+  MarketingBanner,
   News,
   Order,
   PendingCompany,
@@ -48,7 +52,9 @@ export default function App() {
   const [companyEmailEdits, setCompanyEmailEdits] = useState<Record<string, string>>({})
   const [companySavingId, setCompanySavingId] = useState<string | null>(null)
   const [news, setNews] = useState<News[]>([])
+  const [marketingBanners, setMarketingBanners] = useState<MarketingBanner[]>([])
   const [newsError, setNewsError] = useState<string | null>(null)
+  const [marketingError, setMarketingError] = useState<string | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [priceLists, setPriceLists] = useState<PriceList[]>([])
   const [priceListsError, setPriceListsError] = useState<string | null>(null)
@@ -115,6 +121,7 @@ export default function App() {
           ordersRes,
           companiesRes,
           newsRes,
+          marketingRes,
           allCompaniesRes,
           priceListsRes,
           storeUsersRes,
@@ -126,6 +133,7 @@ export default function App() {
           fetch(`${MEDUSA_URL}/admin/orders?limit=50&fields=${ordersFields}`, { headers }),
           fetch(`${MEDUSA_URL}/admin/companies/pending`, { headers }),
           fetch(`${MEDUSA_URL}/admin/news?limit=50`, { headers }),
+          fetch(`${MEDUSA_URL}/admin/marketing-banners?limit=50`, { headers }),
           fetch(`${MEDUSA_URL}/admin/companies?limit=500`, { headers }),
           fetch(`${MEDUSA_URL}/admin/price-lists?limit=50`, { headers }),
           fetch(`${MEDUSA_URL}/admin/store-users?limit=500`, { headers }),
@@ -159,6 +167,15 @@ export default function App() {
         } else {
           const body = await newsRes.text()
           setNewsError(body || "Não foi possível buscar notícias")
+        }
+
+        if (marketingRes.ok) {
+          const json = await marketingRes.json()
+          setMarketingBanners(json.banners ?? [])
+          setMarketingError(null)
+        } else {
+          const body = await marketingRes.text()
+          setMarketingError(body || "Não foi possível buscar banners")
         }
 
         if (allCompaniesRes.ok) {
@@ -218,6 +235,7 @@ export default function App() {
         console.error("Erro ao buscar dados", err)
         setPendingCompaniesError("Erro ao buscar empresas pendentes")
         setNewsError("Erro ao buscar notícias")
+        setMarketingError("Erro ao buscar banners")
         setCompaniesError("Erro ao buscar empresas")
         setPriceListsError("Erro ao buscar promoções")
         setStoreUsersError("Erro ao buscar usuários")
@@ -300,207 +318,233 @@ export default function App() {
     }, 3500)
   }
 
+  const loginBackgroundStyle: CSSProperties = {
+    backgroundImage: `linear-gradient(180deg, hsl(213 29% 6% / 0.95) 0%, hsl(217 24% 11% / 0.9) 55%, hsl(213 29% 6% / 0.98) 100%), url(${adminAuthBg})`,
+  }
+
+  const appBackgroundStyle: CSSProperties = {
+    backgroundImage: `linear-gradient(160deg, hsl(213 29% 6% / 0.94) 0%, hsl(217 24% 11% / 0.88) 45%, hsl(213 29% 6% / 0.98) 100%), url(${adminDashboardBg})`,
+  }
+
   return (
     <>
       {!token ? (
-        <div className="layout">
-          <header className="grid" style={{ gap: "0.75rem" }}>
-            <span className="pill">Chroma Admin</span>
-            <h1 style={{ fontSize: "2.1rem" }}>Painel da operação</h1>
-            <p className="muted" style={{ maxWidth: "640px" }}>
-              Autentique com o usuário admin do Medusa para ver produtos, estoque e pedidos.
-            </p>
-          </header>
+        <div className="page-background" style={loginBackgroundStyle}>
+          <div className="layout">
+            <header className="grid" style={{ gap: "0.75rem" }}>
+              <span className="pill">Chroma Admin</span>
+              <h1 style={{ fontSize: "2.1rem" }}>Painel da operação</h1>
+              <p className="muted" style={{ maxWidth: "640px" }}>
+                Autentique com o usuário admin do Medusa para ver produtos, estoque e pedidos.
+              </p>
+            </header>
 
-          <form className="panel grid" onSubmit={login} style={{ gap: "1rem", maxWidth: "520px" }}>
-            <h2>Entrar</h2>
-            <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">E-mail</span>
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                required
-                className="field-input"
-              />
-            </label>
+            <form className="panel grid" onSubmit={login} style={{ gap: "1rem", maxWidth: "520px" }}>
+              <h2>Entrar</h2>
+              <label className="grid" style={{ gap: "0.35rem" }}>
+                <span className="muted">E-mail</span>
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  required
+                  className="field-input"
+                />
+              </label>
 
-            <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Senha</span>
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                required
-                className="field-input"
-              />
-            </label>
+              <label className="grid" style={{ gap: "0.35rem" }}>
+                <span className="muted">Senha</span>
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  type="password"
+                  required
+                  className="field-input"
+                />
+              </label>
 
-            {error && <div className="muted">Erro: {error}</div>}
+              {error && <div className="muted">Erro: {error}</div>}
 
-            <button className="btn" type="submit" disabled={isLoading}>
-              {isLoading ? "Autenticando..." : "Acessar admin"}
-            </button>
-            <p className="muted" style={{ fontSize: "0.9rem" }}>
-              Dica: crie o usuário rodando `medusa user -e admin@chroma.local -p supersecret` no
-              pacote da API.
-            </p>
-          </form>
+              <button className="btn" type="submit" disabled={isLoading}>
+                {isLoading ? "Autenticando..." : "Acessar admin"}
+              </button>
+              <p className="muted" style={{ fontSize: "0.9rem" }}>
+                Dica: crie o usuário rodando `medusa user -e admin@chroma.local -p supersecret` no
+                pacote da API.
+              </p>
+            </form>
+          </div>
         </div>
       ) : (
-        <div className="app-shell">
-          <aside className="sidebar">
-            <div className="grid" style={{ gap: "0.4rem" }}>
-              <span className="pill">Chroma Admin</span>
-              <h2>Painel da operação</h2>
-              <span className="muted" style={{ fontSize: "0.9rem" }}>
-                Selecione um módulo para trabalhar.
-              </span>
-            </div>
-            <nav className="nav">
-              {[
-                { id: "dashboard", label: "Dashboard", count: orders.length },
-                { id: "noticias", label: "Notícias", count: news.length },
-                { id: "pagamentos", label: "Pagamentos", count: pendingCompanies.length },
-                { id: "produtos", label: "Produtos", count: products.length },
-                { id: "estoque", label: "Estoque", count: stockLocations.length },
-                { id: "pedidos", label: "Pedidos", count: orders.length },
-                { id: "promocoes", label: "Promoções", count: priceLists.length },
-                { id: "canais", label: "Canais de vendas", count: salesChannels.length },
-                { id: "usuarios", label: "Usuários", count: storeUsers.length },
-              ].map((item) => (
-                <button
-                  key={item.id}
-                  className={`nav-item ${activeSection === item.id ? "active" : ""}`}
-                  type="button"
-                  onClick={() => setActiveSection(item.id as SectionId)}
-                >
-                  <span>{item.label}</span>
-                  <span className="nav-badge">{item.count}</span>
-                </button>
-              ))}
-            </nav>
-          </aside>
-
-          <main className="content">
-            {catalogError && (
-              <div className="panel" style={{ marginBottom: "1rem" }}>
-                <span className="muted">Erro: {catalogError}</span>
+        <div className="page-background" style={appBackgroundStyle}>
+          <div className="app-shell">
+            <aside className="sidebar">
+              <div className="grid" style={{ gap: "0.4rem" }}>
+                <span className="pill">Chroma Admin</span>
+                <h2>Painel da operação</h2>
+                <span className="muted" style={{ fontSize: "0.9rem" }}>
+                  Selecione um módulo para trabalhar.
+                </span>
               </div>
-            )}
-            {activeSection === "dashboard" && (
-              <DashboardSection
-                orders={orders}
-                dashboardDays={dashboardDays}
-                onChangeDays={setDashboardDays}
-                totalSales={totalSales}
-                averageTicket={averageTicket}
-                openOrders={openOrders}
-                itemsPurchased={itemsPurchased}
-                productsCount={products.length}
-                pendingCompaniesCount={pendingCompanies.length}
-                dashboardOrdersCount={dashboardOrders.length}
-                recentOrders={recentOrders}
-                revenueSeries={revenueSeries}
-                revenueMax={revenueMax}
-                topProducts={topProducts}
-                getOrderStatusClass={getOrderStatusClass}
-              />
-            )}
+              <nav className="nav">
+                {[
+                  { id: "dashboard", label: "Dashboard", count: orders.length },
+                  { id: "noticias", label: "Notícias", count: news.length },
+                  { id: "marketing", label: "Marketing", count: marketingBanners.length },
+                  { id: "pagamentos", label: "Pagamentos", count: pendingCompanies.length },
+                  { id: "produtos", label: "Produtos", count: products.length },
+                  { id: "estoque", label: "Estoque", count: stockLocations.length },
+                  { id: "pedidos", label: "Pedidos", count: orders.length },
+                  { id: "promocoes", label: "Promoções", count: priceLists.length },
+                  { id: "canais", label: "Canais de vendas", count: salesChannels.length },
+                  { id: "usuarios", label: "Usuários", count: storeUsers.length },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    className={`nav-item ${activeSection === item.id ? "active" : ""}`}
+                    type="button"
+                    onClick={() => setActiveSection(item.id as SectionId)}
+                  >
+                    <span>{item.label}</span>
+                    <span className="nav-badge">{item.count}</span>
+                  </button>
+                ))}
+              </nav>
+            </aside>
 
-            {activeSection === "pagamentos" && (
-              <PaymentsSection
-                medusaUrl={MEDUSA_URL}
-                headers={headers}
-                pendingCompanies={pendingCompanies}
-                setPendingCompanies={setPendingCompanies}
-                pendingCompaniesError={pendingCompaniesError}
-                setPendingCompaniesError={setPendingCompaniesError}
-                pendingCompanyActionId={pendingCompanyActionId}
-                setPendingCompanyActionId={setPendingCompanyActionId}
-                companies={companies}
-                setCompanies={setCompanies}
-                companiesError={companiesError}
-                setCompaniesError={setCompaniesError}
-                companyEmailEdits={companyEmailEdits}
-                setCompanyEmailEdits={setCompanyEmailEdits}
-                companySavingId={companySavingId}
-                setCompanySavingId={setCompanySavingId}
-                stockLocations={stockLocations}
-              />
-            )}
+            <main className="content">
+              {catalogError && (
+                <div className="panel" style={{ marginBottom: "1rem" }}>
+                  <span className="muted">Erro: {catalogError}</span>
+                </div>
+              )}
+              {activeSection === "dashboard" && (
+                <DashboardSection
+                  orders={orders}
+                  dashboardDays={dashboardDays}
+                  onChangeDays={setDashboardDays}
+                  totalSales={totalSales}
+                  averageTicket={averageTicket}
+                  openOrders={openOrders}
+                  itemsPurchased={itemsPurchased}
+                  productsCount={products.length}
+                  pendingCompaniesCount={pendingCompanies.length}
+                  dashboardOrdersCount={dashboardOrders.length}
+                  recentOrders={recentOrders}
+                  revenueSeries={revenueSeries}
+                  revenueMax={revenueMax}
+                  topProducts={topProducts}
+                  getOrderStatusClass={getOrderStatusClass}
+                />
+              )}
 
-            {activeSection === "noticias" && (
-              <NewsSection
-                medusaUrl={MEDUSA_URL}
-                headers={headers}
-                news={news}
-                setNews={setNews}
-                newsError={newsError}
-                setNewsError={setNewsError}
-                pushToast={pushToast}
-              />
-            )}
+              {activeSection === "pagamentos" && (
+                <PaymentsSection
+                  medusaUrl={MEDUSA_URL}
+                  headers={headers}
+                  pendingCompanies={pendingCompanies}
+                  setPendingCompanies={setPendingCompanies}
+                  pendingCompaniesError={pendingCompaniesError}
+                  setPendingCompaniesError={setPendingCompaniesError}
+                  pendingCompanyActionId={pendingCompanyActionId}
+                  setPendingCompanyActionId={setPendingCompanyActionId}
+                  companies={companies}
+                  setCompanies={setCompanies}
+                  companiesError={companiesError}
+                  setCompaniesError={setCompaniesError}
+                  companyEmailEdits={companyEmailEdits}
+                  setCompanyEmailEdits={setCompanyEmailEdits}
+                  companySavingId={companySavingId}
+                  setCompanySavingId={setCompanySavingId}
+                  stockLocations={stockLocations}
+                />
+              )}
 
-            {activeSection === "produtos" && (
-              <ProductsSection
-                medusaUrl={MEDUSA_URL}
-                token={token}
-                headers={headers}
-                products={products}
-                setProducts={setProducts}
-                salesChannels={salesChannels}
-                stockLocations={stockLocations}
-                openOrders={openOrders}
-              />
-            )}
+              {activeSection === "noticias" && (
+                <NewsSection
+                  medusaUrl={MEDUSA_URL}
+                  headers={headers}
+                  news={news}
+                  setNews={setNews}
+                  newsError={newsError}
+                  setNewsError={setNewsError}
+                  pushToast={pushToast}
+                />
+              )}
 
-            {activeSection === "estoque" && (
-              <StockSection
-                medusaUrl={MEDUSA_URL}
-                headers={headers}
-                products={products}
-                stockLocations={stockLocations}
-              />
-            )}
+              {activeSection === "marketing" && (
+                <MarketingSection
+                  medusaUrl={MEDUSA_URL}
+                  token={token}
+                  headers={headers}
+                  banners={marketingBanners}
+                  setBanners={setMarketingBanners}
+                  bannersError={marketingError}
+                  setBannersError={setMarketingError}
+                  pushToast={pushToast}
+                />
+              )}
 
-            {activeSection === "pedidos" && <OrdersSection orders={orders} />}
+              {activeSection === "produtos" && (
+                <ProductsSection
+                  medusaUrl={MEDUSA_URL}
+                  token={token}
+                  headers={headers}
+                  products={products}
+                  setProducts={setProducts}
+                  salesChannels={salesChannels}
+                  stockLocations={stockLocations}
+                  openOrders={openOrders}
+                />
+              )}
 
-            {activeSection === "promocoes" && (
-              <PromotionsSection
-                medusaUrl={MEDUSA_URL}
-                headers={headers}
-                products={products}
-                salesChannels={salesChannels}
-                regions={regions}
-                priceLists={priceLists}
-                priceListsError={priceListsError}
-                setPriceLists={setPriceLists}
-                stockLocations={stockLocations}
-                setStockLocations={setStockLocations}
-              />
-            )}
+              {activeSection === "estoque" && (
+                <StockSection
+                  medusaUrl={MEDUSA_URL}
+                  headers={headers}
+                  products={products}
+                  stockLocations={stockLocations}
+                />
+              )}
 
-            {activeSection === "canais" && (
-              <ChannelsSection
-                medusaUrl={MEDUSA_URL}
-                headers={headers}
-                salesChannels={salesChannels}
-                setSalesChannels={setSalesChannels}
-              />
-            )}
+              {activeSection === "pedidos" && <OrdersSection orders={orders} />}
 
-            {activeSection === "usuarios" && (
-              <UsersSection
-                medusaUrl={MEDUSA_URL}
-                headers={headers}
-                users={storeUsers}
-                setUsers={setStoreUsers}
-                usersError={storeUsersError}
-                setUsersError={setStoreUsersError}
-              />
-            )}
-          </main>
+              {activeSection === "promocoes" && (
+                <PromotionsSection
+                  medusaUrl={MEDUSA_URL}
+                  headers={headers}
+                  products={products}
+                  salesChannels={salesChannels}
+                  regions={regions}
+                  priceLists={priceLists}
+                  priceListsError={priceListsError}
+                  setPriceLists={setPriceLists}
+                  stockLocations={stockLocations}
+                  setStockLocations={setStockLocations}
+                />
+              )}
+
+              {activeSection === "canais" && (
+                <ChannelsSection
+                  medusaUrl={MEDUSA_URL}
+                  headers={headers}
+                  salesChannels={salesChannels}
+                  setSalesChannels={setSalesChannels}
+                />
+              )}
+
+              {activeSection === "usuarios" && (
+                <UsersSection
+                  medusaUrl={MEDUSA_URL}
+                  headers={headers}
+                  users={storeUsers}
+                  setUsers={setStoreUsers}
+                  usersError={storeUsersError}
+                  setUsersError={setStoreUsersError}
+                />
+              )}
+            </main>
+          </div>
         </div>
       )}
       <ToastContainer toasts={toasts} />

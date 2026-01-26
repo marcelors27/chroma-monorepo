@@ -186,7 +186,7 @@ const ensureCustomerForIdentity = async (scope, auth_identity_id, logger) => {
     const { result } = await createCustomerAccountWorkflow(scope).run({
       input: {
         authIdentityId: auth_identity_id,
-        customerData: { email, approved: false, metadata: { approved: false } },
+        customerData: { email },
       },
     })
     safeLog(logger, { msg: "ensureCustomerForIdentity:created", auth_identity_id, email, id: result?.id })
@@ -223,7 +223,7 @@ const fetchCustomerByEmail = async (scope, email, logger) => {
     const query = remoteQueryObjectFromString({
       entryPoint: "customer",
       variables: { filters: { email }, limit: 1 },
-      fields: ["id", "metadata", "approved"],
+      fields: ["id", "metadata"],
     })
     const customers = await remoteQuery(query)
     return customers?.[0] || null
@@ -258,11 +258,11 @@ const storeLoginCompanyGuard = () => {
 
 const storeLoginDisabledGuard = () => {
   return async (req, res, next) => {
+    const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
     try {
       const email = req.body?.email || req.body?.username
       if (!email) return next()
 
-      const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
       const customer = await fetchCustomerByEmail(req.scope, email, logger)
       if (customer?.metadata?.disabled) {
         return res.status(403).json({ message: "Usuario desativado" })
@@ -270,10 +270,14 @@ const storeLoginDisabledGuard = () => {
 
       const { authIdentityService } = getAuthServices(req.scope)
       if (authIdentityService?.list) {
-        const identities = await authIdentityService.list({ entity_id: email })
-        const identity = identities?.[0]
-        if (identity?.app_metadata?.disabled || identity?.user_metadata?.disabled) {
-          return res.status(403).json({ message: "Usuario desativado" })
+        try {
+          const identities = await authIdentityService.list({ entity_id: email })
+          const identity = identities?.[0]
+          if (identity?.app_metadata?.disabled || identity?.user_metadata?.disabled) {
+            return res.status(403).json({ message: "Usuario desativado" })
+          }
+        } catch {
+          // Ignore identity lookup failure to avoid blocking login.
         }
       }
     } catch {

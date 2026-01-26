@@ -7,12 +7,16 @@ import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { CondoCard } from "@/components/ui/CondoCard";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useCondo } from "@/contexts/CondoContext";
 import { listCompanies } from "@/lib/medusa";
 
 export default function Condominios() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
   const { data } = useQuery({ queryKey: ["companies"], queryFn: listCompanies });
+  const { hasApprovedCondo } = useCondo();
+  const isFirstAccess = !hasApprovedCondo;
 
   const condominios = useMemo(() => {
     return (data?.companies || []).map((company: any) => ({
@@ -32,7 +36,12 @@ export default function Condominios() {
 
   return (
     <AuthenticatedLayout>
-      <Header title="Meus Condomínios" subtitle="Gestão" showNotification={false} showCondoSelector />
+      <Header
+        title="Meus Condomínios"
+        subtitle="Gestão"
+        showNotification={false}
+        showCondoSelector={!isFirstAccess}
+      />
 
       <ScrollView style={styles.scrollContent}>
         <View style={styles.summaryCard}>
@@ -77,6 +86,26 @@ export default function Condominios() {
             <Building2 color="hsl(215 15% 55%)" size={40} />
             <Text style={styles.emptyTitle}>Nenhum condomínio encontrado</Text>
             <Text style={styles.emptySubtitle}>Adicione seu primeiro condomínio</Text>
+          </View>
+        )}
+
+        {isFirstAccess && (
+          <View style={styles.firstAccessCard}>
+            <Text style={styles.firstAccessTitle}>Finalize o cadastro</Text>
+            <Text style={styles.firstAccessSubtitle}>
+              Cadastre todos os condomínios desejados antes de finalizar.
+            </Text>
+            <Button
+              onPress={() => navigation.navigate("AccessPending" as never)}
+              disabled={condominios.length === 0}
+              backgroundColor={condominios.length === 0 ? "#5DA2E6" : undefined}
+              opacity={condominios.length === 0 ? 0.6 : 1}
+            >
+              Finalizar
+            </Button>
+            {condominios.length === 0 && (
+              <Text style={styles.firstAccessHint}>Adicione pelo menos um condomínio para continuar.</Text>
+            )}
           </View>
         )}
       </ScrollView>
@@ -147,6 +176,30 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     color: "#8C98A8",
     fontSize: 13,
+  },
+  firstAccessCard: {
+    marginTop: 20,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(70, 78, 90, 0.5)",
+    backgroundColor: "rgba(24, 28, 36, 0.92)",
+    gap: 10,
+  },
+  firstAccessTitle: {
+    color: "#E6E8EA",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  firstAccessSubtitle: {
+    color: "#8C98A8",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  firstAccessHint: {
+    color: "#C6CCD4",
+    fontSize: 12,
+    marginTop: 6,
   },
   fab: {
     position: "absolute",

@@ -2,8 +2,8 @@ const { Modules, ContainerRegistrationKeys, remoteQueryObjectFromString } = requ
 const { createCustomerAccountWorkflow } = require("@medusajs/core-flows")
 
 /**
- * Express middleware to block store requests when customer is not approved.
- * Checks current customer using the store auth module.
+ * Express middleware to block store requests when no approved company exists
+ * in customer metadata.
  */
 const jwt = require("jsonwebtoken")
 
@@ -42,7 +42,7 @@ const fetchCustomer = async (scope, customerId) => {
   const query = remoteQueryObjectFromString({
     entryPoint: "customer",
     variables: { filters: { id: customerId } },
-    fields: ["id", "metadata", "approved"],
+    fields: ["id", "metadata"],
   })
   const customers = await remoteQuery(query)
   return customers?.[0]
@@ -79,7 +79,7 @@ const ensureCustomerForIdentity = async (scope, authIdentityId, email, logger) =
     const { result } = await createCustomerAccountWorkflow(scope).run({
       input: {
         authIdentityId,
-        customerData: { email, approved: false, metadata: { approved: false } },
+        customerData: { email },
       },
     })
     safeLog(logger, { msg: "ensureCustomerForIdentity:created", authIdentityId, email, id: result?.id })
@@ -205,6 +205,8 @@ module.exports = () => {
       const isCustomerRoute = path.startsWith("/customers")
       const isCompanyRoute = path.startsWith("/companies") || path.startsWith("/store/companies")
       const isCartRoute = path.startsWith("/carts") || path.startsWith("/store/carts")
+      const isMarketingRoute =
+        path.startsWith("/marketing-banners") || path.startsWith("/store/marketing-banners")
       const isShippingRoute = path.startsWith("/shipping-options") || path.startsWith("/store/shipping-options")
       const isPaymentCollectionRoute =
         path.startsWith("/payment-collections") || path.startsWith("/store/payment-collections")
@@ -213,6 +215,7 @@ module.exports = () => {
         isCustomerRoute ||
         isCompanyRoute ||
         isCartRoute ||
+        isMarketingRoute ||
         isShippingRoute ||
         isPaymentCollectionRoute ||
         req.method === "OPTIONS"
