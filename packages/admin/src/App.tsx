@@ -1,4 +1,5 @@
 import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react"
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 
 import ChannelsSection from "./modules/ChannelsSection"
 import DashboardSection from "./modules/DashboardSection"
@@ -23,7 +24,6 @@ import {
   Product,
   Region,
   SalesChannel,
-  SectionId,
   StoreUser,
   StockLocation,
 } from "./types"
@@ -65,7 +65,34 @@ export default function App() {
   const [stockLocations, setStockLocations] = useState<StockLocation[]>([])
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [dashboardDays, setDashboardDays] = useState<7 | 30 | 90>(7)
-  const [activeSection, setActiveSection] = useState<SectionId>("dashboard")
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const sections = useMemo(
+    () => [
+      { id: "dashboard", label: "Dashboard", path: "/dashboard", count: orders.length },
+      { id: "noticias", label: "Notícias", path: "/noticias", count: news.length },
+      { id: "marketing", label: "Marketing", path: "/marketing", count: marketingBanners.length },
+      { id: "pagamentos", label: "Pagamentos", path: "/pagamentos", count: pendingCompanies.length },
+      { id: "produtos", label: "Produtos", path: "/produtos", count: products.length },
+      { id: "estoque", label: "Estoque", path: "/estoque", count: stockLocations.length },
+      { id: "pedidos", label: "Pedidos", path: "/pedidos", count: orders.length },
+      { id: "promocoes", label: "Promoções", path: "/promocoes", count: priceLists.length },
+      { id: "canais", label: "Canais de vendas", path: "/canais", count: salesChannels.length },
+      { id: "usuarios", label: "Usuários", path: "/usuarios", count: storeUsers.length },
+    ],
+    [
+      marketingBanners.length,
+      news.length,
+      orders.length,
+      pendingCompanies.length,
+      priceLists.length,
+      products.length,
+      salesChannels.length,
+      stockLocations.length,
+      storeUsers.length,
+    ]
+  )
 
   const headers = useMemo(
     () => ({
@@ -95,6 +122,9 @@ export default function App() {
         throw new Error("Token não retornado pelo backend")
       }
       setToken(accessToken)
+      if (location.pathname === "/" || location.pathname === "") {
+        navigate("/dashboard", { replace: true })
+      }
     } catch (err: any) {
       setError(err?.message || "Erro ao autenticar")
     } finally {
@@ -387,27 +417,15 @@ export default function App() {
                 </span>
               </div>
               <nav className="nav">
-                {[
-                  { id: "dashboard", label: "Dashboard", count: orders.length },
-                  { id: "noticias", label: "Notícias", count: news.length },
-                  { id: "marketing", label: "Marketing", count: marketingBanners.length },
-                  { id: "pagamentos", label: "Pagamentos", count: pendingCompanies.length },
-                  { id: "produtos", label: "Produtos", count: products.length },
-                  { id: "estoque", label: "Estoque", count: stockLocations.length },
-                  { id: "pedidos", label: "Pedidos", count: orders.length },
-                  { id: "promocoes", label: "Promoções", count: priceLists.length },
-                  { id: "canais", label: "Canais de vendas", count: salesChannels.length },
-                  { id: "usuarios", label: "Usuários", count: storeUsers.length },
-                ].map((item) => (
-                  <button
+                {sections.map((item) => (
+                  <NavLink
                     key={item.id}
-                    className={`nav-item ${activeSection === item.id ? "active" : ""}`}
-                    type="button"
-                    onClick={() => setActiveSection(item.id as SectionId)}
+                    className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+                    to={item.path}
                   >
                     <span>{item.label}</span>
                     <span className="nav-badge">{item.count}</span>
-                  </button>
+                  </NavLink>
                 ))}
               </nav>
             </aside>
@@ -418,131 +436,153 @@ export default function App() {
                   <span className="muted">Erro: {catalogError}</span>
                 </div>
               )}
-              {activeSection === "dashboard" && (
-                <DashboardSection
-                  orders={orders}
-                  dashboardDays={dashboardDays}
-                  onChangeDays={setDashboardDays}
-                  totalSales={totalSales}
-                  averageTicket={averageTicket}
-                  openOrders={openOrders}
-                  itemsPurchased={itemsPurchased}
-                  productsCount={products.length}
-                  pendingCompaniesCount={pendingCompanies.length}
-                  dashboardOrdersCount={dashboardOrders.length}
-                  recentOrders={recentOrders}
-                  revenueSeries={revenueSeries}
-                  revenueMax={revenueMax}
-                  topProducts={topProducts}
-                  getOrderStatusClass={getOrderStatusClass}
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <DashboardSection
+                      orders={orders}
+                      dashboardDays={dashboardDays}
+                      onChangeDays={setDashboardDays}
+                      totalSales={totalSales}
+                      averageTicket={averageTicket}
+                      openOrders={openOrders}
+                      itemsPurchased={itemsPurchased}
+                      productsCount={products.length}
+                      pendingCompaniesCount={pendingCompanies.length}
+                      dashboardOrdersCount={dashboardOrders.length}
+                      recentOrders={recentOrders}
+                      revenueSeries={revenueSeries}
+                      revenueMax={revenueMax}
+                      topProducts={topProducts}
+                      getOrderStatusClass={getOrderStatusClass}
+                    />
+                  }
                 />
-              )}
-
-              {activeSection === "pagamentos" && (
-                <PaymentsSection
-                  medusaUrl={MEDUSA_URL}
-                  headers={headers}
-                  pendingCompanies={pendingCompanies}
-                  setPendingCompanies={setPendingCompanies}
-                  pendingCompaniesError={pendingCompaniesError}
-                  setPendingCompaniesError={setPendingCompaniesError}
-                  pendingCompanyActionId={pendingCompanyActionId}
-                  setPendingCompanyActionId={setPendingCompanyActionId}
-                  companies={companies}
-                  setCompanies={setCompanies}
-                  companiesError={companiesError}
-                  setCompaniesError={setCompaniesError}
-                  companyEmailEdits={companyEmailEdits}
-                  setCompanyEmailEdits={setCompanyEmailEdits}
-                  companySavingId={companySavingId}
-                  setCompanySavingId={setCompanySavingId}
-                  stockLocations={stockLocations}
+                <Route
+                  path="/pagamentos"
+                  element={
+                    <PaymentsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      pendingCompanies={pendingCompanies}
+                      setPendingCompanies={setPendingCompanies}
+                      pendingCompaniesError={pendingCompaniesError}
+                      setPendingCompaniesError={setPendingCompaniesError}
+                      pendingCompanyActionId={pendingCompanyActionId}
+                      setPendingCompanyActionId={setPendingCompanyActionId}
+                      companies={companies}
+                      setCompanies={setCompanies}
+                      companiesError={companiesError}
+                      setCompaniesError={setCompaniesError}
+                      companyEmailEdits={companyEmailEdits}
+                      setCompanyEmailEdits={setCompanyEmailEdits}
+                      companySavingId={companySavingId}
+                      setCompanySavingId={setCompanySavingId}
+                      stockLocations={stockLocations}
+                    />
+                  }
                 />
-              )}
-
-              {activeSection === "noticias" && (
-                <NewsSection
-                  medusaUrl={MEDUSA_URL}
-                  headers={headers}
-                  news={news}
-                  setNews={setNews}
-                  newsError={newsError}
-                  setNewsError={setNewsError}
-                  pushToast={pushToast}
+                <Route
+                  path="/noticias"
+                  element={
+                    <NewsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      news={news}
+                      setNews={setNews}
+                      newsError={newsError}
+                      setNewsError={setNewsError}
+                      pushToast={pushToast}
+                    />
+                  }
                 />
-              )}
-
-              {activeSection === "marketing" && (
-                <MarketingSection
-                  medusaUrl={MEDUSA_URL}
-                  token={token}
-                  headers={headers}
-                  banners={marketingBanners}
-                  setBanners={setMarketingBanners}
-                  bannersError={marketingError}
-                  setBannersError={setMarketingError}
-                  pushToast={pushToast}
+                <Route
+                  path="/marketing"
+                  element={
+                    <MarketingSection
+                      medusaUrl={MEDUSA_URL}
+                      token={token}
+                      headers={headers}
+                      banners={marketingBanners}
+                      setBanners={setMarketingBanners}
+                      bannersError={marketingError}
+                      setBannersError={setMarketingError}
+                      pushToast={pushToast}
+                    />
+                  }
                 />
-              )}
-
-              {activeSection === "produtos" && (
-                <ProductsSection
-                  medusaUrl={MEDUSA_URL}
-                  token={token}
-                  headers={headers}
-                  products={products}
-                  setProducts={setProducts}
-                  salesChannels={salesChannels}
-                  stockLocations={stockLocations}
-                  openOrders={openOrders}
+                <Route
+                  path="/produtos"
+                  element={
+                    <ProductsSection
+                      medusaUrl={MEDUSA_URL}
+                      token={token}
+                      headers={headers}
+                      products={products}
+                      setProducts={setProducts}
+                      salesChannels={salesChannels}
+                      stockLocations={stockLocations}
+                      openOrders={openOrders}
+                    />
+                  }
                 />
-              )}
-
-              {activeSection === "estoque" && (
-                <StockSection
-                  medusaUrl={MEDUSA_URL}
-                  headers={headers}
-                  products={products}
-                  stockLocations={stockLocations}
+                <Route
+                  path="/estoque"
+                  element={
+                    <StockSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      products={products}
+                      stockLocations={stockLocations}
+                    />
+                  }
                 />
-              )}
-
-              {activeSection === "pedidos" && <OrdersSection orders={orders} />}
-
-              {activeSection === "promocoes" && (
-                <PromotionsSection
-                  medusaUrl={MEDUSA_URL}
-                  headers={headers}
-                  products={products}
-                  salesChannels={salesChannels}
-                  regions={regions}
-                  priceLists={priceLists}
-                  priceListsError={priceListsError}
-                  setPriceLists={setPriceLists}
-                  stockLocations={stockLocations}
-                  setStockLocations={setStockLocations}
+                <Route path="/pedidos" element={<OrdersSection orders={orders} />} />
+                <Route
+                  path="/promocoes"
+                  element={
+                    <PromotionsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      products={products}
+                      salesChannels={salesChannels}
+                      regions={regions}
+                      priceLists={priceLists}
+                      priceListsError={priceListsError}
+                      setPriceLists={setPriceLists}
+                      stockLocations={stockLocations}
+                      setStockLocations={setStockLocations}
+                    />
+                  }
                 />
-              )}
-
-              {activeSection === "canais" && (
-                <ChannelsSection
-                  medusaUrl={MEDUSA_URL}
-                  headers={headers}
-                  salesChannels={salesChannels}
-                  setSalesChannels={setSalesChannels}
+                <Route
+                  path="/canais"
+                  element={
+                    <ChannelsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      salesChannels={salesChannels}
+                      setSalesChannels={setSalesChannels}
+                    />
+                  }
                 />
-              )}
-
-              {activeSection === "usuarios" && (
-                <UsersSection
-                  medusaUrl={MEDUSA_URL}
-                  headers={headers}
-                  users={storeUsers}
-                  setUsers={setStoreUsers}
-                  usersError={storeUsersError}
-                  setUsersError={setStoreUsersError}
+                <Route
+                  path="/usuarios"
+                  element={
+                    <UsersSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      users={storeUsers}
+                      setUsers={setStoreUsers}
+                      usersError={storeUsersError}
+                      setUsersError={setStoreUsersError}
+                    />
+                  }
                 />
-              )}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
             </main>
           </div>
         </div>
