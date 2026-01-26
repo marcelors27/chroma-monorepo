@@ -66,6 +66,7 @@ export default function ProductsSection({
     media_youtube: "",
     sales_channel_id: "",
     manage_inventory: false,
+    featured: false,
     stock_location_id: "",
     stock_quantity: "",
   })
@@ -97,6 +98,7 @@ export default function ProductsSection({
     media_images: "",
     media_videos: "",
     media_youtube: "",
+    featured: false,
   })
 
   const totalInventory = useMemo(() => {
@@ -198,6 +200,7 @@ export default function ProductsSection({
       media_youtube: "",
       sales_channel_id: "",
       manage_inventory: false,
+      featured: false,
       stock_location_id: "",
       stock_quantity: "",
     })
@@ -686,6 +689,21 @@ export default function ProductsSection({
         }
       }
 
+      const metadata: Record<string, any> | undefined = (() => {
+        const featured = productForm.featured === true
+        const hasMedia = mediaImages.length || mediaVideos.length || mediaYoutube.length
+        if (!featured && !hasMedia) return undefined
+        const base: Record<string, any> = { featured }
+        if (hasMedia) {
+          base.media = {
+            images: mediaImages,
+            videos: mediaVideos,
+            youtube: mediaYoutube,
+          }
+        }
+        return base
+      })()
+
       const payload: Record<string, any> = {
         title: productForm.title,
         description: productForm.description || null,
@@ -696,16 +714,7 @@ export default function ProductsSection({
           title,
           values,
         })),
-        metadata:
-          mediaImages.length || mediaVideos.length || mediaYoutube.length
-            ? {
-                media: {
-                  images: mediaImages,
-                  videos: mediaVideos,
-                  youtube: mediaYoutube,
-                },
-              }
-            : undefined,
+        metadata,
         variants: variantsPayload,
       }
       if (productForm.sales_channel_id) {
@@ -841,6 +850,7 @@ export default function ProductsSection({
       media_images: formatMediaValue(media.images as string[] | undefined),
       media_videos: formatMediaValue(media.videos as string[] | undefined),
       media_youtube: formatMediaValue(media.youtube as string[] | undefined),
+      featured: Boolean(metadata?.featured),
     })
   }
 
@@ -852,7 +862,7 @@ export default function ProductsSection({
 
   const updateProductEditField = (
     field: keyof typeof productEditForm,
-    value: string
+    value: string | boolean
   ) => {
     setProductEditForm((prev) => ({ ...prev, [field]: value }))
   }
@@ -876,6 +886,7 @@ export default function ProductsSection({
       const payload = {
         metadata: {
           ...(product.metadata || {}),
+          featured: productEditForm.featured === true,
           media: {
             images: mediaImages,
             videos: mediaVideos,
@@ -1316,6 +1327,16 @@ export default function ProductsSection({
           <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <input
               type="checkbox"
+              checked={productForm.featured}
+              onChange={(e) => handleProductChange("featured", e.target.checked)}
+              className="checkbox"
+            />
+            <span className="muted">Produto em destaque</span>
+          </label>
+
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <input
+              type="checkbox"
               checked={productForm.manage_inventory}
               onChange={(e) => handleProductChange("manage_inventory", e.target.checked)}
               className="checkbox"
@@ -1456,7 +1477,10 @@ export default function ProductsSection({
                           <FontAwesomeIcon icon={isExpanded ? faChevronDown : faChevronRight} />
                         </button>
                       </td>
-                      <td>{p.title}</td>
+                      <td>
+                        {p.title}
+                        {p.metadata?.featured && <span className="pill" style={{ marginLeft: "0.5rem" }}>Destaque</span>}
+                      </td>
                       <td>{hasStockData ? totalStock : "—"}</td>
                       <td>{formatMoney(price?.amount, price?.currency_code)}</td>
                       <td>
@@ -1505,6 +1529,17 @@ export default function ProductsSection({
                               placeholder="YouTube (links)"
                               className="field-input"
                             />
+                            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <input
+                                type="checkbox"
+                                checked={productEditForm.featured}
+                                onChange={(e) =>
+                                  updateProductEditField("featured", e.target.checked)
+                                }
+                                className="checkbox"
+                              />
+                              <span className="muted">Produto em destaque</span>
+                            </label>
                             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                               <button
                                 className="btn btn-sm btn-icon"

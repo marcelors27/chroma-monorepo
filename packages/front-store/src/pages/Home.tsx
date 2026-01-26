@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Tag, 
   Newspaper, 
+  ArrowLeft,
   ArrowRight, 
   Percent, 
   Clock,
@@ -93,6 +94,13 @@ const Home = () => {
 
   const newsItems = (newsData?.news || []) as MedusaNews[];
   const banners = (bannerData?.banners || []) as MedusaMarketingBanner[];
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const [isBannerPaused, setIsBannerPaused] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const bannerTrackRef = useRef<HTMLDivElement | null>(null);
+  const dragStartXRef = useRef(0);
+  const dragDeltaRef = useRef(0);
+  const dragActiveRef = useRef(false);
 
   const resolveBannerHref = (banner: MedusaMarketingBanner) => {
     if (!banner?.link_type) return null;
@@ -128,6 +136,76 @@ const Home = () => {
     return /\.(mp4|webm|mov)$/i.test(url);
   };
 
+  useEffect(() => {
+    if (banners.length === 0) return;
+    setBannerIndex(0);
+  }, [banners.length]);
+
+  useEffect(() => {
+    if (banners.length <= 1 || isBannerPaused) return;
+    const interval = window.setInterval(() => {
+      setBannerIndex((prev) => (prev + 1) % banners.length);
+    }, 10000);
+    return () => window.clearInterval(interval);
+  }, [banners.length, isBannerPaused]);
+
+  const goToPrevBanner = () => {
+    if (banners.length <= 1) return;
+    setBannerIndex((prev) => (prev - 1 + banners.length) % banners.length);
+  };
+
+  const goToNextBanner = () => {
+    if (banners.length <= 1) return;
+    setBannerIndex((prev) => (prev + 1) % banners.length);
+  };
+
+  const resolveNextIndex = (delta: number) => {
+    if (banners.length <= 1) return bannerIndex;
+    const width = bannerTrackRef.current?.clientWidth || 1;
+    const threshold = width * 0.2;
+    if (Math.abs(delta) < threshold) return bannerIndex;
+    if (delta < 0) return (bannerIndex + 1) % banners.length;
+    return (bannerIndex - 1 + banners.length) % banners.length;
+  };
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (banners.length <= 1) return;
+    if (event.pointerType === "mouse") return;
+    dragActiveRef.current = true;
+    dragStartXRef.current = event.clientX;
+    dragDeltaRef.current = 0;
+    setIsBannerPaused(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragActiveRef.current) return;
+    dragDeltaRef.current = event.clientX - dragStartXRef.current;
+    if (!isDragging && Math.abs(dragDeltaRef.current) > 6) {
+      setIsDragging(true);
+    }
+    const width = bannerTrackRef.current?.clientWidth || 1;
+    const offsetPercent = (dragDeltaRef.current / width) * 100;
+    if (bannerTrackRef.current) {
+      bannerTrackRef.current.style.transform = `translateX(calc(-${bannerIndex * 100}% + ${offsetPercent}%))`;
+    }
+  };
+
+  const handlePointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragActiveRef.current) return;
+    dragActiveRef.current = false;
+    const delta = dragDeltaRef.current;
+    const nextIndex = resolveNextIndex(delta);
+    setBannerIndex(nextIndex);
+    setIsDragging(false);
+    setIsBannerPaused(false);
+    dragDeltaRef.current = 0;
+    if (bannerTrackRef.current) {
+      bannerTrackRef.current.style.transform = `translateX(-${nextIndex * 100}%)`;
+    }
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
   return (
     <div 
       className="min-h-screen relative -m-4 lg:-m-8 p-4 lg:p-8"
@@ -153,81 +231,152 @@ const Home = () => {
             <h2 className="text-xl font-bold">Campanhas em destaque</h2>
           </div>
           <div className="grid grid-cols-1 gap-4">
-            {banners.map((banner) => {
-              const href = resolveBannerHref(banner);
-              const desktopMedia = banner.animation_url || banner.image_url || "";
-              const mobileMedia =
-                banner.animation_mobile_url || banner.image_mobile_url || desktopMedia;
-              const content = (
-                <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
-                  {desktopMedia && (
-                    <>
-                      {isVideo(desktopMedia) ? (
-                        <video
-                          className="hidden md:block w-full h-[260px] object-cover"
-                          src={desktopMedia}
-                          autoPlay
-                          muted
-                          loop
-                          playsInline
-                        />
-                      ) : (
-                        <img
-                          className="hidden md:block w-full h-[260px] object-cover"
-                          src={desktopMedia}
-                          alt={banner.title}
-                        />
-                      )}
-                      {isVideo(mobileMedia) ? (
-                        <video
-                          className="md:hidden w-full h-[200px] object-cover"
-                          src={mobileMedia}
-                          autoPlay
-                          muted
-                          loop
-                          playsInline
-                        />
-                      ) : (
-                        <img
-                          className="md:hidden w-full h-[200px] object-cover"
-                          src={mobileMedia}
-                          alt={banner.title}
-                        />
-                      )}
-                    </>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent" />
-                  <div className="absolute inset-0 p-6 flex flex-col justify-end gap-2 text-white">
-                    <h3 className="text-2xl font-bold">{banner.title}</h3>
-                    {banner.subtitle && <p className="text-sm text-white/80">{banner.subtitle}</p>}
-                    {href && (
-                      <span className="text-xs uppercase tracking-widest text-white/70">
-                        Saiba mais
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
+            <div
+              className="relative overflow-hidden rounded-2xl"
+              onMouseEnter={() => setIsBannerPaused(true)}
+              onMouseLeave={() => setIsBannerPaused(false)}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerEnd}
+              onPointerCancel={handlePointerEnd}
+              onPointerLeave={handlePointerEnd}
+              style={{ touchAction: "pan-y" }}
+            >
+              {banners.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white backdrop-blur transition hover:bg-black/70"
+                    aria-label="Banner anterior"
+                    onClick={goToPrevBanner}
+                    onMouseEnter={() => setIsBannerPaused(true)}
+                    onMouseLeave={() => setIsBannerPaused(false)}
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white backdrop-blur transition hover:bg-black/70"
+                    aria-label="Próximo banner"
+                    onClick={goToNextBanner}
+                    onMouseEnter={() => setIsBannerPaused(true)}
+                    onMouseLeave={() => setIsBannerPaused(false)}
+                  >
+                    <ArrowRight className="h-5 w-5" />
+                  </button>
+                </>
+              )}
+              <div
+                ref={bannerTrackRef}
+                className={`flex transition-transform duration-700 ease-in-out ${
+                  isDragging ? "transition-none" : ""
+                }`}
+                style={{ transform: `translateX(-${bannerIndex * 100}%)` }}
+              >
+                {banners.map((banner) => {
+                  const href = resolveBannerHref(banner);
+                  const desktopMedia = banner.animation_url || banner.image_url || "";
+                  const mobileMedia =
+                    banner.animation_mobile_url || banner.image_mobile_url || desktopMedia;
+                  const content = (
+                    <div className="relative w-full shrink-0">
+                      <div className="relative w-full aspect-[1440/360]">
+                        {desktopMedia && (
+                          <>
+                            {isVideo(desktopMedia) ? (
+                              <video
+                                className="hidden md:block absolute inset-0 h-full w-full object-cover"
+                                src={desktopMedia}
+                                autoPlay
+                                muted
+                                loop
+                                playsInline
+                              />
+                            ) : (
+                              <img
+                                className="hidden md:block absolute inset-0 h-full w-full object-cover"
+                                src={desktopMedia}
+                                alt={banner.title}
+                              />
+                            )}
+                            {isVideo(mobileMedia) ? (
+                              <video
+                                className="md:hidden absolute inset-0 h-full w-full object-cover"
+                                src={mobileMedia}
+                                autoPlay
+                                muted
+                                loop
+                                playsInline
+                              />
+                            ) : (
+                              <img
+                                className="md:hidden absolute inset-0 h-full w-full object-cover"
+                                src={mobileMedia}
+                                alt={banner.title}
+                              />
+                            )}
+                          </>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent" />
+                        <div className="absolute inset-0 p-6 flex flex-col justify-end gap-2 text-white">
+                          <h3 className="text-2xl font-bold">{banner.title}</h3>
+                          {banner.subtitle && (
+                            <p className="text-sm text-white/80">{banner.subtitle}</p>
+                          )}
+                          {href && (
+                            <span className="text-xs uppercase tracking-widest text-white/70">
+                              Saiba mais
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
 
-              if (!href) {
-                return (
-                  <div key={banner.id}>
-                    {content}
-                  </div>
-                );
-              }
-
-              const isExternal = /^https?:\/\//i.test(href);
-              return isExternal ? (
-                <a key={banner.id} href={href} target="_blank" rel="noreferrer">
-                  {content}
-                </a>
-              ) : (
-                <Link key={banner.id} to={href}>
-                  {content}
-                </Link>
-              );
-            })}
+                  if (!href)
+                    return (
+                      <div key={banner.id} className="w-full shrink-0">
+                        {content}
+                      </div>
+                    );
+                  const isExternal = /^https?:\/\//i.test(href);
+                  return isExternal ? (
+                    <a
+                      key={banner.id}
+                      className="w-full shrink-0"
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {content}
+                    </a>
+                  ) : (
+                    <Link key={banner.id} className="w-full shrink-0" to={href}>
+                      {content}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+            {banners.length > 1 && (
+              <div className="flex items-center justify-center gap-2">
+                {banners.map((banner, idx) => (
+                  <button
+                    key={banner.id}
+                    type="button"
+                    className={`h-2 w-2 rounded-full transition ${
+                      idx === bannerIndex ? "bg-primary" : "bg-muted-foreground/40"
+                    }`}
+                    aria-label={`Ir para banner ${idx + 1}`}
+                    onClick={() => setBannerIndex(idx)}
+                    onMouseEnter={() => setIsBannerPaused(true)}
+                    onMouseLeave={() => setIsBannerPaused(false)}
+                    onFocus={() => setIsBannerPaused(true)}
+                    onBlur={() => setIsBannerPaused(false)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </section>
       )}

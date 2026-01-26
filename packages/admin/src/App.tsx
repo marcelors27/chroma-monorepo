@@ -114,7 +114,7 @@ export default function App() {
           "+items.quantity,+items.title,+items.product_id,+created_at,+total,+currency_code,+status,+display_id"
         )
         const productFields = encodeURIComponent(
-          "+variants.inventory_quantity,+variants.prices,+variants.title,+variants.id,+variants.sku"
+          "+variants.inventory_quantity,+variants.prices,+variants.title,+variants.id,+variants.sku,+metadata"
         )
         const [
           productsRes,

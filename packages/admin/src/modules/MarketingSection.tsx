@@ -47,7 +47,15 @@ const formatDateInput = (value?: string | null) => {
   if (!value) return ""
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ""
-  return date.toISOString().slice(0, 16)
+  const offsetMs = date.getTimezoneOffset() * 60000
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16)
+}
+
+const toIsoOrNull = (value?: string) => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toISOString()
 }
 
 const isVideo = (url?: string | null) => {
@@ -179,8 +187,8 @@ export default function MarketingSection({
         link_type: form.link_type || null,
         link_value: form.link_value || null,
         sort_order: form.sort_order ? Number(form.sort_order) : 0,
-        active_from: form.active_from || null,
-        active_until: form.active_until || null,
+        active_from: toIsoOrNull(form.active_from),
+        active_until: toIsoOrNull(form.active_until),
         is_active: form.is_active,
       }
 
@@ -293,8 +301,7 @@ export default function MarketingSection({
             <div className="grid" style={{ gap: "0.4rem" }}>
               <strong>Imagens</strong>
               <span className="muted">
-                Desktop recomendado: 1440 x 420px (min 1200 x 360). Mobile recomendado: 720 x
-                420px.
+                Desktop recomendado: 1440 x 360px. Mobile recomendado: 1440 x 360px.
               </span>
             </div>
             <div className="grid" style={{ gap: "0.6rem" }}>
