@@ -373,6 +373,16 @@ const middlewares = defineMiddlewares([
     ],
   },
   {
+    method: ["ALL"],
+    matcher: ["/store/push-tokens", "/store/push-tokens/*"],
+    middlewares: [
+      authenticate(["customer", "store"], ["session", "bearer"], {
+        allowUnauthenticated: false,
+        allowUnregistered: true,
+      }),
+    ],
+  },
+  {
     method: ["OPTIONS"],
     matcher: "/store/*",
     middlewares: [storeCompaniesCors],

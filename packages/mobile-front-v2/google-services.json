@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1022194866545",
+    "project_id": "chroma-mobile",
+    "storage_bucket": "chroma-mobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1022194866545:android:66c1184016bbbb1ec3fed0",
+        "android_client_info": {
+          "package_name": "com.chroma.mobilestore"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBs43IpZmaX05jA4_e4UqN1-Q4zW6ihVFs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

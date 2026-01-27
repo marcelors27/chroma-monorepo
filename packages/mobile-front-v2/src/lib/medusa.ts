@@ -464,6 +464,19 @@ export const updatePassword = async (payload: { old_password: string; password: 
   });
 };
 
+export const registerPushToken = async (payload: {
+  provider: "fcm" | "apns";
+  platform: "ios" | "android";
+  token: string;
+  device_id?: string;
+  company_id?: string | null;
+}) => {
+  return apiFetch("/store/push-tokens", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+};
+
 export const listProducts = async () => {
   const data = await apiFetch<{ products: MedusaProduct[] }>(withProductQuery("/store/products"), {
     method: "GET",

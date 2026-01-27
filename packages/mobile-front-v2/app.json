@@ -20,6 +20,7 @@
     ],
     "android": {
       "package": "com.chroma.mobilestore",
+      "googleServicesFile": "google-services.json",
       "statusBar": {
         "barStyle": "light-content",
         "backgroundColor": "#000000"
@@ -28,6 +29,7 @@
     "ios": {
       "bundleIdentifier": "com.chroma.mobilestore",
       "buildNumber": "6",
+      "appleTeamId": "BMZ7XQ54J3",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -38,6 +40,7 @@
     "plugins": [
       "expo-asset",
       "expo-font",
+      "expo-notifications",
       [
         "@react-native-google-signin/google-signin",
         {

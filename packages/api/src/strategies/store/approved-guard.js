@@ -207,6 +207,8 @@ module.exports = () => {
       const isCartRoute = path.startsWith("/carts") || path.startsWith("/store/carts")
       const isMarketingRoute =
         path.startsWith("/marketing-banners") || path.startsWith("/store/marketing-banners")
+      const isPushTokenRoute =
+        path.startsWith("/push-tokens") || path.startsWith("/store/push-tokens")
       const isShippingRoute = path.startsWith("/shipping-options") || path.startsWith("/store/shipping-options")
       const isPaymentCollectionRoute =
         path.startsWith("/payment-collections") || path.startsWith("/store/payment-collections")
@@ -216,6 +218,7 @@ module.exports = () => {
         isCompanyRoute ||
         isCartRoute ||
         isMarketingRoute ||
+        isPushTokenRoute ||
         isShippingRoute ||
         isPaymentCollectionRoute ||
         req.method === "OPTIONS"

@@ -9,6 +9,7 @@ import OrdersSection from "./modules/OrdersSection"
 import PaymentsSection from "./modules/PaymentsSection"
 import ProductsSection from "./modules/ProductsSection"
 import PromotionsSection from "./modules/PromotionsSection"
+import PushNotificationsSection from "./modules/PushNotificationsSection"
 import StockSection from "./modules/StockSection"
 import UsersSection from "./modules/UsersSection"
 import ToastContainer from "./modules/ToastContainer"
@@ -74,6 +75,7 @@ export default function App() {
       { id: "noticias", label: "Notícias", path: "/noticias", count: news.length },
       { id: "marketing", label: "Marketing", path: "/marketing", count: marketingBanners.length },
       { id: "pagamentos", label: "Pagamentos", path: "/pagamentos", count: pendingCompanies.length },
+      { id: "push", label: "Push", path: "/push", count: 0 },
       { id: "produtos", label: "Produtos", path: "/produtos", count: products.length },
       { id: "estoque", label: "Estoque", path: "/estoque", count: stockLocations.length },
       { id: "pedidos", label: "Pedidos", path: "/pedidos", count: orders.length },
@@ -525,6 +527,18 @@ export default function App() {
                       salesChannels={salesChannels}
                       stockLocations={stockLocations}
                       openOrders={openOrders}
+                    />
+                  }
+                />
+                <Route
+                  path="/push"
+                  element={
+                    <PushNotificationsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      users={storeUsers}
+                      companies={companies}
+                      pushToast={pushToast}
                     />
                   }
                 />

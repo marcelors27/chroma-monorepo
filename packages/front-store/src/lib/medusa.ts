@@ -736,6 +736,19 @@ export const updatePassword = async (payload: { old_password: string; password: 
   })
 }
 
+export const registerPushToken = async (payload: {
+  provider: "webpush"
+  platform: "web"
+  subscription: Record<string, any>
+  device_id?: string
+  company_id?: string | null
+}) => {
+  return apiFetch("/store/push-tokens", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
 export const listProducts = async () => {
   return apiFetch<{ products: MedusaProduct[] }>(withProductQuery("/store/products"))
 }

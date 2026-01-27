@@ -22,61 +22,6 @@ class Migration20250215 extends Migration {
       );
     `)
 
-    this.addSql(`
-      INSERT INTO "marketing_banners" (
-        "id",
-        "title",
-        "subtitle",
-        "image_url",
-        "image_mobile_url",
-        "animation_url",
-        "animation_mobile_url",
-        "link_type",
-        "link_value",
-        "sort_order",
-        "active_from",
-        "active_until",
-        "is_active",
-        "created_at",
-        "updated_at"
-      )
-      SELECT * FROM (VALUES
-        (
-          'banner-001',
-          $$Campanha de abertura$$,
-          $$Descontos especiais para condominios cadastrados$$,
-          'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1440&auto=format&fit=crop&q=70',
-          'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=720&auto=format&fit=crop&q=70',
-          NULL,
-          NULL,
-          'area',
-          'catalog',
-          10,
-          now(),
-          NULL,
-          TRUE,
-          now(),
-          now()
-        )
-      ) AS seed (
-        "id",
-        "title",
-        "subtitle",
-        "image_url",
-        "image_mobile_url",
-        "animation_url",
-        "animation_mobile_url",
-        "link_type",
-        "link_value",
-        "sort_order",
-        "active_from",
-        "active_until",
-        "is_active",
-        "created_at",
-        "updated_at"
-      )
-      WHERE NOT EXISTS (SELECT 1 FROM "marketing_banners");
-    `)
   }
 
   async down() {

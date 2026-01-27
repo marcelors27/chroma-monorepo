@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/sheet";
 import CartDrawer from "@/components/CartDrawer";
 import { getActiveCondo, listCompanies, setActiveCondo } from "@/lib/medusa";
+import { registerWebPush } from "@/lib/push";
 import dashboardBg from "@/assets/dashboard-bg.jpg";
 
 type CondoOption = {
@@ -74,6 +75,11 @@ const AppLayout = () => {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedCondo?.id) return;
+    registerWebPush(selectedCondo.id).catch(() => undefined);
+  }, [selectedCondo?.id]);
 
   const handleLogout = () => {
     navigate("/");

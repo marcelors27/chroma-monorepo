@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getTokenValue, listCompanies } from "@/lib/medusa";
+import { registerDevicePushToken } from "@/lib/push";
 import { toast } from "@/lib/toast";
 
 export interface Condo {
@@ -97,6 +98,11 @@ export function CondoProvider({
 
     loadCondo();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    registerDevicePushToken(activeCondo?.id).catch(() => undefined);
+  }, [isAuthenticated, activeCondo?.id]);
 
   const setActiveCondo = (condo: Condo | null) => {
     setActiveCondoState(condo);
