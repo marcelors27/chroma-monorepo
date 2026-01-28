@@ -60,6 +60,14 @@ const ensureWebPushConfig = () => {
   webpush.setVapidDetails(subject, publicKey, privateKey)
 }
 
+const chunkArray = (items, size) => {
+  const chunks = []
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size))
+  }
+  return chunks
+}
+
 const sendFcm = async (tokens, payload) => {
   if (!tokens.length) return { sent: 0, failed: 0, invalidTokens: [] }
   const app = getFirebaseApp()
@@ -72,15 +80,22 @@ const sendFcm = async (tokens, payload) => {
     data: payload.data || {},
   })
   const invalidTokens = []
+  const errors = []
   response.responses.forEach((item, index) => {
     if (!item.success) {
       const code = item.error?.code || ""
+      const message = item.error?.message || ""
+      if (code || message) {
+        errors.push(
+          `${tokens[index]}:${[code, message].filter(Boolean).join(" ")}`
+        )
+      }
       if (code.includes("registration-token-not-registered") || code.includes("invalid-registration-token")) {
         invalidTokens.push(tokens[index])
       }
     }
   })
-  return { sent: response.successCount, failed: response.failureCount, invalidTokens }
+  return { sent: response.successCount, failed: response.failureCount, invalidTokens, errors }
 }
 
 const sendApns = async (tokens, payload) => {
@@ -126,4 +141,65 @@ const sendWebPush = async (subscriptions, payload) => {
   return { sent, failed, invalidTokens }
 }
 
-module.exports = { sendFcm, sendApns, sendWebPush }
+const sendExpo = async (tokens, payload) => {
+  if (!tokens.length) return { sent: 0, failed: 0, invalidTokens: [], errors: [] }
+  const chunks = chunkArray(tokens, 100)
+  let sent = 0
+  let failed = 0
+  const invalidTokens = []
+  const errors = []
+
+  for (const chunk of chunks) {
+    const body = chunk.map((token) => ({
+      to: token,
+      title: payload.title,
+      body: payload.message,
+      data: payload.data || {},
+    }))
+
+    let res
+    try {
+      res = await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Accept-Encoding": "gzip, deflate",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      })
+    } catch (err) {
+      failed += chunk.length
+      errors.push(`expo:request_failed ${err?.message || "network_error"}`)
+      continue
+    }
+
+    if (!res.ok) {
+      const text = await res.text()
+      failed += chunk.length
+      errors.push(`expo:request_failed ${res.status} ${text}`)
+      continue
+    }
+
+    const json = await res.json()
+    const results = Array.isArray(json?.data) ? json.data : []
+    results.forEach((ticket, index) => {
+      if (ticket?.status === "ok") {
+        sent += 1
+        return
+      }
+      failed += 1
+      const message = ticket?.message || "unknown_error"
+      const details = ticket?.details ? JSON.stringify(ticket.details) : ""
+      const errorText = [message, details].filter(Boolean).join(" ")
+      errors.push(`${chunk[index]}:${errorText}`)
+      if (ticket?.details?.error === "DeviceNotRegistered") {
+        invalidTokens.push(chunk[index])
+      }
+    })
+  }
+
+  return { sent, failed, invalidTokens, errors }
+}
+
+module.exports = { sendFcm, sendApns, sendWebPush, sendExpo }

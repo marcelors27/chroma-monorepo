@@ -9,6 +9,7 @@ const DATABASE_TYPE = process.env.DATABASE_TYPE || "postgres"
 const DATABASE_URL =
   process.env.DATABASE_URL ||
   "postgres://medusa:medusa@localhost:5432/chroma"
+const MIGRATIONS_DIR = path.join(__dirname, "..", "migrations")
 
 function runCommand(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -68,18 +69,74 @@ async function hasTableSqlite(tableName) {
   })
 }
 
+function listMigrationFiles() {
+  if (!fs.existsSync(MIGRATIONS_DIR)) return []
+  return fs
+    .readdirSync(MIGRATIONS_DIR)
+    .filter((file) => file.endsWith(".js"))
+}
+
+async function getAppliedMigrationsPostgres() {
+  const { Client } = require("pg")
+  const client = new Client({ connectionString: DATABASE_URL })
+  await client.connect()
+  try {
+    const result = await client.query(
+      "select name from mikro_orm_migrations"
+    )
+    return result.rows.map((row) => row.name)
+  } finally {
+    await client.end()
+  }
+}
+
+async function getAppliedMigrationsSqlite() {
+  const sqlite3 = require("sqlite3")
+  const dbPath = parseSqlitePath(DATABASE_URL)
+  return new Promise((resolve, reject) => {
+    const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
+      if (err) return reject(err)
+    })
+    db.all("select name from mikro_orm_migrations", (err, rows) => {
+      db.close()
+      if (err) return reject(err)
+      resolve(rows.map((row) => row.name))
+    })
+  })
+}
+
 async function shouldRunMigrations() {
   try {
+    const migrationFiles = new Set(listMigrationFiles())
+    if (migrationFiles.size === 0) return false
+
     if (DATABASE_TYPE === "sqlite") {
-      return !(await hasTableSqlite("store"))
+      const hasStore = await hasTableSqlite("store")
+      const hasPushTokens = await hasTableSqlite("push_device_tokens")
+      if (!hasStore || !hasPushTokens) return true
+
+      const applied = new Set(await getAppliedMigrationsSqlite())
+      for (const file of migrationFiles) {
+        if (!applied.has(file)) return true
+      }
+      return false
     }
-    return !(await hasTablePostgres("store"))
+
+    const hasStore = await hasTablePostgres("store")
+    const hasPushTokens = await hasTablePostgres("push_device_tokens")
+    if (!hasStore || !hasPushTokens) return true
+
+    const applied = new Set(await getAppliedMigrationsPostgres())
+    for (const file of migrationFiles) {
+      if (!applied.has(file)) return true
+    }
+    return false
   } catch (error) {
     console.warn(
       "[start-with-migrations] Failed to check database tables:",
       error?.message || error
     )
-    return false
+    return true
   }
 }
 

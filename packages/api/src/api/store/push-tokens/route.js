@@ -4,7 +4,7 @@ const { ContainerRegistrationKeys } = require("@medusajs/framework/utils")
 const normalizeProvider = (value) => {
   if (!value) return null
   const provider = String(value).toLowerCase()
-  if (!["fcm", "apns", "webpush"].includes(provider)) return null
+  if (!["fcm", "apns", "webpush", "expo"].includes(provider)) return null
   return provider
 }
 
@@ -63,6 +63,18 @@ const POST = async (req, res) => {
     last_seen_at: now,
     disabled_at: null,
     updated_at: now,
+  }
+
+  if (deviceId) {
+    await db("push_device_tokens")
+      .where({
+        customer_id: customerId,
+        provider,
+        device_id: deviceId,
+      })
+      .andWhere("token", "<>", token)
+      .andWhereNull("disabled_at")
+      .update({ disabled_at: now, updated_at: now })
   }
 
   if (existing?.id) {

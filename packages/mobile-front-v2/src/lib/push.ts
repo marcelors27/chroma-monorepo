@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { registerPushToken } from "@/lib/medusa";
 
@@ -15,6 +16,19 @@ export const registerDevicePushToken = async (companyId?: string | null) => {
     status = request.status;
   }
   if (status !== "granted") return;
+
+  const isExpoGo = Constants.appOwnership === "expo";
+  if (isExpoGo) {
+    const expoToken = await Notifications.getExpoPushTokenAsync();
+    await registerPushToken({
+      provider: "expo",
+      platform: getPlatform(),
+      token: expoToken.data,
+      device_id: Device.osBuildId || Device.modelId || undefined,
+      company_id: companyId || null,
+    });
+    return;
+  }
 
   const deviceToken = await Notifications.getDevicePushTokenAsync();
   const provider = deviceToken.type === "apns" ? "apns" : "fcm";

@@ -47,6 +47,7 @@ const GET = async (req, res) => {
       "target_user_ids",
       "send_at",
       "status",
+      "last_error",
       "sent_at",
       "created_at",
       "updated_at"
@@ -81,10 +82,12 @@ const POST = async (req, res) => {
     title: payload.title,
     message: payload.message,
     target_type: target.type,
-    target_company_ids: target.type === "companies" ? target.companyIds : null,
-    target_user_ids: target.type === "users" ? target.userIds : null,
+    target_company_ids:
+      target.type === "companies" ? JSON.stringify(target.companyIds) : null,
+    target_user_ids: target.type === "users" ? JSON.stringify(target.userIds) : null,
     send_at: sendAt,
     status,
+    last_error: null,
     sent_at: null,
     created_at: now,
     updated_at: now,
@@ -102,6 +105,7 @@ const POST = async (req, res) => {
       "target_user_ids",
       "send_at",
       "status",
+      "last_error",
       "sent_at",
       "created_at",
       "updated_at"

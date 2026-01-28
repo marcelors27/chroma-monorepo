@@ -227,9 +227,6 @@ const Home = () => {
 
       {banners.length > 0 && (
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">Campanhas em destaque</h2>
-          </div>
           <div className="grid grid-cols-1 gap-4">
             <div
               className="relative overflow-hidden rounded-2xl"
@@ -317,18 +314,6 @@ const Home = () => {
                             )}
                           </>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent" />
-                        <div className="absolute inset-0 p-6 flex flex-col justify-end gap-2 text-white">
-                          <h3 className="text-2xl font-bold">{banner.title}</h3>
-                          {banner.subtitle && (
-                            <p className="text-sm text-white/80">{banner.subtitle}</p>
-                          )}
-                          {href && (
-                            <span className="text-xs uppercase tracking-widest text-white/70">
-                              Saiba mais
-                            </span>
-                          )}
-                        </div>
                       </div>
                     </div>
                   );

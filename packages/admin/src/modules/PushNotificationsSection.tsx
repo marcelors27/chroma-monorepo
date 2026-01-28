@@ -21,6 +21,7 @@ type PushNotification = {
   target_user_ids?: string[]
   send_at?: string | null
   status?: string | null
+  last_error?: string | null
   sent_at?: string | null
   created_at?: string | null
 }
@@ -43,6 +44,7 @@ export default function PushNotificationsSection({
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [history, setHistory] = useState<PushNotification[]>([])
+  const [resendingId, setResendingId] = useState<string | null>(null)
 
   const sortedCompanies = useMemo(
     () => [...companies].sort((a, b) => (a.trade_name || a.fantasy_name || "").localeCompare(b.trade_name || b.fantasy_name || "")),
@@ -118,6 +120,35 @@ export default function PushNotificationsSection({
       })
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  const resendNotification = async (id: string) => {
+    setResendingId(id)
+    try {
+      const res = await fetch(`${medusaUrl}/admin/push-notifications/resend`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ id }),
+      })
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || "Não foi possível reenviar a notificação.")
+      }
+      await loadHistory()
+      pushToast({
+        title: "Notificação reenfileirada",
+        description: "A notificação voltou para a fila de envio.",
+        variant: "success",
+      })
+    } catch (err: any) {
+      pushToast({
+        title: "Erro ao reenviar",
+        description: err?.message || "Tente novamente.",
+        variant: "error",
+      })
+    } finally {
+      setResendingId(null)
     }
   }
 
@@ -353,8 +384,10 @@ export default function PushNotificationsSection({
                   <th>Título</th>
                   <th>Destino</th>
                   <th>Status</th>
+                  <th>Erro</th>
                   <th>Agendamento</th>
                   <th>Enviado em</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -371,10 +404,43 @@ export default function PushNotificationsSection({
                       <td>{targetLabel}</td>
                       <td>{item.status || "—"}</td>
                       <td>
+                        {item.last_error ? (
+                          <details>
+                            <summary className="muted" style={{ cursor: "pointer" }}>
+                              {item.last_error.length > 120
+                                ? `${item.last_error.slice(0, 120)}...`
+                                : item.last_error}
+                            </summary>
+                            <pre
+                              className="muted"
+                              style={{
+                                marginTop: "0.5rem",
+                                whiteSpace: "pre-wrap",
+                                wordBreak: "break-word",
+                              }}
+                            >
+                              {item.last_error}
+                            </pre>
+                          </details>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td>
                         {item.send_at ? new Date(item.send_at).toLocaleString("pt-BR") : "Imediato"}
                       </td>
                       <td>
                         {item.sent_at ? new Date(item.sent_at).toLocaleString("pt-BR") : "—"}
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-secondary"
+                          type="button"
+                          onClick={() => resendNotification(item.id)}
+                          disabled={resendingId === item.id}
+                        >
+                          {resendingId === item.id ? "Reenviando..." : "Reenviar"}
+                        </button>
                       </td>
                     </tr>
                   )

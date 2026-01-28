@@ -193,7 +193,6 @@ export default function Index() {
         )}
         {banners.length > 0 && (
           <View style={styles.bannerSection}>
-            <Text style={styles.sectionTitle}>Campanhas em destaque</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bannerRow}>
               {banners.map((banner) => {
                 const media =
@@ -214,12 +213,6 @@ export default function Index() {
                     ) : (
                       <Image source={{ uri: media }} style={styles.bannerMedia} resizeMode="cover" />
                     )}
-                    <View style={styles.bannerOverlay} />
-                    <View style={styles.bannerContent}>
-                      <Text style={styles.bannerTitle}>{banner.title}</Text>
-                      {banner.subtitle && <Text style={styles.bannerSubtitle}>{banner.subtitle}</Text>}
-                      {banner.link_type && <Text style={styles.bannerHint}>Toque para ver</Text>}
-                    </View>
                   </Pressable>
                 );
               })}

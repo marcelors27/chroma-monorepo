@@ -11,4 +11,9 @@ module.exports = [
     matcher: "/admin/push-notifications/process",
     middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
   },
+  {
+    method: ["POST"],
+    matcher: "/admin/push-notifications/resend",
+    middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
+  },
 ]

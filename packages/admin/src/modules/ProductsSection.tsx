@@ -52,6 +52,7 @@ export default function ProductsSection({
     null
   )
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set())
   const [variantLocations, setVariantLocations] = useState<Record<string, VariantLocation[]>>({})
   const [productForm, setProductForm] = useState({
@@ -542,6 +543,30 @@ export default function ProductsSection({
     const json = await res.json()
     if (json?.product) {
       setProducts((prev) => prev.map((item) => (item.id === productId ? json.product : item)))
+    }
+  }
+
+  const deleteProduct = async (productId: string) => {
+    const confirmed = window.confirm(
+      "Tem certeza que deseja excluir este produto? Essa ação não pode ser desfeita."
+    )
+    if (!confirmed) return
+
+    setDeletingProductId(productId)
+    try {
+      const res = await fetch(`${medusaUrl}/admin/products/${productId}`, {
+        method: "DELETE",
+        headers,
+      })
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || "Não foi possível excluir o produto.")
+      }
+      setProducts((prev) => prev.filter((item) => item.id !== productId))
+    } catch (err: any) {
+      setProductEditError(err?.message || "Erro ao excluir produto.")
+    } finally {
+      setDeletingProductId(null)
     }
   }
 
@@ -1446,6 +1471,7 @@ export default function ProductsSection({
                 <th>Estoque</th>
                 <th>Preço</th>
                 <th>Mídias</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -1582,10 +1608,22 @@ export default function ProductsSection({
                           </button>
                         )}
                       </td>
+                      <td>
+                        <button
+                          className="btn btn-secondary btn-sm btn-icon"
+                          type="button"
+                          onClick={() => deleteProduct(p.id)}
+                          title="Excluir produto"
+                          aria-label="Excluir produto"
+                          disabled={deletingProductId === p.id}
+                        >
+                          <FontAwesomeIcon icon={faTrash} />
+                        </button>
+                      </td>
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={5}>
+                        <td colSpan={6}>
                           <div className="panel" style={{ marginTop: "0.5rem" }}>
                             <div className="muted" style={{ marginBottom: "0.5rem" }}>
                               Variações e estoque por SKU
