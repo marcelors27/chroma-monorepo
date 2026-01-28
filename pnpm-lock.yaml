@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  expo-device@6.0.2:
+    hash: 3ukmki23ii7isyjuii7bmezrha
+    path: patches/expo-device@6.0.2.patch
+
 importers:
 
   .:
@@ -351,27 +356,15 @@ importers:
       '@babel/runtime':
         specifier: ^7.28.4
         version: 7.28.4
-      '@ide/backoff':
-        specifier: ^1.0.0
-        version: 1.0.0
-      assert:
-        specifier: ^2.1.0
-        version: 2.1.0
-      object-is:
-        specifier: ^1.1.6
-        version: 1.1.6
-      object.assign:
-        specifier: ^4.1.7
-        version: 4.1.7
-      util:
-        specifier: ^0.12.5
-        version: 0.12.5
       '@floating-ui/core':
         specifier: ^1.7.3
         version: 1.7.3
       '@floating-ui/react-native':
         specifier: ^0.10.7
         version: 0.10.7(react-native@0.81.5)(react@19.1.0)
+      '@ide/backoff':
+        specifier: ^1.0.0
+        version: 1.0.0
       '@react-native-async-storage/async-storage':
         specifier: ^2.2.0
         version: 2.2.0(react-native@0.81.5)
@@ -768,6 +761,9 @@ importers:
       ansi-styles:
         specifier: ^5.2.0
         version: 5.2.0
+      assert:
+        specifier: ^2.1.0
+        version: 2.1.0
       base64-js:
         specifier: ^1.5.1
         version: 1.5.1
@@ -804,12 +800,12 @@ importers:
       expo:
         specifier: ~54.0.0
         version: 54.0.30(@babel/core@7.28.5)(react-native-webview@13.16.0)(react-native@0.81.5)(react@19.1.0)
-      expo-application:
-        specifier: ~6.0.2
-        version: 6.0.2(expo@54.0.30)
       expo-apple-authentication:
         specifier: 8.0.8
         version: 8.0.8(expo@54.0.30)(react-native@0.81.5)
+      expo-application:
+        specifier: ~6.0.2
+        version: 6.0.2(expo@54.0.30)
       expo-asset:
         specifier: ~12.0.12
         version: 12.0.12(expo@54.0.30)(react-native@0.81.5)(react@19.1.0)
@@ -821,7 +817,7 @@ importers:
         version: 18.0.12(expo@54.0.30)(react-native@0.81.5)
       expo-device:
         specifier: ~6.0.2
-        version: 6.0.2(expo@54.0.30)
+        version: 6.0.2(patch_hash=3ukmki23ii7isyjuii7bmezrha)(expo@54.0.30)
       expo-font:
         specifier: ~14.0.10
         version: 14.0.10(expo@54.0.30)(react-native@0.81.5)(react@19.1.0)
@@ -870,6 +866,12 @@ importers:
       nullthrows:
         specifier: ^1.1.1
         version: 1.1.1
+      object-is:
+        specifier: ^1.1.6
+        version: 1.1.6
+      object.assign:
+        specifier: ^4.1.7
+        version: 4.1.7
       pretty-format:
         specifier: ^29.7.0
         version: 29.7.0
@@ -960,6 +962,9 @@ importers:
       use-latest-callback:
         specifier: ^0.2.6
         version: 0.2.6(react@19.1.0)
+      util:
+        specifier: ^0.12.5
+        version: 0.12.5
       warn-once:
         specifier: ^0.1.1
         version: 0.1.1
@@ -17606,7 +17611,7 @@ packages:
       - supports-color
     dev: false
 
-  /expo-device@6.0.2(expo@54.0.30):
+  /expo-device@6.0.2(patch_hash=3ukmki23ii7isyjuii7bmezrha)(expo@54.0.30):
     resolution: {integrity: sha512-sCt91CuTmAuMXX4SlFOn4lIos2UIr8vb0jDstDDZXys6kErcj0uynC7bQAMreU5uRUTKMAl4MAMpKt9ufCXPBw==}
     peerDependencies:
       expo: '*'
@@ -17614,6 +17619,7 @@ packages:
       expo: 54.0.30(@babel/core@7.28.5)(react-native-webview@13.16.0)(react-native@0.81.5)(react@19.1.0)
       ua-parser-js: 0.7.41
     dev: false
+    patched: true
 
   /expo-file-system@19.0.21(expo@54.0.30)(react-native@0.81.5):
     resolution: {integrity: sha512-s3DlrDdiscBHtab/6W1osrjGL+C2bvoInPJD7sOwmxfJ5Woynv2oc+Fz1/xVXaE/V7HE/+xrHC/H45tu6lZzzg==}
