@@ -299,4 +299,12 @@ const POST = async (req, res) => {
   return res.status(201).json({ recurrence })
 }
 
-module.exports = { GET, POST }
+module.exports = {
+  GET,
+  POST,
+  _test: {
+    clampDayOfMonth,
+    computeNextRun,
+    normalizeRecurrences,
+  },
+}
