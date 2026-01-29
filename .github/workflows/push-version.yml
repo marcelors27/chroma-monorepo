@@ -69,18 +69,18 @@ jobs:
         if: ${{ steps.bump.outputs.version != '' }}
         run: pnpm install --frozen-lockfile
 
-      - name: EAS build (mobile-front-v2)
+      - name: EAS build (mobile-front-v2 ios)
         if: ${{ steps.bump.outputs.version != '' }}
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           pnpm dlx eas-cli@latest build \
-            --platform all \
+            --platform ios \
             --profile production \
             --non-interactive
         working-directory: packages/mobile-front-v2
 
-      - name: EAS submit (mobile-front-v2)
+      - name: EAS submit (mobile-front-v2 ios)
         if: ${{ steps.bump.outputs.version != '' }}
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -89,7 +89,7 @@ jobs:
           EXPO_ASC_API_KEY_ISSUER_ID: ${{ secrets.EXPO_ASC_API_KEY_ISSUER_ID }}
         run: |
           pnpm dlx eas-cli@latest submit \
-            --platform all \
+            --platform ios \
             --profile production \
             --latest \
             --non-interactive
