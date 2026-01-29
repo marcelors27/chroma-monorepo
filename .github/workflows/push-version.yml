@@ -60,17 +60,17 @@ jobs:
             ${{ github.event.head_commit.message }}
 
       - name: Setup pnpm
-        if: ${{ steps.bump.outputs.version != '' && secrets.EXPO_TOKEN != '' }}
+        if: ${{ steps.bump.outputs.version != '' }}
         run: |
           corepack enable
           corepack prepare pnpm@9 --activate
 
       - name: Install dependencies
-        if: ${{ steps.bump.outputs.version != '' && secrets.EXPO_TOKEN != '' }}
+        if: ${{ steps.bump.outputs.version != '' }}
         run: pnpm install --frozen-lockfile
 
       - name: EAS build (mobile-front-v2)
-        if: ${{ steps.bump.outputs.version != '' && secrets.EXPO_TOKEN != '' }}
+        if: ${{ steps.bump.outputs.version != '' }}
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
@@ -81,7 +81,7 @@ jobs:
         working-directory: packages/mobile-front-v2
 
       - name: EAS submit (mobile-front-v2)
-        if: ${{ steps.bump.outputs.version != '' && secrets.EXPO_TOKEN != '' && secrets.EXPO_ASC_API_KEY != '' && secrets.EXPO_ASC_API_KEY_ID != '' && secrets.EXPO_ASC_API_KEY_ISSUER_ID != '' }}
+        if: ${{ steps.bump.outputs.version != '' }}
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_ASC_API_KEY: ${{ secrets.EXPO_ASC_API_KEY }}
