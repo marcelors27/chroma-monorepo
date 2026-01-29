@@ -1,8 +1,11 @@
-const { describe, it, expect } = require("vitest");
-const { ContainerRegistrationKeys } = require("@medusajs/framework/utils");
-const { createDbMock } = require("../helpers/db");
-const { createRes } = require("../helpers/http");
-const { GET } = require("../../src/api/store/news/[id]/route");
+import { describe, it, expect } from "vitest";
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import * as dbHelpers from "../helpers/db";
+import * as httpHelpers from "../helpers/http";
+import * as newsIdRoute from "../../src/api/store/news/[id]/route";
+const { createDbMock } = dbHelpers;
+const { createRes } = httpHelpers;
+const { GET } = newsIdRoute;
 
 describe("store/news/:id GET", () => {
   it("retorna 400 quando id ausente", async () => {

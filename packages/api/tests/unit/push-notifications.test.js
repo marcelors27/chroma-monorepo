@@ -1,5 +1,6 @@
-const { describe, it, expect } = require("vitest");
-const { mapPushNotificationRow } = require("../../src/utils/push-notifications");
+import { describe, it, expect } from "vitest";
+import * as pushUtils from "../../src/utils/push-notifications";
+const { mapPushNotificationRow } = pushUtils;
 
 describe("utils/push-notifications", () => {
   it("normaliza json arrays e datas", () => {

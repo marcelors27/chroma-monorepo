@@ -6,6 +6,8 @@ const {
 } = require("@medusajs/framework/utils")
 const { sendEmail } = require("../../../../services/send-email")
 const { buildPendingPaymentEmail } = require("../../../../services/pending-payment-email")
+const { sendBoletoAdminEmail } = require("../../../../services/email-template-sender")
+const { updateCustomersWorkflow } = require("@medusajs/core-flows")
 
 const safeLog = (logger, payload) => {
   try {
@@ -215,6 +217,109 @@ const POST = async (req, res) => {
     text,
     logger,
   })
+
+  const formatBoletoExpiresAt = (value) => {
+    if (!value) return ""
+    if (typeof value === "number") {
+      return new Date(value * 1000).toLocaleDateString("pt-BR")
+    }
+    const parsed = new Date(value)
+    if (Number.isNaN(parsed.getTime())) return ""
+    return parsed.toLocaleDateString("pt-BR")
+  }
+
+  const isStripeUrl = (url) => {
+    if (!url) return false
+    try {
+      const parsed = new URL(url)
+      return parsed.hostname.includes("stripe") || parsed.hostname.includes("stripe.com")
+    } catch {
+      return false
+    }
+  }
+
+  const fetchBoletoAttachment = async (url, filename) => {
+    if (!url) return null
+    if (!isStripeUrl(url)) return null
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`Boleto download failed (${response.status})`)
+    }
+    const buffer = Buffer.from(await response.arrayBuffer())
+    return {
+      filename,
+      content: buffer.toString("base64"),
+      contentType: "application/pdf",
+    }
+  }
+
+  const appendEmailLog = async (type, status, hasAttachment) => {
+    if (!adminEmail) return
+    const current = Array.isArray(customer?.metadata?.email_logs)
+      ? customer.metadata.email_logs
+      : []
+    const entry = {
+      type,
+      company_id: companyId || null,
+      email: adminEmail,
+      status,
+      payment_collection_id: paymentCollectionId || null,
+      method,
+      details: details || {},
+      sent_at: new Date().toISOString(),
+      has_attachment: Boolean(hasAttachment),
+    }
+    const next = [entry, ...current].slice(0, 50)
+    await updateCustomersWorkflow(req.scope).run({
+      input: {
+        selector: { id: customerId },
+        update: { metadata: { ...(customer.metadata || {}), email_logs: next } },
+      },
+    })
+  }
+
+  if (method === "boleto" && adminEmail) {
+
+    let attachment = null
+    try {
+      const filename = `boleto-${companyId || "chroma"}.pdf`
+      attachment = await fetchBoletoAttachment(details?.boleto_url, filename)
+    } catch (err) {
+      logger?.warn?.("[email] boleto attachment falhou", { error: err?.message })
+    }
+
+    try {
+      await sendBoletoAdminEmail({
+        to: adminEmail,
+        companyName,
+        boletoLine: details?.boleto_line || "",
+        boletoUrl: details?.boleto_url || "",
+        boletoExpiresAt: formatBoletoExpiresAt(details?.boleto_expires_at),
+        attachments: attachment ? [attachment] : undefined,
+        logger,
+      })
+      try {
+        await appendEmailLog("boleto_admin", "sent", Boolean(attachment))
+      } catch (err) {
+        logger?.warn?.("[email] log boleto admin falhou", { error: err?.message })
+      }
+    } catch (err) {
+      logger?.warn?.("[email] boleto admin falhou", { error: err?.message })
+      try {
+        await appendEmailLog("boleto_admin", "failed", Boolean(attachment))
+      } catch (logErr) {
+        logger?.warn?.("[email] log boleto admin falhou", { error: logErr?.message })
+      }
+    }
+  }
+
+  if (method === "pix" && adminEmail) {
+    try {
+      await appendEmailLog("pix_admin", "sent", false)
+    } catch (err) {
+      logger?.warn?.("[email] log pix admin falhou", { error: err?.message })
+    }
+  }
 
   safeLog(logger, {
     msg: "pending-payment:email-sent",

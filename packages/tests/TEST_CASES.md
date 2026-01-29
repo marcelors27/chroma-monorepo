@@ -45,7 +45,7 @@ Este arquivo consolida os casos previstos para testes de API e E2E. Cada linha i
 - [API-PUSH-01] Caso: POST `/store/push-tokens` cria token | Contexto: subscription válida.
 - [API-PUSH-02] Caso: POST `/store/push-tokens` atualiza token existente | Contexto: mesmo device_id/subscription.
 - [API-PUSH-03] Caso: DELETE `/store/push-tokens` remove token | Contexto: token registrado.
-- [API-PEND-01] Caso: POST `/store/notifications/pending-payment` registra pendência | Contexto: payment_collection_id válido.
+- [API-PEND-01] Caso: POST `/store/notifications/pending-payment` registra pendência | Contexto: payment_collection_id + company_id válidos.
 - [API-PEND-02] Caso: sincronização de pendências no metadata do cliente | Contexto: customer.metadata com pendências.
 
 ## API - Comércio (Medusa Store)
@@ -79,6 +79,11 @@ Este arquivo consolida os casos previstos para testes de API e E2E. Cada linha i
 - [API-ADM-14] Caso: GET/POST `/admin/push-notifications` | Contexto: admin autenticado.
 - [API-ADM-15] Caso: POST `/admin/push-notifications/process` processa fila | Contexto: notificações pendentes.
 - [API-ADM-16] Caso: POST `/admin/push-notifications/resend` | Contexto: id de notificação existente.
+- [API-ADM-17] Caso: GET `/admin/email-templates` | Contexto: admin autenticado.
+- [API-ADM-18] Caso: POST `/admin/email-templates` | Contexto: template válido.
+- [API-ADM-19] Caso: POST `/admin/email-templates/bootstrap` | Contexto: Resend configurado.
+- [API-ADM-20] Caso: GET `/admin/email-logs` | Contexto: admin autenticado.
+- [API-ADM-21] Caso: POST `/admin/notifications/pending-payment` | Contexto: admin autenticado + dados válidos.
 
 ## API - Hooks
 - [API-HOOK-01] Caso: POST `/hooks/payment/:provider` retorna 200 | Contexto: provider configurado.
@@ -158,6 +163,12 @@ Este arquivo consolida os casos previstos para testes de API e E2E. Cada linha i
 - [E2E-SET-01] Caso: carregar dados do perfil | Contexto: cliente autenticado.
 - [E2E-SET-02] Caso: atualizar perfil com telefone formatado | Contexto: campos válidos.
 - [E2E-SET-03] Caso: alterar senha com validação | Contexto: senha atual correta.
+
+## E2E - Admin (Operação)
+- [E2E-ADM-01] Caso: renderiza login admin | Contexto: admin app disponível.
+- [E2E-ADM-02] Caso: acessar templates de email | Contexto: credenciais admin válidas.
+- [E2E-ADM-03] Caso: acessar reenvio de cobranças | Contexto: credenciais admin válidas.
+- [E2E-ADM-04] Caso: acessar histórico de e-mails | Contexto: credenciais admin válidas.
 
 ## E2E - Condomínios (Gestão)
 - [E2E-COND-01] Caso: listar condomínios do usuário | Contexto: empresas vinculadas.

@@ -1,5 +1,6 @@
-const { describe, it, expect, vi, beforeEach, afterEach } = require("vitest");
-const { sendExpo, sendWebPush, sendFcm, sendApns } = require("../../src/utils/push-sender");
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import * as pushSender from "../../src/utils/push-sender";
+const { sendExpo, sendWebPush, sendFcm, sendApns } = pushSender;
 
 const originalEnv = { ...process.env };
 

@@ -1,5 +1,6 @@
-const { describe, it, expect, vi } = require("vitest");
-const { _test } = require("../../src/api/store/recurrences/route");
+import { describe, it, expect, vi } from "vitest";
+import * as recurrencesRoute from "../../src/api/store/recurrences/route";
+const { _test } = recurrencesRoute;
 
 describe("store/recurrences helpers", () => {
   it("normalizeRecurrences filtra itens invalidos", () => {

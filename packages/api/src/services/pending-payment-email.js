@@ -41,6 +41,13 @@ const buildPendingPaymentEmail = ({ method, companyName, details, checkoutUrl })
     }
   }
 
+  const qrPreview =
+    method === "pix" && details?.pix_qr
+      ? `<div style="margin-top:16px;text-align:center;">
+          <img src="${details.pix_qr}" alt="QR Code PIX" style="max-width:180px;width:100%;height:auto;border-radius:12px;border:1px solid #1f2937;" />
+        </div>`
+      : ""
+
   const rowsHtml = rows
     .map(
       (row) => `
@@ -86,6 +93,7 @@ const buildPendingPaymentEmail = ({ method, companyName, details, checkoutUrl })
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top:1px solid #1f2937;">
               ${rowsHtml}
             </table>
+            ${qrPreview}
             ${actionButton}
           </td>
         </tr>

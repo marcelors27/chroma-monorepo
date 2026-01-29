@@ -14,6 +14,9 @@ export default defineConfig({
       apiBaseUrl,
       storeApiBaseUrl: process.env.CYPRESS_STORE_API_BASE_URL || apiBaseUrl,
       adminApiBaseUrl: process.env.CYPRESS_ADMIN_API_BASE_URL || apiBaseUrl,
+      adminBaseUrl: process.env.CYPRESS_ADMIN_BASE_URL || "",
+      adminEmail: process.env.CYPRESS_ADMIN_EMAIL || "",
+      adminPassword: process.env.CYPRESS_ADMIN_PASSWORD || "",
       runApi: process.env.CYPRESS_RUN_API || "false",
       runE2e: process.env.CYPRESS_RUN_E2E || "false"
     }

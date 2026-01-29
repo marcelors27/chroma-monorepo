@@ -94,6 +94,32 @@ export type MarketingBanner = {
   updated_at?: string | null
 }
 
+export type EmailTemplate = {
+  id: string
+  name?: string
+  subject?: string | null
+  html?: string | null
+  variables?: { key: string; type?: string; fallback?: string; name?: string }[]
+  status?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export type EmailLog = {
+  type?: string | null
+  company_id?: string | null
+  email?: string | null
+  status?: string | null
+  payment_collection_id?: string | null
+  method?: string | null
+  details?: Record<string, any>
+  sent_at?: string | null
+  has_attachment?: boolean
+  user_id?: string | null
+  user_email?: string | null
+  user_name?: string | null
+}
+
 export type PriceList = {
   id: string
   title?: string
@@ -109,6 +135,9 @@ export type SectionId =
   | "dashboard"
   | "noticias"
   | "marketing"
+  | "emails"
+  | "cobrancas"
+  | "email-logs"
   | "pagamentos"
   | "produtos"
   | "estoque"

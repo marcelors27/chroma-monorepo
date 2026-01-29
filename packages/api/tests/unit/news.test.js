@@ -1,5 +1,6 @@
-const { describe, it, expect } = require("vitest");
-const { mapNewsRow } = require("../../src/utils/news");
+import { describe, it, expect } from "vitest";
+import * as newsUtils from "../../src/utils/news";
+const { mapNewsRow } = newsUtils;
 
 describe("utils/news", () => {
   it("retorna null para row vazio", () => {

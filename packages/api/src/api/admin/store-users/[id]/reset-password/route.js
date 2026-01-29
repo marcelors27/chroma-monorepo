@@ -1,7 +1,6 @@
 const crypto = require("crypto")
 const { Modules, ContainerRegistrationKeys, remoteQueryObjectFromString } = require("@medusajs/framework/utils")
-const { sendEmail } = require("../../../../../services/send-email")
-const { buildUserPasswordEmail } = require("../../../../../services/user-password-email")
+const { sendPasswordResetEmail } = require("../../../../../services/email-template-sender")
 
 const generatePassword = () => {
   const length = 12
@@ -79,16 +78,10 @@ const POST = async (req, res) => {
     return res.status(400).json({ message: updated?.error || "Não foi possível resetar a senha" })
   }
 
-  const { subject, html, text } = buildUserPasswordEmail({
+  await sendPasswordResetEmail({
+    to: customer.email,
     name,
     password,
-    kind: "reset",
-  })
-  await sendEmail({
-    to: customer.email,
-    subject,
-    html,
-    text,
     logger: req.scope?.resolve ? req.scope.resolve("logger") : console,
   })
 

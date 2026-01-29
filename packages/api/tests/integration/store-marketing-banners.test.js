@@ -1,8 +1,11 @@
-const { describe, it, expect, vi } = require("vitest");
-const { ContainerRegistrationKeys } = require("@medusajs/framework/utils");
-const { createDbMock } = require("../helpers/db");
-const { createRes } = require("../helpers/http");
-const { GET } = require("../../src/api/store/marketing-banners/route");
+import { describe, it, expect, vi } from "vitest";
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import * as dbHelpers from "../helpers/db";
+import * as httpHelpers from "../helpers/http";
+import * as marketingRoute from "../../src/api/store/marketing-banners/route";
+const { createDbMock } = dbHelpers;
+const { createRes } = httpHelpers;
+const { GET } = marketingRoute;
 
 describe("store/marketing-banners GET", () => {
   it("retorna banners ativos com paginacao", async () => {

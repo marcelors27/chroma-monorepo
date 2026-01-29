@@ -223,13 +223,69 @@ const fetchCustomerByEmail = async (scope, email, logger) => {
     const query = remoteQueryObjectFromString({
       entryPoint: "customer",
       variables: { filters: { email }, limit: 1 },
-      fields: ["id", "metadata"],
+      fields: ["id", "email", "first_name", "last_name", "metadata"],
     })
     const customers = await remoteQuery(query)
     return customers?.[0] || null
   } catch (e) {
     safeLog(logger, { msg: "fetchCustomerByEmail error", email, error: e?.message })
     return null
+  }
+}
+
+const welcomeEmailOnRegister = () => {
+  return async (req, res, next) => {
+    const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
+    const originalJson = res.json.bind(res)
+
+    res.json = async (payload) => {
+      try {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          const email = req.body?.email || req.body?.username
+          if (email) {
+            const customer = await fetchCustomerByEmail(req.scope, email, logger)
+            const companies = Array.isArray(customer?.metadata?.companies)
+              ? customer.metadata.companies
+              : []
+            const name =
+              [customer?.first_name, customer?.last_name].filter(Boolean).join(" ") ||
+              email
+            const { sendWelcomeEmail } = require("../services/email-template-sender")
+            sendWelcomeEmail({ to: email, name, companies, logger }).catch((err) => {
+              logger?.warn?.("[email] welcome register falhou", { error: err?.message })
+            })
+            try {
+              const current = Array.isArray(customer?.metadata?.email_logs)
+                ? customer.metadata.email_logs
+                : []
+              const entry = {
+                type: "welcome",
+                company_id: null,
+                email,
+                status: "sent",
+                sent_at: new Date().toISOString(),
+                has_attachment: false,
+              }
+              const next = [entry, ...current].slice(0, 50)
+              const { updateCustomersWorkflow } = require("@medusajs/core-flows")
+              await updateCustomersWorkflow(req.scope).run({
+                input: {
+                  selector: { id: customer.id },
+                  update: { metadata: { ...(customer.metadata || {}), email_logs: next } },
+                },
+              })
+            } catch (err) {
+              logger?.warn?.("[email] log welcome falhou", { error: err?.message })
+            }
+          }
+        }
+      } catch (err) {
+        logger?.warn?.("[email] welcome register falhou", { error: err?.message })
+      }
+      return originalJson(payload)
+    }
+
+    next()
   }
 }
 
@@ -297,6 +353,11 @@ const middlewares = defineMiddlewares([
     method: ["POST"],
     matcher: ["/auth/customer/emailpass"],
     middlewares: [storeLoginDisabledGuard()],
+  },
+  {
+    method: ["POST"],
+    matcher: ["/auth/customer/emailpass/register"],
+    middlewares: [welcomeEmailOnRegister()],
   },
   {
     method: ["ALL"],
@@ -400,6 +461,21 @@ const middlewares = defineMiddlewares([
   {
     method: ["ALL"],
     matcher: ["/admin/store-users", "/admin/store-users/*"],
+    middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
+  },
+  {
+    method: ["ALL"],
+    matcher: ["/admin/notifications", "/admin/notifications/*"],
+    middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
+  },
+  {
+    method: ["ALL"],
+    matcher: ["/admin/email-logs", "/admin/email-logs/*"],
+    middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
+  },
+  {
+    method: ["ALL"],
+    matcher: ["/admin/email-templates", "/admin/email-templates/*"],
     middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
   },
   {

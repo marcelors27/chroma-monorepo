@@ -5,6 +5,9 @@ import ChannelsSection from "./modules/ChannelsSection"
 import DashboardSection from "./modules/DashboardSection"
 import NewsSection from "./modules/NewsSection"
 import MarketingSection from "./modules/MarketingSection"
+import EmailTemplatesSection from "./modules/EmailTemplatesSection"
+import BillingResendSection from "./modules/BillingResendSection"
+import EmailLogsSection from "./modules/EmailLogsSection"
 import OrdersSection from "./modules/OrdersSection"
 import PaymentsSection from "./modules/PaymentsSection"
 import ProductsSection from "./modules/ProductsSection"
@@ -74,6 +77,9 @@ export default function App() {
       { id: "dashboard", label: "Dashboard", path: "/dashboard", count: orders.length },
       { id: "noticias", label: "Notícias", path: "/noticias", count: news.length },
       { id: "marketing", label: "Marketing", path: "/marketing", count: marketingBanners.length },
+      { id: "emails", label: "E-mails", path: "/emails", count: 0 },
+      { id: "cobrancas", label: "Reenvio cobranças", path: "/cobrancas", count: 0 },
+      { id: "email-logs", label: "Histórico e-mails", path: "/email-logs", count: 0 },
       { id: "pagamentos", label: "Pagamentos", path: "/pagamentos", count: pendingCompanies.length },
       { id: "push", label: "Push", path: "/push", count: 0 },
       { id: "produtos", label: "Produtos", path: "/produtos", count: products.length },
@@ -511,6 +517,40 @@ export default function App() {
                       setBanners={setMarketingBanners}
                       bannersError={marketingError}
                       setBannersError={setMarketingError}
+                      pushToast={pushToast}
+                    />
+                  }
+                />
+                <Route
+                  path="/emails"
+                  element={
+                    <EmailTemplatesSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      pushToast={pushToast}
+                    />
+                  }
+                />
+                <Route
+                  path="/cobrancas"
+                  element={
+                    <BillingResendSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      users={storeUsers}
+                      companies={companies}
+                      pushToast={pushToast}
+                    />
+                  }
+                />
+                <Route
+                  path="/email-logs"
+                  element={
+                    <EmailLogsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      users={storeUsers}
+                      companies={companies}
                       pushToast={pushToast}
                     />
                   }

@@ -24,6 +24,7 @@ describe("API :: Notifications & Push", () => {
       body: {
         payment_method: "pix",
         payment_collection_id: "payment_collection_placeholder",
+        company_id: "cmp_placeholder",
         details: { pix_code: "000201" }
       },
       failOnStatusCode: false

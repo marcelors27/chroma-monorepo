@@ -1,4 +1,13 @@
-const sendEmail = async ({ to, subject, html, text, logger }) => {
+const sendEmail = async ({
+  to,
+  subject,
+  html,
+  text,
+  templateId,
+  templateData,
+  attachments,
+  logger,
+}) => {
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.RESEND_FROM
   const log = logger || console
@@ -12,8 +21,18 @@ const sendEmail = async ({ to, subject, html, text, logger }) => {
     from,
     to,
     subject,
-    html,
-    text,
+  }
+
+  if (templateId) {
+    payload.template_id = templateId
+    payload.template_data = templateData || {}
+  } else {
+    payload.html = html
+    payload.text = text
+  }
+
+  if (attachments?.length) {
+    payload.attachments = attachments
   }
 
   const response = await fetch("https://api.resend.com/emails", {

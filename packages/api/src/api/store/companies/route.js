@@ -359,6 +359,46 @@ const POST = async (req, res) => {
   })
 
   const refreshed = await fetchCustomer(req.scope, customerId)
+  try {
+    const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
+    const { sendCompanyAddedEmail } = require("../../../services/email-template-sender")
+    const customerName =
+      [customer?.first_name, customer?.last_name].filter(Boolean).join(" ") || customer?.email
+    sendCompanyAddedEmail({
+      to: customer?.email,
+      name: customerName,
+      company,
+      totalCompanies: Array.isArray(metadata?.companies) ? metadata.companies.length : null,
+      logger,
+    }).catch((err) => {
+      logger?.warn?.("[email] company-added falhou", { error: err?.message })
+    })
+    try {
+      const current = Array.isArray(customer?.metadata?.email_logs)
+        ? customer.metadata.email_logs
+        : []
+      const entry = {
+        type: "company_added",
+        company_id: company?.id || null,
+        email: customer?.email || null,
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        has_attachment: false,
+      }
+      const next = [entry, ...current].slice(0, 50)
+      await updateCustomersWorkflow(req.scope).run({
+        input: {
+          selector: { id: customerId },
+          update: { metadata: { ...(customer.metadata || {}), email_logs: next } },
+        },
+      })
+    } catch (err) {
+      logger?.warn?.("[email] log company-added falhou", { error: err?.message })
+    }
+  } catch (err) {
+    const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
+    logger?.warn?.("[email] company-added falhou", { error: err?.message })
+  }
   res.status(201).json({ company, customer: refreshed })
 }
 

@@ -1,8 +1,11 @@
-const { describe, it, expect } = require("vitest");
-const { ContainerRegistrationKeys } = require("@medusajs/framework/utils");
-const { createDbMock } = require("../helpers/db");
-const { createRes } = require("../helpers/http");
-const { GET } = require("../../src/api/store/news/route");
+import { describe, it, expect } from "vitest";
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import * as dbHelpers from "../helpers/db";
+import * as httpHelpers from "../helpers/http";
+import * as newsRoute from "../../src/api/store/news/route";
+const { createDbMock } = dbHelpers;
+const { createRes } = httpHelpers;
+const { GET } = newsRoute;
 
 describe("store/news GET", () => {
   it("retorna noticias publicadas com paginacao", async () => {

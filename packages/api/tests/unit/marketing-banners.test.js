@@ -1,5 +1,6 @@
-const { describe, it, expect } = require("vitest");
-const { mapMarketingBannerRow } = require("../../src/utils/marketing-banners");
+import { describe, it, expect } from "vitest";
+import * as marketingUtils from "../../src/utils/marketing-banners";
+const { mapMarketingBannerRow } = marketingUtils;
 
 describe("utils/marketing-banners", () => {
   it("retorna null para row vazio", () => {

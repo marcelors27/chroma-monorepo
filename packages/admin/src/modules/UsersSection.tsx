@@ -72,6 +72,7 @@ export default function UsersSection({
     return filteredUsers.filter((user) => user.source !== "identity")
   }, [filteredUsers, showIdentityUsers])
 
+
   const refreshUsers = async () => {
     try {
       const res = await fetch(`${medusaUrl}/admin/store-users?limit=500`, { headers })
@@ -493,6 +494,7 @@ export default function UsersSection({
                               ) : (
                                 <span className="muted">Nenhum condomínio vinculado.</span>
                               )}
+
                             </div>
                           </td>
                         </tr>
