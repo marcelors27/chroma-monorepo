@@ -1,0 +1,96 @@
+name: Push Version
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    if: contains(github.event.head_commit.message, 'push-ver:') && !contains(github.event.head_commit.message, 'ci: version bump')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Bump versions
+        id: bump
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: node scripts/ci/push-version.js
+
+      - name: Commit and tag
+        if: ${{ steps.bump.outputs.version != '' }}
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add package.json packages/*/package.json packages/mobile-front-v2/app.json \
+            packages/mobile-front-v2/android/app/build.gradle \
+            packages/mobile-front-v2/ios/ChromaMobileStore/Info.plist \
+            packages/mobile-front-v2/ios/ChromaMobileStore.xcodeproj/project.pbxproj
+
+          git commit -m "ci: version bump v${{ steps.bump.outputs.version }} (build ${{ steps.bump.outputs.build }}) [skip ci]"
+          git tag "v${{ steps.bump.outputs.version }}+build.${{ steps.bump.outputs.build }}"
+          git push --follow-tags
+
+      - name: Create GitHub Release
+        if: ${{ steps.bump.outputs.version != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.bump.outputs.version }}+build.${{ steps.bump.outputs.build }}
+          name: v${{ steps.bump.outputs.version }} (build ${{ steps.bump.outputs.build }})
+          body: |
+            Release triggered by commit:
+            ${{ github.event.head_commit.message }}
+
+      - name: Setup pnpm
+        if: ${{ steps.bump.outputs.version != '' && secrets.EXPO_TOKEN != '' }}
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+
+      - name: Install dependencies
+        if: ${{ steps.bump.outputs.version != '' && secrets.EXPO_TOKEN != '' }}
+        run: pnpm install --frozen-lockfile
+
+      - name: EAS build (mobile-front-v2)
+        if: ${{ steps.bump.outputs.version != '' && secrets.EXPO_TOKEN != '' }}
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          pnpm dlx eas-cli@latest build \
+            --platform all \
+            --profile production \
+            --non-interactive
+        working-directory: packages/mobile-front-v2
+
+      - name: EAS submit (mobile-front-v2)
+        if: ${{ steps.bump.outputs.version != '' && secrets.EXPO_TOKEN != '' && secrets.EXPO_ASC_API_KEY != '' && secrets.EXPO_ASC_API_KEY_ID != '' && secrets.EXPO_ASC_API_KEY_ISSUER_ID != '' }}
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_ASC_API_KEY: ${{ secrets.EXPO_ASC_API_KEY }}
+          EXPO_ASC_API_KEY_ID: ${{ secrets.EXPO_ASC_API_KEY_ID }}
+          EXPO_ASC_API_KEY_ISSUER_ID: ${{ secrets.EXPO_ASC_API_KEY_ISSUER_ID }}
+        run: |
+          pnpm dlx eas-cli@latest submit \
+            --platform all \
+            --profile production \
+            --latest \
+            --non-interactive
+        working-directory: packages/mobile-front-v2
