@@ -27,6 +27,16 @@ coverage/
 .DS_Store
 Thumbs.db
 
+# secrets / private keys
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+*.keystore
+
 android/.gradle/
 android/local.properties
 android/app/build/

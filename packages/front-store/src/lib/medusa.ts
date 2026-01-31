@@ -1260,7 +1260,10 @@ export const resolveMediaUrl = (value?: string | null) => {
     }
     try {
       const url = new URL(trimmed)
-      if (url.pathname.includes("%2F")) {
+      const isSigned = /(^|&)(X-Amz-|X-Amz-Algorithm|X-Amz-Credential|X-Amz-Signature)=/i.test(
+        url.search
+      )
+      if (!isSigned && url.pathname.includes("%2F")) {
         const decodedPath = decodeURIComponent(url.pathname)
         return `${url.origin}${decodedPath}${url.search}${url.hash}`
       }
