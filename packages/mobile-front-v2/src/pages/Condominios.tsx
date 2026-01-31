@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Plus, Building2, Search } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
@@ -89,6 +89,18 @@ export default function Condominios() {
           </View>
         )}
 
+        <View style={styles.addButtonContainer}>
+          <Button
+            style={styles.addButton}
+            onPress={() => navigation.navigate("CondominioDetalhes" as never)}
+          >
+            <View style={styles.addButtonContent}>
+              <Plus color="#FFFFFF" size={16} />
+              <Text style={styles.addButtonText}>Novo Condomínio</Text>
+            </View>
+          </Button>
+        </View>
+
         {isFirstAccess && (
           <View style={styles.firstAccessCard}>
             <Text style={styles.firstAccessTitle}>Finalize o cadastro</Text>
@@ -109,10 +121,6 @@ export default function Condominios() {
           </View>
         )}
       </ScrollView>
-
-      <Pressable style={styles.fab} onPress={() => navigation.navigate("CondominioDetalhes" as never)}>
-        <Plus color="#FFFFFF" size={22} />
-      </Pressable>
     </AuthenticatedLayout>
   );
 }
@@ -177,6 +185,27 @@ const styles = StyleSheet.create({
     color: "#8C98A8",
     fontSize: 13,
   },
+  addButtonContainer: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  addButton: {
+    width: "100%",
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#5DA2E6",
+  },
+  addButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  addButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+  },
   firstAccessCard: {
     marginTop: 20,
     padding: 16,
@@ -200,16 +229,5 @@ const styles = StyleSheet.create({
     color: "#C6CCD4",
     fontSize: 12,
     marginTop: 6,
-  },
-  fab: {
-    position: "absolute",
-    right: 16,
-    bottom: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#5DA2E6",
-    alignItems: "center",
-    justifyContent: "center",
   },
 });

@@ -20,15 +20,19 @@ import {
   completeCart,
   createRecurrence,
   earnCompanyPoints,
+  fetchSavedPaymentMethodsFromBackend,
   fetchPendingPaymentsFromBackend,
   getActiveCondo,
+  getCustomerMe,
   getPendingPayments,
   mergePendingPayments,
   PendingPaymentDetails,
+  SavedPaymentMethod,
   formatMoney,
   removePendingPayment,
   removePendingPaymentFromBackend,
   retrieveCart,
+  upsertSavedPaymentMethod,
 } from "@/lib/medusa";
 import { toast } from "@/hooks/use-toast";
 import condosBg from "@/assets/condos-bg.jpg";
@@ -50,11 +54,15 @@ const Checkout = () => {
   const [errors, setErrors] = useState<{ paymentMethod?: string; condo?: string }>({});
   const [pixExpirationTime, setPixExpirationTime] = useState(30 * 60); // 30 minutes in seconds
   const [saveAsRecurring, setSaveAsRecurring] = useState(false);
+  const [recurrenceSelections, setRecurrenceSelections] = useState<Record<string, boolean>>({});
   const [recurrenceName, setRecurrenceName] = useState("");
   const [recurrenceFrequency, setRecurrenceFrequency] =
     useState<"weekly" | "biweekly" | "monthly">("monthly");
   const [recurrenceDayOfWeek, setRecurrenceDayOfWeek] = useState("1");
   const [recurrenceDayOfMonth, setRecurrenceDayOfMonth] = useState("5");
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [billingEmails, setBillingEmails] = useState<string[]>([]);
 
   useEffect(() => {
     if (orderStatus && paymentMethod === "pix" && pixExpirationTime > 0) {
@@ -100,6 +108,34 @@ const Checkout = () => {
       setPaymentMethod(method);
     }
   }, [paymentMethod, searchParams]);
+
+  useEffect(() => {
+    const normalizeEmails = (value: unknown) => {
+      if (Array.isArray(value)) return value.filter(Boolean);
+      if (typeof value === "string" && value.trim()) {
+        return value
+          .split(",")
+          .map((email) => email.trim())
+          .filter(Boolean);
+      }
+      return [];
+    };
+    const active = getActiveCondo();
+    setBillingEmails(normalizeEmails(active?.billing_emails));
+    fetchSavedPaymentMethodsFromBackend().then(setSavedPaymentMethods);
+    getCustomerMe()
+      .then((data) => setCustomerEmail(data?.customer?.email || ""))
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (paymentMethod) return;
+    const savedDefault =
+      savedPaymentMethods.find((method) => method.is_default) || savedPaymentMethods[0];
+    if (savedDefault) {
+      setPaymentMethod(savedDefault.type);
+    }
+  }, [paymentMethod, savedPaymentMethods]);
 
   const isPaymentSucceeded = (cart: any) => {
     const sessions = cart?.payment_sessions || [];
@@ -199,16 +235,19 @@ const Checkout = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const buildRecurrenceItems = () => {
-    return items.map((item) => ({
-      variant_id: item.variantId,
-      product_id: item.productId,
-      quantity: item.quantity,
-      title: item.name,
-      price: item.price,
-      category: item.category,
-    }));
-  };
+  useEffect(() => {
+    if (!saveAsRecurring) return;
+    setRecurrenceSelections((current) => {
+      if (items.length === 0) return current;
+      const hasAny = Object.values(current).some(Boolean);
+      if (hasAny) return current;
+      const next: Record<string, boolean> = {};
+      items.forEach((item) => {
+        next[item.id] = true;
+      });
+      return next;
+    });
+  }, [items, saveAsRecurring]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,13 +270,21 @@ const Checkout = () => {
       return;
     }
 
+    const selectedRecurrenceItems = items.filter((item) => recurrenceSelections[item.id]);
+    if (saveAsRecurring && selectedRecurrenceItems.length === 0) {
+      toast({
+        title: "Selecione produtos",
+        description: "Escolha ao menos um produto para criar a recorrência.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
       const totalBefore = totalPrice;
       setOrderTotal(totalBefore);
-      const recurrenceItemsSnapshot = saveAsRecurring ? buildRecurrenceItems() : [];
-
       const activeCondo = getActiveCondo();
       const shippingAddress = {
         first_name: "Condomínio",
@@ -258,18 +305,32 @@ const Checkout = () => {
       const result = await completeBackendCheckout(shippingAddress, paymentMethod);
       if (saveAsRecurring) {
         try {
-          await createRecurrence({
-            name: recurrenceName.trim() || `Recorrência ${activeCondo?.name || ""}`.trim(),
-            frequency: recurrenceFrequency,
-            day_of_week: recurrenceFrequency === "monthly" ? undefined : Number(recurrenceDayOfWeek),
-            day_of_month: recurrenceFrequency === "monthly" ? Number(recurrenceDayOfMonth) : undefined,
-            payment_method: paymentMethod,
-            items: recurrenceItemsSnapshot,
-            company_id: activeCondo?.id || null,
-          });
+          const selectedItems = items.filter((item) => recurrenceSelections[item.id]);
+          for (const item of selectedItems) {
+            await createRecurrence({
+              name:
+                recurrenceName.trim() ||
+                `Recorrência ${item.name || activeCondo?.name || ""}`.trim(),
+              frequency: recurrenceFrequency,
+              day_of_week: recurrenceFrequency === "monthly" ? undefined : Number(recurrenceDayOfWeek),
+              day_of_month: recurrenceFrequency === "monthly" ? Number(recurrenceDayOfMonth) : undefined,
+              payment_method: paymentMethod,
+              items: [
+                {
+                  variant_id: item.variantId,
+                  product_id: item.productId,
+                  quantity: item.quantity,
+                  title: item.name,
+                  price: item.price,
+                  category: item.category,
+                },
+              ],
+              company_id: activeCondo?.id || null,
+            });
+          }
           toast({
             title: "Recorrência criada",
-            description: "Esta compra foi salva como recorrente.",
+            description: "Os produtos selecionados foram salvos como recorrentes.",
           });
         } catch (error: any) {
           toast({
@@ -278,6 +339,31 @@ const Checkout = () => {
             variant: "destructive",
           });
         }
+      }
+
+      try {
+        const boletoEmailsResolved = billingEmails.length
+          ? billingEmails.join(", ")
+          : customerEmail || "";
+        const label =
+          paymentMethod === "credit"
+            ? "Cartão"
+            : paymentMethod === "pix"
+              ? "PIX"
+              : boletoEmailsResolved
+                ? `Boleto (${boletoEmailsResolved})`
+                : "Boleto";
+        await upsertSavedPaymentMethod({
+          type: paymentMethod,
+          label,
+          details:
+            paymentMethod === "boleto" && boletoEmailsResolved
+              ? { email: boletoEmailsResolved }
+              : undefined,
+          setDefault: true,
+        });
+      } catch {
+        // Ignore failures to persist payment method
       }
       setOrderId(result.orderId || "");
       setPaymentCollectionId(result.paymentCollectionId || "");
@@ -317,6 +403,13 @@ const Checkout = () => {
   const boletoLine =
     pendingDetails?.boleto_line ||
     "34191.79001 01043.510047 91020.150008 4 12345678901234";
+
+  const boletoEmailList = billingEmails.length
+    ? billingEmails
+    : customerEmail
+      ? [customerEmail]
+      : [];
+  const boletoEmailText = boletoEmailList.length ? boletoEmailList.join(", ") : "E-mail não informado";
 
   const copyPixCode = () => {
     navigator.clipboard.writeText(pixCode);
@@ -603,6 +696,32 @@ const Checkout = () => {
                   {errors.paymentMethod && (
                     <p className="text-sm text-destructive mb-3">{errors.paymentMethod}</p>
                   )}
+                  {savedPaymentMethods.length > 0 && (
+                    <div className="mb-4 border-2 border-border p-3 bg-background/40">
+                      <p className="text-xs text-muted-foreground mb-2">Métodos salvos</p>
+                      <div className="space-y-2">
+                        {savedPaymentMethods.map((method) => (
+                          <button
+                            key={method.id}
+                            type="button"
+                            className={`w-full text-left p-2 border-2 transition-colors ${
+                              paymentMethod === method.type
+                                ? "border-primary bg-primary/10"
+                                : "border-border hover:border-primary/50"
+                            }`}
+                            onClick={() => setPaymentMethod(method.type)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">{method.label}</span>
+                              {method.is_default && (
+                                <span className="text-xs text-muted-foreground">Padrão</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <RadioGroup
                     value={paymentMethod}
                     onValueChange={(value) => {
@@ -650,6 +769,10 @@ const Checkout = () => {
                       <div className="flex-1">
                         <p className="font-medium">Boleto</p>
                         <p className="text-sm text-muted-foreground">Compensação em até 2 dias úteis</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Enviaremos o boleto para:{" "}
+                          <span className="font-semibold text-foreground">{boletoEmailText}</span>
+                        </p>
                       </div>
                     </label>
                   </RadioGroup>
@@ -667,6 +790,25 @@ const Checkout = () => {
                     </div>
                     {saveAsRecurring && (
                       <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="block">Produtos recorrentes</Label>
+                          <div className="space-y-2">
+                            {items.map((item) => (
+                              <label key={item.id} className="flex items-center gap-2 text-sm">
+                                <Checkbox
+                                  checked={!!recurrenceSelections[item.id]}
+                                  onCheckedChange={(checked) =>
+                                    setRecurrenceSelections((current) => ({
+                                      ...current,
+                                      [item.id]: checked === true,
+                                    }))
+                                  }
+                                />
+                                <span>{item.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
                         <div className="space-y-2">
                           <Label htmlFor="recurrenceName" className="block">Nome da recorrência</Label>
                           <Input

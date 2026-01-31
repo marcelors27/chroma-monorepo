@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { Building2, DollarSign, Users, Send } from "lucide-react-native";
+import { Building2, DollarSign, Users, Send, ArrowLeft } from "lucide-react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
@@ -287,6 +287,12 @@ export default function CondominioDetalhes() {
       />
 
       <ScrollView style={styles.scrollContent}>
+        {isNew && (
+          <Pressable onPress={() => navigation.goBack()} style={styles.backInline}>
+            <ArrowLeft color="#E6E8EA" size={16} />
+            <Text style={styles.backInlineText}>Voltar</Text>
+          </Pressable>
+        )}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryIcon}>
@@ -467,6 +473,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
+  },
+  backInline: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+    marginBottom: 12,
+  },
+  backInlineText: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "600",
   },
   summaryCard: {
     backgroundColor: "rgba(24, 28, 36, 0.95)",

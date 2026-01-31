@@ -6,6 +6,7 @@ const {
 } = require("@medusajs/framework/utils")
 const { createCustomerAccountWorkflow } = require("@medusajs/core-flows")
 const approvedGuard = require("../strategies/store/approved-guard")
+const { decryptLoginPayload } = require("../services/auth-encryption")
 
 const ALLOW_HEADERS =
   "Content-Type, Authorization, X-Publishable-Api-Key, X-Medusa-Sales-Channel-Id, X-Company-Id, X-Company, Accept"
@@ -233,6 +234,43 @@ const fetchCustomerByEmail = async (scope, email, logger) => {
   }
 }
 
+const MAX_LOGIN_PAYLOAD_AGE_MS = 5 * 60 * 1000
+
+const decryptLoginPayloadMiddleware = () => {
+  return async (req, res, next) => {
+    const body = req.body || {}
+    if (!body?.encrypted || !body?.payload) {
+      return next()
+    }
+
+    const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
+    const result = decryptLoginPayload(body.payload)
+
+    if (result?.error === "missing_private_key") {
+      return res.status(500).json({ message: "Chave de autenticação não configurada" })
+    }
+    if (!result?.data) {
+      return res.status(400).json({ message: "Payload de login inválido" })
+    }
+
+    const { email, password, ts } = result.data || {}
+    if (!email || !password) {
+      return res.status(400).json({ message: "Payload de login incompleto" })
+    }
+
+    if (ts) {
+      const diff = Math.abs(Date.now() - Number(ts))
+      if (!Number.isFinite(diff) || diff > MAX_LOGIN_PAYLOAD_AGE_MS) {
+        return res.status(400).json({ message: "Payload de login expirado" })
+      }
+    }
+
+    req.body = { ...body, email, password }
+    safeLog(logger, { msg: "decryptLoginPayload:ok", email })
+    next()
+  }
+}
+
 const welcomeEmailOnRegister = () => {
   return async (req, res, next) => {
     const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
@@ -347,12 +385,12 @@ const middlewares = defineMiddlewares([
   {
     method: ["POST"],
     matcher: ["/auth/store/emailpass"],
-    middlewares: [storeLoginDisabledGuard(), storeLoginCompanyGuard()],
+    middlewares: [decryptLoginPayloadMiddleware(), storeLoginDisabledGuard(), storeLoginCompanyGuard()],
   },
   {
     method: ["POST"],
     matcher: ["/auth/customer/emailpass"],
-    middlewares: [storeLoginDisabledGuard()],
+    middlewares: [decryptLoginPayloadMiddleware(), storeLoginDisabledGuard()],
   },
   {
     method: ["POST"],

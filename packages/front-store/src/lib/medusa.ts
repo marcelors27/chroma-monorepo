@@ -117,11 +117,24 @@ export type PendingPaymentDetails = {
   pix_qr?: string
 }
 
+export type SavedPaymentMethod = {
+  id: string
+  type: "credit" | "pix" | "boleto"
+  label: string
+  details?: {
+    email?: string
+  }
+  is_default?: boolean
+  created_at?: string
+  last_used_at?: string
+}
+
 export type ActiveCondo = {
   id: string
   name: string
   cnpj?: string
   points_balance?: number
+  billing_emails?: string[]
 }
 
 export type PendingPayment = {
@@ -369,6 +382,100 @@ export const fetchPendingPaymentsFromBackend = async (): Promise<PendingPayment[
   }
 }
 
+const normalizeSavedPaymentMethods = (value: unknown): SavedPaymentMethod[] => {
+  if (!Array.isArray(value)) return []
+  return value.filter((item) => item && item.type) as SavedPaymentMethod[]
+}
+
+const buildPaymentMethodId = (
+  type: SavedPaymentMethod["type"],
+  details?: SavedPaymentMethod["details"]
+) => {
+  const suffix = (details?.email || "default").toLowerCase()
+  return `${type}:${suffix}`
+}
+
+const buildSavedPaymentMethodsMetadata = (
+  metadata: Record<string, any>,
+  paymentMethods: SavedPaymentMethod[]
+) => {
+  return { ...metadata, payment_methods: paymentMethods }
+}
+
+export const fetchSavedPaymentMethodsFromBackend = async (): Promise<SavedPaymentMethod[]> => {
+  try {
+    const customer = await getCustomerMe()
+    return normalizeSavedPaymentMethods(customer?.metadata?.payment_methods)
+  } catch {
+    return []
+  }
+}
+
+export const upsertSavedPaymentMethod = async (payload: {
+  type: SavedPaymentMethod["type"]
+  label: string
+  details?: SavedPaymentMethod["details"]
+  setDefault?: boolean
+}) => {
+  const customer = await getCustomerMe()
+  const metadata = customer?.metadata || {}
+  const current = normalizeSavedPaymentMethods(metadata.payment_methods)
+  const id = buildPaymentMethodId(payload.type, payload.details)
+  const now = new Date().toISOString()
+  const index = current.findIndex((item) => item.id === id)
+
+  let next = [...current]
+  if (index >= 0) {
+    next[index] = {
+      ...next[index],
+      label: payload.label,
+      details: payload.details,
+      last_used_at: now,
+    }
+  } else {
+    next.push({
+      id,
+      type: payload.type,
+      label: payload.label,
+      details: payload.details,
+      created_at: now,
+      last_used_at: now,
+    })
+  }
+
+  const shouldSetDefault = payload.setDefault || !next.some((item) => item.is_default)
+  if (shouldSetDefault) {
+    next = next.map((item) => ({
+      ...item,
+      is_default: item.id === id,
+    }))
+  }
+
+  await updateCustomerMe({ metadata: buildSavedPaymentMethodsMetadata(metadata, next) })
+  return next
+}
+
+export const setDefaultSavedPaymentMethod = async (id: string) => {
+  const customer = await getCustomerMe()
+  const metadata = customer?.metadata || {}
+  const current = normalizeSavedPaymentMethods(metadata.payment_methods)
+  const next = current.map((item) => ({ ...item, is_default: item.id === id }))
+  await updateCustomerMe({ metadata: buildSavedPaymentMethodsMetadata(metadata, next) })
+  return next
+}
+
+export const removeSavedPaymentMethod = async (id: string) => {
+  const customer = await getCustomerMe()
+  const metadata = customer?.metadata || {}
+  const current = normalizeSavedPaymentMethods(metadata.payment_methods)
+  const next = current.filter((item) => item.id !== id)
+  if (next.length > 0 && !next.some((item) => item.is_default)) {
+    next[0].is_default = true
+  }
+  await updateCustomerMe({ metadata: buildSavedPaymentMethodsMetadata(metadata, next) })
+  return next
+}
+
 const buildPendingPaymentsMetadata = (
   metadata: Record<string, any>,
   pending: PendingPayment[]
@@ -536,6 +643,63 @@ const apiFetch = async <T>(path: string, init?: FetchInit): Promise<T> => {
   }
 }
 
+let cachedAuthPublicKey: CryptoKey | null = null
+
+const pemToArrayBuffer = (pem: string) => {
+  const normalized = pem
+    .replace(/-----BEGIN PUBLIC KEY-----/g, "")
+    .replace(/-----END PUBLIC KEY-----/g, "")
+    .replace(/\s+/g, "")
+  const binary = atob(normalized)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes.buffer
+}
+
+const importAuthPublicKey = async (pem: string) => {
+  if (typeof window === "undefined" || !window.crypto?.subtle) return null
+  const keyData = pemToArrayBuffer(pem)
+  return window.crypto.subtle.importKey(
+    "spki",
+    keyData,
+    { name: "RSA-OAEP", hash: "SHA-256" },
+    false,
+    ["encrypt"]
+  )
+}
+
+const getAuthPublicKey = async () => {
+  if (cachedAuthPublicKey) return cachedAuthPublicKey
+  if (typeof window === "undefined" || !window.crypto?.subtle) return null
+  try {
+    const data = await apiFetch<{ public_key?: string | null }>("/auth/public-key", {
+      auth: false,
+    })
+    if (!data?.public_key) return null
+    cachedAuthPublicKey = await importAuthPublicKey(data.public_key)
+    return cachedAuthPublicKey
+  } catch {
+    return null
+  }
+}
+
+const encryptLoginPayload = async (payload: { email: string; password: string }) => {
+  if (typeof window === "undefined" || !window.crypto?.subtle) return null
+  const publicKey = await getAuthPublicKey()
+  if (!publicKey) return null
+  const body = JSON.stringify({ ...payload, ts: Date.now() })
+  const encoded = new TextEncoder().encode(body)
+  const encrypted = await window.crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, encoded)
+  const bytes = new Uint8Array(encrypted)
+  let binary = ""
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte)
+  })
+  return btoa(binary)
+}
+
 const withStoreQuery = (path: string) => {
   const params = new URLSearchParams()
   if (REGION_ID) params.set("region_id", REGION_ID)
@@ -561,10 +725,12 @@ export const clearSession = () => {
 }
 
 export const login = async (email: string, password: string) => {
+  const encrypted = await encryptLoginPayload({ email, password })
+  const payload = encrypted ? { encrypted: true, payload: encrypted } : { email, password }
   const data = await apiFetch<{ token: string }>("/auth/customer/emailpass", {
     method: "POST",
     auth: false,
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify(payload),
   })
   if (!data?.token) {
     throw new Error("Token não retornado pelo backend")
@@ -617,6 +783,15 @@ export const registerStore = async (email: string, password: string) => {
   }
   setToken(register.token)
   return register.token
+}
+
+export const requestPasswordReset = async (email: string) => {
+  await apiFetch("/store/customers/reset-password", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify({ email }),
+  })
+  return true
 }
 
 export const registerAndCreateCompany = async (params: {

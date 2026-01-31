@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View, Pressable, Image } from "react-native";
 import { Minus, Plus, Trash2, QrCode, CreditCard, Receipt, RefreshCw, ChevronRight } from "lucide-react-native";
 import { Header } from "@/components/layout/Header";
@@ -6,15 +6,72 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
 import { useCart } from "@/contexts/CartContext";
 import { useCondo } from "@/contexts/CondoContext";
-import { createRecurrence, formatMoney } from "@/lib/medusa";
+import {
+  createRecurrence,
+  fetchSavedPaymentMethodsFromBackend,
+  formatMoney,
+  getCustomerMe,
+  SavedPaymentMethod,
+  upsertSavedPaymentMethod,
+} from "@/lib/medusa";
+
+type RecurrenceOption = "unica" | "semanal" | "quinzenal" | "mensal";
 
 export default function Carrinho() {
   const [selectedPayment, setSelectedPayment] = useState<"pix" | "cartao" | "boleto">("pix");
-  const [selectedRecurrence, setSelectedRecurrence] = useState<"unica" | "semanal" | "quinzenal" | "mensal">("unica");
+  const [recurrenceByItem, setRecurrenceByItem] = useState<Record<string, RecurrenceOption>>({});
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
+  const [customerEmail, setCustomerEmail] = useState("");
   const { items, totalPrice, updateQuantity, removeItem, completeBackendCheckout, clearCart } = useCart();
   const { activeCondo } = useCondo();
 
   const formattedTotal = formatMoney(totalPrice);
+  const boletoEmails = activeCondo?.billingEmails?.length
+    ? activeCondo.billingEmails
+    : customerEmail
+      ? [customerEmail]
+      : [];
+  const boletoEmailText = boletoEmails.length ? boletoEmails.join(", ") : "E-mail não informado";
+
+  useEffect(() => {
+    const loadPaymentData = async () => {
+      const methods = await fetchSavedPaymentMethodsFromBackend();
+      setSavedPaymentMethods(methods);
+      try {
+        const customer = await getCustomerMe();
+        setCustomerEmail(customer?.customer?.email || "");
+      } catch {
+        setCustomerEmail("");
+      }
+    };
+    loadPaymentData();
+  }, []);
+
+  useEffect(() => {
+    setRecurrenceByItem((current) => {
+      const next = { ...current };
+      items.forEach((item) => {
+        if (!next[item.id]) {
+          next[item.id] = "unica";
+        }
+      });
+      Object.keys(next).forEach((id) => {
+        if (!items.some((item) => item.id === id)) {
+          delete next[id];
+        }
+      });
+      return next;
+    });
+  }, [items]);
+
+  useEffect(() => {
+    if (!savedPaymentMethods.length) return;
+    const defaultMethod =
+      savedPaymentMethods.find((method) => method.is_default) || savedPaymentMethods[0];
+    if (!defaultMethod) return;
+    const mapped = defaultMethod.type === "credit" ? "cartao" : defaultMethod.type;
+    setSelectedPayment(mapped);
+  }, [savedPaymentMethods]);
 
   const handleCheckout = async () => {
     if (!items.length) {
@@ -44,22 +101,50 @@ export default function Carrinho() {
 
       const orderId = await completeBackendCheckout(shippingAddress, paymentMethod);
 
-      if (selectedRecurrence !== "unica") {
-        const frequency = selectedRecurrence === "semanal" ? "weekly" : selectedRecurrence === "quinzenal" ? "biweekly" : "monthly";
+      const recurringItems = items.filter((item) => recurrenceByItem[item.id] && recurrenceByItem[item.id] !== "unica");
+      for (const item of recurringItems) {
+        const selectedRecurrence = recurrenceByItem[item.id];
+        const frequency =
+          selectedRecurrence === "semanal"
+            ? "weekly"
+            : selectedRecurrence === "quinzenal"
+              ? "biweekly"
+              : "monthly";
         await createRecurrence({
-          name: `Recorrência ${activeCondo.name}`,
+          name: `Recorrência ${item.name}`,
           frequency,
           payment_method: paymentMethod,
-          items: items.map((item) => ({
-            variant_id: item.variantId,
-            product_id: item.productId,
-            quantity: item.quantity,
-            title: item.name,
-            price: item.price,
-            category: item.category,
-          })),
+          items: [
+            {
+              variant_id: item.variantId,
+              product_id: item.productId,
+              quantity: item.quantity,
+              title: item.name,
+              price: item.price,
+              category: item.category,
+            },
+          ],
           company_id: activeCondo.id,
         });
+      }
+
+      try {
+        const label =
+          paymentMethod === "credit"
+            ? "Cartão"
+            : paymentMethod === "pix"
+              ? "PIX"
+              : boletoEmails.length
+                ? `Boleto (${boletoEmails.join(", ")})`
+                : "Boleto";
+        await upsertSavedPaymentMethod({
+          type: paymentMethod,
+          label,
+          details: paymentMethod === "boleto" && boletoEmails.length ? { email: boletoEmails.join(", ") } : undefined,
+          setDefault: true,
+        });
+      } catch {
+        // Ignore failures to persist payment method
       }
 
       await clearCart();
@@ -105,6 +190,25 @@ export default function Carrinho() {
         )}
 
         <Text style={styles.sectionTitle}>Forma de pagamento</Text>
+        {savedPaymentMethods.length > 0 && (
+          <View style={styles.savedPayments}>
+            <Text style={styles.savedPaymentsTitle}>Métodos salvos</Text>
+            {savedPaymentMethods.map((method) => {
+              const mapped = method.type === "credit" ? "cartao" : method.type;
+              const active = selectedPayment === mapped;
+              return (
+                <Pressable
+                  key={method.id}
+                  onPress={() => setSelectedPayment(mapped)}
+                  style={[styles.savedPaymentCard, active ? styles.savedPaymentCardActive : styles.savedPaymentCardIdle]}
+                >
+                  <Text style={styles.savedPaymentLabel}>{method.label}</Text>
+                  {method.is_default && <Text style={styles.savedPaymentDefault}>Padrão</Text>}
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
         <View style={styles.sectionList}>
           {[
             { id: "pix", title: "Pix", subtitle: "Pagamento instantâneo", icon: QrCode },
@@ -133,30 +237,52 @@ export default function Carrinho() {
             );
           })}
         </View>
+        {selectedPayment === "boleto" && (
+          <View style={styles.boletoInfo}>
+            <Text style={styles.boletoInfoText}>Boleto será enviado para:</Text>
+            <Text style={styles.boletoInfoValue}>{boletoEmailText}</Text>
+          </View>
+        )}
 
         <View style={styles.recurrenceHeader}>
           <RefreshCw color="#8C98A8" size={18} />
           <Text style={styles.sectionTitleText}>Recorrência</Text>
         </View>
-        <View style={styles.recurrenceGrid}>
-          {[
-            { id: "unica", title: "Compra única", subtitle: "Sem recorrência" },
-            { id: "semanal", title: "Semanal", subtitle: "Toda semana" },
-            { id: "quinzenal", title: "Quinzenal", subtitle: "A cada 2 semanas" },
-            { id: "mensal", title: "Mensal", subtitle: "Todo mês" },
-          ].map((option) => {
-            const active = selectedRecurrence === option.id;
-            return (
-              <Pressable
-                key={option.id}
-                onPress={() => setSelectedRecurrence(option.id as "unica" | "semanal" | "quinzenal" | "mensal")}
-                style={[styles.recurrenceCard, active ? styles.recurrenceCardActive : styles.recurrenceCardIdle]}
-              >
-                <Text style={styles.recurrenceTitle}>{option.title}</Text>
-                <Text style={styles.recurrenceSubtitle}>{option.subtitle}</Text>
-              </Pressable>
-            );
-          })}
+        <View style={styles.recurrenceList}>
+          {items.map((item) => (
+            <View key={item.id} style={styles.recurrenceItem}>
+              <Text style={styles.recurrenceItemTitle}>{item.name}</Text>
+              <View style={styles.recurrenceChips}>
+                {[
+                  { id: "unica", title: "Única" },
+                  { id: "semanal", title: "Semanal" },
+                  { id: "quinzenal", title: "Quinzenal" },
+                  { id: "mensal", title: "Mensal" },
+                ].map((option) => {
+                  const active = recurrenceByItem[item.id] === option.id;
+                  return (
+                    <Pressable
+                      key={option.id}
+                      onPress={() =>
+                        setRecurrenceByItem((current) => ({
+                          ...current,
+                          [item.id]: option.id as RecurrenceOption,
+                        }))
+                      }
+                      style={[
+                        styles.recurrenceChip,
+                        active ? styles.recurrenceChipActive : styles.recurrenceChipIdle,
+                      ]}
+                    >
+                      <Text style={[styles.recurrenceChipText, active && styles.recurrenceChipTextActive]}>
+                        {option.title}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
         </View>
 
         <View style={styles.summaryCard}>
@@ -259,6 +385,42 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 16,
   },
+  savedPayments: {
+    marginTop: 12,
+    gap: 8,
+  },
+  savedPaymentsTitle: {
+    color: "#8C98A8",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  savedPaymentCard: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+  },
+  savedPaymentCardActive: {
+    borderColor: "rgba(93, 162, 230, 0.6)",
+  },
+  savedPaymentCardIdle: {
+    borderColor: "rgba(46, 54, 68, 0.6)",
+  },
+  savedPaymentLabel: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "600",
+    flex: 1,
+  },
+  savedPaymentDefault: {
+    color: "#5DA2E6",
+    fontSize: 11,
+    fontWeight: "600",
+  },
   sectionList: {
     marginTop: 16,
     gap: 12,
@@ -315,6 +477,24 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "#5DA2E6",
   },
+  boletoInfo: {
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: "rgba(93, 162, 230, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(93, 162, 230, 0.4)",
+  },
+  boletoInfoText: {
+    color: "#8C98A8",
+    fontSize: 12,
+  },
+  boletoInfoValue: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 4,
+  },
   recurrenceHeader: {
     marginTop: 20,
     flexDirection: "row",
@@ -326,35 +506,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  recurrenceGrid: {
+  recurrenceList: {
     marginTop: 12,
-    flexDirection: "row",
-    flexWrap: "wrap",
     gap: 12,
   },
-  recurrenceCard: {
-    flexBasis: "48%",
-    padding: 14,
+  recurrenceItem: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
     borderRadius: 18,
     borderWidth: 1,
+    borderColor: "rgba(46, 54, 68, 0.6)",
+    padding: 14,
   },
-  recurrenceCardActive: {
-    backgroundColor: "rgba(93, 162, 230, 0.2)",
-    borderColor: "rgba(93, 162, 230, 0.5)",
-  },
-  recurrenceCardIdle: {
-    backgroundColor: "rgba(24, 28, 36, 0.95)",
-    borderColor: "rgba(46, 54, 68, 0.5)",
-  },
-  recurrenceTitle: {
+  recurrenceItemTitle: {
     color: "#E6E8EA",
     fontSize: 14,
     fontWeight: "600",
   },
-  recurrenceSubtitle: {
+  recurrenceChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
+  },
+  recurrenceChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  recurrenceChipActive: {
+    backgroundColor: "rgba(93, 162, 230, 0.2)",
+    borderColor: "rgba(93, 162, 230, 0.5)",
+  },
+  recurrenceChipIdle: {
+    backgroundColor: "rgba(34, 38, 46, 0.8)",
+    borderColor: "rgba(46, 54, 68, 0.6)",
+  },
+  recurrenceChipText: {
     color: "#8C98A8",
     fontSize: 12,
-    marginTop: 4,
+    fontWeight: "600",
+  },
+  recurrenceChipTextActive: {
+    color: "#E6E8EA",
   },
   summaryCard: {
     marginTop: 20,

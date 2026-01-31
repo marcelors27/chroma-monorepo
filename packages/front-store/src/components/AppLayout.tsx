@@ -27,6 +27,7 @@ type CondoOption = {
   name: string;
   cnpj?: string;
   pointsBalance?: number;
+  billing_emails?: string[];
 };
 
 const AppLayout = () => {
@@ -41,6 +42,16 @@ const AppLayout = () => {
     listCompanies()
       .then((data) => {
         if (!mounted) return;
+        const normalizeBillingEmails = (value: unknown) => {
+          if (Array.isArray(value)) return value.filter(Boolean);
+          if (typeof value === "string" && value.trim()) {
+            return value
+              .split(",")
+              .map((email) => email.trim())
+              .filter(Boolean);
+          }
+          return [];
+        };
         const approved = (data?.companies || [])
           .filter((company: any) => company?.approved)
           .map((company: any) => ({
@@ -48,6 +59,7 @@ const AppLayout = () => {
             name: company.fantasy_name || company.trade_name || "Empresa",
             cnpj: company.cnpj || undefined,
             pointsBalance: Number(company?.metadata?.points_balance || 0),
+            billing_emails: normalizeBillingEmails(company?.metadata?.billing_emails),
           }));
         setCondos(approved);
         setSelectedCondo((current) => {
@@ -61,8 +73,13 @@ const AppLayout = () => {
           }
           return approved[0] || null;
         });
-        const active = getActiveCondo();
-        if (!active && approved[0]) {
+        const stored = getActiveCondo();
+        if (stored) {
+          const match = approved.find((company: CondoOption) => company.id === stored.id);
+          if (match) {
+            setActiveCondo(match);
+          }
+        } else if (approved[0]) {
           setActiveCondo(approved[0]);
         }
       })

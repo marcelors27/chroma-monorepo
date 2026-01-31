@@ -12,6 +12,7 @@ export interface Condo {
   role: string;
   approved?: boolean;
   pointsBalance?: number;
+  billingEmails?: string[];
 }
 
 interface CondoContextType {
@@ -49,6 +50,16 @@ export function CondoProvider({
     setIsLoading(true);
     try {
       const data = await listCompanies();
+      const normalizeBillingEmails = (value: unknown) => {
+        if (Array.isArray(value)) return value.filter(Boolean);
+        if (typeof value === "string" && value.trim()) {
+          return value
+            .split(",")
+            .map((email) => email.trim())
+            .filter(Boolean);
+        }
+        return [];
+      };
       const mapped = (data?.companies || [])
         .filter((company: any) => company?.approved)
         .map((company: any) => ({
@@ -59,6 +70,7 @@ export function CondoProvider({
           role: company.metadata?.role || "Síndico",
           approved: true,
           pointsBalance: Number(company.metadata?.points_balance || 0),
+          billingEmails: normalizeBillingEmails(company.metadata?.billing_emails),
         }));
       setCondos(mapped);
       setActiveCondoState((current) => {

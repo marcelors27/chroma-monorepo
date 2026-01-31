@@ -1,14 +1,47 @@
 import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
-
-const payments = [
-  { id: "1", type: "Cartão", label: "Visa •••• 1234", default: true },
-  { id: "2", type: "Pix", label: "Chave cadastrada", default: false },
-];
+import {
+  fetchSavedPaymentMethodsFromBackend,
+  removeSavedPaymentMethod,
+  setDefaultSavedPaymentMethod,
+} from "@/lib/medusa";
 
 export default function Pagamentos() {
+  const { data, refetch } = useQuery({
+    queryKey: ["payment-methods"],
+    queryFn: fetchSavedPaymentMethodsFromBackend,
+  });
+  const payments = data || [];
+  const formatType = (value: string) => {
+    if (value === "credit") return "Cartão";
+    if (value === "pix") return "PIX";
+    if (value === "boleto") return "Boleto";
+    return value;
+  };
+
+  const handleSetDefault = async (id: string) => {
+    try {
+      await setDefaultSavedPaymentMethod(id);
+      toast.success("Forma de pagamento padrão atualizada");
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível atualizar a forma de pagamento.");
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    try {
+      await removeSavedPaymentMethod(id);
+      toast.success("Forma de pagamento removida");
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível remover a forma de pagamento.");
+    }
+  };
+
   return (
     <AuthenticatedLayout>
       <Header title="Pagamentos" showBackButton showCondoSelector />
@@ -17,19 +50,24 @@ export default function Pagamentos() {
         {payments.map((payment) => (
           <View key={payment.id} style={styles.card}>
             <Text style={styles.cardTitle}>{payment.label}</Text>
-            <Text style={styles.cardSubtitle}>{payment.type}</Text>
+            <Text style={styles.cardSubtitle}>{formatType(payment.type)}</Text>
             <View style={styles.actionsRow}>
-              {!payment.default && (
-                <Pressable onPress={() => toast.success("Forma de pagamento padrão atualizada")} style={styles.secondaryButton}>
+              {!payment.is_default && (
+                <Pressable onPress={() => handleSetDefault(payment.id)} style={styles.secondaryButton}>
                   <Text style={styles.secondaryButtonText}>Tornar padrão</Text>
                 </Pressable>
               )}
-              <Pressable onPress={() => toast.success("Forma de pagamento removida")} style={styles.destructiveButton}>
+              <Pressable onPress={() => handleRemove(payment.id)} style={styles.destructiveButton}>
                 <Text style={styles.destructiveButtonText}>Remover</Text>
               </Pressable>
             </View>
           </View>
         ))}
+        {payments.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Nenhuma forma de pagamento salva.</Text>
+          </View>
+        )}
         <Pressable onPress={() => toast.info("Funcionalidade em desenvolvimento")} style={styles.addButton}>
           <Text style={styles.addButtonText}>Adicionar pagamento</Text>
         </Pressable>
@@ -97,5 +135,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     textAlign: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 20,
+  },
+  emptyText: {
+    color: "#8C98A8",
+    fontSize: 13,
   },
 });

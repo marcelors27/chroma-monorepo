@@ -499,6 +499,16 @@ const Home = () => {
             newsItems.map((item) => (
             <Link key={item.id} to={`/news/${item.id}`}>
               <Card className="border-2 hover:border-primary transition-colors cursor-pointer h-full">
+                {item.image_url && (
+                  <div className="relative w-full h-40 overflow-hidden border-b border-border/60">
+                    <img
+                      src={item.image_url}
+                      alt={item.title || "Notícia"}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <Badge variant="secondary">{item.category || "Geral"}</Badge>

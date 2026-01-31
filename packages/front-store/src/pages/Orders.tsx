@@ -69,6 +69,7 @@ const Orders = () => {
   const [recurrenceDayOfWeek, setRecurrenceDayOfWeek] = useState("1");
   const [recurrenceDayOfMonth, setRecurrenceDayOfMonth] = useState("5");
   const [recurrencePayment, setRecurrencePayment] = useState<"credit" | "pix" | "boleto">("pix");
+  const [recurrenceItemId, setRecurrenceItemId] = useState("");
   const [recurrenceSaving, setRecurrenceSaving] = useState(false);
   const { data, isLoading, isError } = useQuery({ queryKey: ["orders"], queryFn: listOrders });
   const orders = data?.orders || [];
@@ -99,19 +100,25 @@ const Orders = () => {
   const openRecurrenceDialog = (order: MedusaOrder) => {
     setRecurrenceOrder(order);
     resetRecurrenceForm();
+    const firstItem = (order.items || []).find((item) => item.variant_id);
+    setRecurrenceItemId(firstItem?.id || "");
   };
 
   const buildRecurrenceItemsFromOrder = (order: MedusaOrder) => {
-    return (order.items || [])
-      .filter((item) => item.variant_id)
-      .map((item) => ({
-        variant_id: item.variant_id,
-        product_id: item.product_id,
-        quantity: item.quantity || 1,
-        title: item.title,
-        price: (item.unit_price || 0) / 100,
+    const target = (order.items || []).find(
+      (item) => item.variant_id && item.id === recurrenceItemId
+    );
+    if (!target || !target.variant_id) return [];
+    return [
+      {
+        variant_id: target.variant_id,
+        product_id: target.product_id,
+        quantity: target.quantity || 1,
+        title: target.title,
+        price: target.unit_price || 0,
         category: "Recorrente",
-      }));
+      },
+    ];
   };
 
   const handleCreateRecurrenceFromOrder = async () => {
@@ -147,6 +154,7 @@ const Orders = () => {
       });
       setRecurrenceOrder(null);
       resetRecurrenceForm();
+      setRecurrenceItemId("");
     } catch (error: any) {
       toast({
         title: "Erro ao criar recorrência",
@@ -497,6 +505,24 @@ const Orders = () => {
             <DialogTitle className="text-2xl">Compra recorrente</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {recurrenceOrder?.items?.length ? (
+              <div className="space-y-2">
+                <Label>Produto</Label>
+                <select
+                  className="h-12 border-2 rounded-md bg-background px-3 w-full"
+                  value={recurrenceItemId}
+                  onChange={(e) => setRecurrenceItemId(e.target.value)}
+                >
+                  {(recurrenceOrder.items || [])
+                    .filter((item) => item.variant_id)
+                    .map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.title} (x{item.quantity || 1})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            ) : null}
             <div className="space-y-2">
               <Label htmlFor="recurrenceOrderName">Nome</Label>
               <Input

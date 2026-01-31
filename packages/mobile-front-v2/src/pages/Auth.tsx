@@ -13,6 +13,7 @@ import {
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Apple, ArrowLeft, Chrome, Eye, EyeOff, Facebook, Lock, Mail, User } from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
+import { requestPasswordReset } from "@/lib/medusa";
 import { toast } from "@/lib/toast";
 
 const AUTH_BG = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&auto=format&fit=crop&q=80";
@@ -25,6 +26,9 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState((route.params as { mode?: string } | undefined)?.mode === "login");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
   const [linkPrompt, setLinkPrompt] = useState<{
     email?: string;
     credential?: { identityToken: string; authorizationCode?: string };
@@ -104,6 +108,25 @@ export default function Auth() {
     } finally {
       setIsLoading(false);
       setLinkPrompt(null);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (isResetting) return;
+    const targetEmail = resetEmail || form.email;
+    if (!targetEmail) {
+      toast.error("Informe seu e-mail para recuperar a senha.");
+      return;
+    }
+    setIsResetting(true);
+    try {
+      await requestPasswordReset(targetEmail);
+      toast.success("Enviamos uma nova senha para o seu e-mail.");
+      setShowReset(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível enviar a nova senha.");
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -204,9 +227,44 @@ export default function Auth() {
           </View>
 
           {isLogin && (
-            <Pressable>
-              <Text style={styles.forgotText}>Esqueci minha senha</Text>
-            </Pressable>
+            <View>
+              <Pressable
+                onPress={() => {
+                  setShowReset((prev) => !prev);
+                  if (!resetEmail && form.email) {
+                    setResetEmail(form.email);
+                  }
+                }}
+              >
+                <Text style={styles.forgotText}>Esqueci minha senha</Text>
+              </Pressable>
+              {showReset && (
+                <View style={styles.resetBox}>
+                  <Text style={styles.resetLabel}>Recuperar senha</Text>
+                  <View style={styles.inputWrap}>
+                    <Mail color="#8C98A8" size={18} />
+                    <TextInput
+                      placeholder="Seu e-mail"
+                      value={resetEmail}
+                      onChangeText={(email) => setResetEmail(email)}
+                      placeholderTextColor="#8C98A8"
+                      style={styles.input}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </View>
+                  <Pressable
+                    onPress={handlePasswordReset}
+                    disabled={isResetting}
+                    style={[styles.resetButton, isResetting && styles.buttonDisabled]}
+                  >
+                    <Text style={styles.resetButtonText}>
+                      {isResetting ? "Enviando..." : "Enviar nova senha"}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
           )}
 
           <Pressable
@@ -356,6 +414,31 @@ const styles = StyleSheet.create({
   forgotText: {
     color: "#5DA2E6",
     fontSize: 13,
+  },
+  resetBox: {
+    marginTop: 12,
+    gap: 10,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: "rgba(18, 22, 28, 0.95)",
+    borderWidth: 1,
+    borderColor: "rgba(70, 78, 90, 0.6)",
+  },
+  resetLabel: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  resetButton: {
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: "#5DA2E6",
+    alignItems: "center",
+  },
+  resetButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   primaryButton: {
     marginTop: 8,

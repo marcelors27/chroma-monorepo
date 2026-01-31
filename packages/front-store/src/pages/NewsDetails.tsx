@@ -85,6 +85,16 @@ const NewsDetails = () => {
 
       {/* Article Header */}
       <div className="space-y-4">
+        {news.image_url && (
+          <div className="relative w-full h-64 md:h-80 overflow-hidden border-2 border-border">
+            <img
+              src={news.image_url}
+              alt={news.title || "Notícia"}
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          </div>
+        )}
         <Badge variant="secondary">{news.category || "Geral"}</Badge>
         <h1 className="text-3xl md:text-4xl font-bold text-foreground">{news.title}</h1>
         <p className="text-lg text-muted-foreground">{news.summary}</p>
@@ -129,6 +139,16 @@ const NewsDetails = () => {
             {relatedNews.map((item) => (
               <Link key={item.id} to={`/news/${item.id}`}>
                 <Card className="border-2 hover:border-primary transition-colors cursor-pointer h-full">
+                  {item.image_url && (
+                    <div className="relative w-full h-32 overflow-hidden border-b border-border/60">
+                      <img
+                        src={item.image_url}
+                        alt={item.title || "Notícia"}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
                   <CardContent className="p-4">
                     <Badge variant="secondary" className="mb-2">{item.category || "Geral"}</Badge>
                     <h3 className="font-bold mb-2">{item.title}</h3>

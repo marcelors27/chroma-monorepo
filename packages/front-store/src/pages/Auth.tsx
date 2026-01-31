@@ -12,6 +12,7 @@ import {
   listCompanies,
   login,
   registerStore,
+  requestPasswordReset,
   startSocialAuth,
 } from "@/lib/medusa";
 
@@ -21,6 +22,9 @@ const Auth = () => {
   const { toast } = useToast();
   const [isLogin, setIsLogin] = useState(searchParams.get("mode") !== "register");
   const [isLoading, setIsLoading] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
   
   const [formData, setFormData] = useState({
     email: "",
@@ -117,6 +121,36 @@ const Auth = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (isResetting) return;
+    const targetEmail = resetEmail || formData.email;
+    if (!targetEmail) {
+      toast({
+        title: "Erro",
+        description: "Informe seu e-mail para recuperar a senha.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsResetting(true);
+    try {
+      await requestPasswordReset(targetEmail);
+      toast({
+        title: "Senha enviada!",
+        description: "Enviamos uma nova senha para o seu e-mail.",
+      });
+      setShowReset(false);
+    } catch (err: any) {
+      toast({
+        title: "Erro",
+        description: err?.message || "Não foi possível enviar a nova senha.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -248,6 +282,45 @@ const Auth = () => {
                 />
               </div>
             </div>
+
+            {isLogin && (
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="px-0 h-auto text-sm"
+                  onClick={() => {
+                    setShowReset((prev) => !prev);
+                    if (!resetEmail && formData.email) {
+                      setResetEmail(formData.email);
+                    }
+                  }}
+                >
+                  Esqueci minha senha
+                </Button>
+                {showReset && (
+                  <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-4">
+                    <Label htmlFor="reset-email">E-mail de recuperação</Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      className="h-11 border-2"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={handlePasswordReset}
+                      disabled={isResetting}
+                    >
+                      {isResetting ? "Enviando..." : "Enviar nova senha"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {!isLogin && (
               <div className="space-y-2">

@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
@@ -13,6 +14,7 @@ const formatFrequency = (value: string) => {
 };
 
 export default function Recorrencias() {
+  const navigation = useNavigation();
   const queryClient = useQueryClient();
   const { data } = useQuery({ queryKey: ["recurrences"], queryFn: listRecurrences });
   const recurrences = data?.recurrences || [];
@@ -42,6 +44,12 @@ export default function Recorrencias() {
       <Header title="Recorrências" showCondoSelector showNotification={false} />
 
       <ScrollView style={styles.scrollContent}>
+        <Pressable
+          onPress={() => navigation.navigate("Produtos" as never)}
+          style={styles.addButton}
+        >
+          <Text style={styles.addButtonText}>Adicionar recorrência</Text>
+        </Pressable>
         {recurrences.map((item) => (
           <View key={item.id} style={styles.card}>
             <Text style={styles.cardTitle}>{item.name}</Text>
@@ -130,5 +138,18 @@ const styles = StyleSheet.create({
   emptyText: {
     color: "#8C98A8",
     fontSize: 13,
+  },
+  addButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: "#5DA2E6",
+    marginBottom: 12,
+  },
+  addButtonText: {
+    color: "#0B0F14",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });

@@ -1,4 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Buffer } from "buffer";
+import { TextEncoder } from "util";
 
 const MEDUSA_URL = process.env.EXPO_PUBLIC_MEDUSA_URL || "http://localhost:9000";
 const PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_MEDUSA_PUBLISHABLE_KEY;
@@ -133,6 +135,18 @@ export type MedusaCustomer = {
   phone?: string;
   metadata?: Record<string, any>;
   created_at?: string;
+};
+
+export type SavedPaymentMethod = {
+  id: string;
+  type: "credit" | "pix" | "boleto";
+  label: string;
+  details?: {
+    email?: string;
+  };
+  is_default?: boolean;
+  created_at?: string;
+  last_used_at?: string;
 };
 
 export type MedusaNews = {
@@ -291,6 +305,48 @@ const apiFetch = async <T>(path: string, init?: FetchInit): Promise<T> => {
   }
 };
 
+let cachedAuthPublicKey: any = null;
+
+const pemToArrayBuffer = (pem: string) => {
+  const normalized = pem
+    .replace(/-----BEGIN PUBLIC KEY-----/g, "")
+    .replace(/-----END PUBLIC KEY-----/g, "")
+    .replace(/\s+/g, "");
+  const buffer = Buffer.from(normalized, "base64");
+  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+};
+
+const importAuthPublicKey = async (pem: string) => {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) return null;
+  const keyData = pemToArrayBuffer(pem);
+  return subtle.importKey("spki", keyData, { name: "RSA-OAEP", hash: "SHA-256" }, false, ["encrypt"]);
+};
+
+const getAuthPublicKey = async () => {
+  if (cachedAuthPublicKey) return cachedAuthPublicKey;
+  if (!globalThis.crypto?.subtle) return null;
+  try {
+    const data = await apiFetch<{ public_key?: string | null }>("/auth/public-key", { auth: false });
+    if (!data?.public_key) return null;
+    cachedAuthPublicKey = await importAuthPublicKey(data.public_key);
+    return cachedAuthPublicKey;
+  } catch {
+    return null;
+  }
+};
+
+const encryptLoginPayload = async (payload: { email: string; password: string }) => {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) return null;
+  const publicKey = await getAuthPublicKey();
+  if (!publicKey) return null;
+  const body = JSON.stringify({ ...payload, ts: Date.now() });
+  const encoded = new TextEncoder().encode(body);
+  const encrypted = await subtle.encrypt({ name: "RSA-OAEP" }, publicKey, encoded);
+  return Buffer.from(encrypted).toString("base64");
+};
+
 const withStoreQuery = (path: string) => {
   return path;
 };
@@ -309,10 +365,12 @@ export const clearSession = async () => {
 };
 
 export const login = async (email: string, password: string) => {
+  const encrypted = await encryptLoginPayload({ email, password });
+  const payload = encrypted ? { encrypted: true, payload: encrypted } : { email, password };
   const data = await apiFetch<{ token: string }>("/auth/customer/emailpass", {
     method: "POST",
     auth: false,
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify(payload),
   });
   if (!data?.token) {
     throw new Error("Token nao retornado pelo backend");
@@ -393,6 +451,15 @@ export const registerStore = async (email: string, password: string) => {
   return register.token;
 };
 
+export const requestPasswordReset = async (email: string) => {
+  await apiFetch("/store/customers/reset-password", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify({ email }),
+  });
+  return true;
+};
+
 export const registerAndCreateCompany = async (params: {
   email: string;
   password: string;
@@ -455,6 +522,100 @@ export const updateCustomerMe = async (payload: {
     method: "POST",
     body: JSON.stringify(payload),
   });
+};
+
+const normalizeSavedPaymentMethods = (value: unknown): SavedPaymentMethod[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item) => item && item.type) as SavedPaymentMethod[];
+};
+
+const buildPaymentMethodId = (
+  type: SavedPaymentMethod["type"],
+  details?: SavedPaymentMethod["details"]
+) => {
+  const suffix = (details?.email || "default").toLowerCase();
+  return `${type}:${suffix}`;
+};
+
+const buildSavedPaymentMethodsMetadata = (
+  metadata: Record<string, any>,
+  paymentMethods: SavedPaymentMethod[]
+) => {
+  return { ...metadata, payment_methods: paymentMethods };
+};
+
+export const fetchSavedPaymentMethodsFromBackend = async (): Promise<SavedPaymentMethod[]> => {
+  try {
+    const customer = await getCustomerMe();
+    return normalizeSavedPaymentMethods(customer?.customer?.metadata?.payment_methods);
+  } catch {
+    return [];
+  }
+};
+
+export const upsertSavedPaymentMethod = async (payload: {
+  type: SavedPaymentMethod["type"];
+  label: string;
+  details?: SavedPaymentMethod["details"];
+  setDefault?: boolean;
+}) => {
+  const customer = await getCustomerMe();
+  const metadata = customer?.customer?.metadata || {};
+  const current = normalizeSavedPaymentMethods(metadata.payment_methods);
+  const id = buildPaymentMethodId(payload.type, payload.details);
+  const now = new Date().toISOString();
+  const index = current.findIndex((item) => item.id === id);
+
+  let next = [...current];
+  if (index >= 0) {
+    next[index] = {
+      ...next[index],
+      label: payload.label,
+      details: payload.details,
+      last_used_at: now,
+    };
+  } else {
+    next.push({
+      id,
+      type: payload.type,
+      label: payload.label,
+      details: payload.details,
+      created_at: now,
+      last_used_at: now,
+    });
+  }
+
+  const shouldSetDefault = payload.setDefault || !next.some((item) => item.is_default);
+  if (shouldSetDefault) {
+    next = next.map((item) => ({
+      ...item,
+      is_default: item.id === id,
+    }));
+  }
+
+  await updateCustomerMe({ metadata: buildSavedPaymentMethodsMetadata(metadata, next) });
+  return next;
+};
+
+export const setDefaultSavedPaymentMethod = async (id: string) => {
+  const customer = await getCustomerMe();
+  const metadata = customer?.customer?.metadata || {};
+  const current = normalizeSavedPaymentMethods(metadata.payment_methods);
+  const next = current.map((item) => ({ ...item, is_default: item.id === id }));
+  await updateCustomerMe({ metadata: buildSavedPaymentMethodsMetadata(metadata, next) });
+  return next;
+};
+
+export const removeSavedPaymentMethod = async (id: string) => {
+  const customer = await getCustomerMe();
+  const metadata = customer?.customer?.metadata || {};
+  const current = normalizeSavedPaymentMethods(metadata.payment_methods);
+  const next = current.filter((item) => item.id !== id);
+  if (next.length > 0 && !next.some((item) => item.is_default)) {
+    next[0].is_default = true;
+  }
+  await updateCustomerMe({ metadata: buildSavedPaymentMethodsMetadata(metadata, next) });
+  return next;
 };
 
 export const updatePassword = async (payload: { old_password: string; password: string }) => {
