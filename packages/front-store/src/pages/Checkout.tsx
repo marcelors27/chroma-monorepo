@@ -29,6 +29,7 @@ import {
   PendingPaymentDetails,
   SavedPaymentMethod,
   formatMoney,
+  listShippingOptions,
   removePendingPayment,
   removePendingPaymentFromBackend,
   retrieveCart,
@@ -40,7 +41,7 @@ import condosBg from "@/assets/condos-bg.jpg";
 type PaymentMethod = "credit" | "pix" | "boleto";
 
 const Checkout = () => {
-  const { items, totalPrice, clearCart, completeBackendCheckout } = useCart();
+  const { items, totalPrice, clearCart, completeBackendCheckout, cartId } = useCart();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
@@ -51,7 +52,11 @@ const Checkout = () => {
   const [pendingCartId, setPendingCartId] = useState("");
   const [pendingDetails, setPendingDetails] = useState<PendingPaymentDetails | null>(null);
   const [orderTotal, setOrderTotal] = useState(totalPrice);
-  const [errors, setErrors] = useState<{ paymentMethod?: string; condo?: string }>({});
+  const [errors, setErrors] = useState<{
+    paymentMethod?: string;
+    condo?: string;
+    shippingMethod?: string;
+  }>({});
   const [pixExpirationTime, setPixExpirationTime] = useState(30 * 60); // 30 minutes in seconds
   const [saveAsRecurring, setSaveAsRecurring] = useState(false);
   const [recurrenceSelections, setRecurrenceSelections] = useState<Record<string, boolean>>({});
@@ -63,6 +68,10 @@ const Checkout = () => {
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [customerEmail, setCustomerEmail] = useState("");
   const [billingEmails, setBillingEmails] = useState<string[]>([]);
+  const [shippingOptions, setShippingOptions] = useState<{ id: string; name?: string }[]>([]);
+  const [shippingOptionId, setShippingOptionId] = useState("");
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [shippingError, setShippingError] = useState<string | null>(null);
 
   useEffect(() => {
     if (orderStatus && paymentMethod === "pix" && pixExpirationTime > 0) {
@@ -137,6 +146,36 @@ const Checkout = () => {
     }
   }, [paymentMethod, savedPaymentMethods]);
 
+  useEffect(() => {
+    if (!cartId) return;
+    let active = true;
+    const loadOptions = async () => {
+      setShippingLoading(true);
+      setShippingError(null);
+      try {
+        const options = await listShippingOptions(cartId);
+        if (!active) return;
+        setShippingOptions(options);
+        if (!shippingOptionId && options.length) {
+          const preferred =
+            options.find((opt) => /retira|buscar|pickup/i.test(opt.name || "")) ||
+            options.find((opt) => /1\\s?dia|express|rápida|rapida/i.test(opt.name || "")) ||
+            options[0];
+          if (preferred?.id) setShippingOptionId(preferred.id);
+        }
+      } catch (err: any) {
+        if (!active) return;
+        setShippingError(err?.message || "Não foi possível carregar opções de entrega.");
+      } finally {
+        if (active) setShippingLoading(false);
+      }
+    };
+    loadOptions();
+    return () => {
+      active = false;
+    };
+  }, [cartId, shippingOptionId]);
+
   const isPaymentSucceeded = (cart: any) => {
     const sessions = cart?.payment_sessions || [];
     const session = sessions[0];
@@ -200,6 +239,13 @@ const Checkout = () => {
     return date.toLocaleDateString("pt-BR");
   };
 
+  const resolveShippingLabel = (name?: string | null) => {
+    const value = (name || "").toLowerCase();
+    if (/(retira|buscar|pickup)/i.test(value)) return "Buscar na loja";
+    if (/(1\\s?dia|express|rápida|rapida)/i.test(value)) return "Receber em um dia";
+    return name || "Entrega";
+  };
+
   const isPixExpired = pixExpirationTime <= 0;
 
   const [deliveryData, setDeliveryData] = useState(() => ({
@@ -222,13 +268,16 @@ const Checkout = () => {
     !!pendingDetails?.boleto_line;
 
   const validateForm = () => {
-    const newErrors: { paymentMethod?: string; condo?: string } = {};
+    const newErrors: { paymentMethod?: string; condo?: string; shippingMethod?: string } = {};
 
     if (!paymentMethod) {
       newErrors.paymentMethod = "Selecione uma forma de pagamento";
     }
     if (!deliveryData.condo?.trim()) {
       newErrors.condo = "Informe o condomínio";
+    }
+    if (!shippingOptionId) {
+      newErrors.shippingMethod = "Selecione uma forma de entrega";
     }
 
     setErrors(newErrors);
@@ -302,7 +351,11 @@ const Checkout = () => {
         },
       };
 
-      const result = await completeBackendCheckout(shippingAddress, paymentMethod);
+      const result = await completeBackendCheckout(
+        shippingAddress,
+        paymentMethod,
+        shippingOptionId || null
+      );
       if (saveAsRecurring) {
         try {
           const selectedItems = items.filter((item) => recurrenceSelections[item.id]);
@@ -685,6 +738,63 @@ const Checkout = () => {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Delivery Method */}
+                <div className="border-2 border-border p-6 bg-card">
+                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <Truck className="h-5 w-5 text-primary" />
+                    Método de Entrega
+                  </h2>
+                  {errors.shippingMethod && (
+                    <p className="text-sm text-destructive mb-3">{errors.shippingMethod}</p>
+                  )}
+                  {shippingError && (
+                    <p className="text-sm text-destructive mb-3">{shippingError}</p>
+                  )}
+                  {shippingLoading ? (
+                    <p className="text-sm text-muted-foreground">Carregando opções...</p>
+                  ) : shippingOptions.length === 0 ? (
+                    <div className="text-sm text-muted-foreground space-y-2">
+                      <p>Sem opções de entrega disponíveis para este carrinho.</p>
+                      <p>
+                        Cadastre no admin:{" "}
+                        <span className="font-medium">Configurações → Logística → Opções de envio</span>.
+                      </p>
+                    </div>
+                  ) : (
+                    <RadioGroup
+                      value={shippingOptionId}
+                      onValueChange={(value) => {
+                        setShippingOptionId(value);
+                        if (errors.shippingMethod) {
+                          setErrors({ ...errors, shippingMethod: undefined });
+                        }
+                      }}
+                      className="space-y-3"
+                    >
+                      {shippingOptions.map((option) => (
+                        <label
+                          key={option.id}
+                          className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-colors ${
+                            shippingOptionId === option.id
+                              ? "border-primary bg-primary/5"
+                              : errors.shippingMethod
+                                ? "border-destructive"
+                                : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <RadioGroupItem value={option.id} id={`ship-${option.id}`} />
+                          <div>
+                            <p className="font-medium">{resolveShippingLabel(option.name)}</p>
+                            {option.name && (
+                              <p className="text-sm text-muted-foreground">{option.name}</p>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </RadioGroup>
+                  )}
                 </div>
 
                 {/* Payment Method */}

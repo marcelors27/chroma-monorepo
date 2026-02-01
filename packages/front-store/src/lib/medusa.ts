@@ -1045,21 +1045,30 @@ export const setCartShippingAddress = async (
 }
 
 export const addDefaultShippingMethod = async (cartId: string) => {
-  const options = await apiFetch<{ shipping_options: { id: string }[] }>(
-    `/store/shipping-options?cart_id=${cartId}`,
-    { auth: false }
-  )
-  const option = options.shipping_options?.[0]
+  const options = await listShippingOptions(cartId)
+  const option = options?.[0]
   if (!option) {
     throw new Error("Nenhuma opção de frete disponível para este carrinho.")
   }
 
+  return addShippingMethod(cartId, option.id)
+}
+
+export const listShippingOptions = async (cartId: string) => {
+  const options = await apiFetch<{ shipping_options: { id: string; name?: string }[] }>(
+    `/store/shipping-options?cart_id=${cartId}`,
+    { auth: false }
+  )
+  return options.shipping_options || []
+}
+
+export const addShippingMethod = async (cartId: string, optionId: string) => {
   const data = await apiFetch<{ cart: MedusaCart }>(
     `/store/carts/${cartId}/shipping-methods`,
     {
       method: "POST",
       auth: false,
-      body: JSON.stringify({ option_id: option.id }),
+      body: JSON.stringify({ option_id: optionId }),
     }
   )
   return data.cart

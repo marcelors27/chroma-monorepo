@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   ImageBackground,
   Platform,
   Pressable,
@@ -15,6 +16,7 @@ import { Apple, ArrowLeft, Chrome, Eye, EyeOff, Facebook, Lock, Mail, User } fro
 import { useAuth } from "@/contexts/AuthContext";
 import { requestPasswordReset } from "@/lib/medusa";
 import { toast } from "@/lib/toast";
+import logo from "@/assets/logo.png";
 
 const AUTH_BG = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&auto=format&fit=crop&q=80";
 
@@ -140,6 +142,7 @@ export default function Auth() {
         </Pressable>
 
         <View style={styles.header}>
+          <Image source={logo} style={styles.brandLogo} />
           <Text style={styles.title}>
             <Text style={styles.titleAccent}>Chroma </Text>
             Store
@@ -340,6 +343,12 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 24,
+  },
+  brandLogo: {
+    width: 56,
+    height: 56,
+    resizeMode: "contain",
+    marginBottom: 12,
   },
   title: {
     fontSize: 34,

@@ -3,10 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Hexagon, Plus, Trash2, Upload, FileText, Building2 } from "lucide-react";
+import { Plus, Trash2, Upload, FileText, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatCNPJ, validateCNPJ } from "@/lib/cnpj";
 import authBg from "@/assets/auth-bg.jpg";
+import logo from "@/assets/logo.png";
 
 interface Company {
   id: string;
@@ -143,7 +144,7 @@ const CompanyLink = () => {
       <header className="border-b-2 border-border">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Hexagon className="h-8 w-8 text-primary" />
+            <img src={logo} alt="Chroma" className="h-8 w-8" />
             <span className="text-2xl font-bold tracking-tight text-primary">Chroma</span>
           </div>
           <Button asChild variant="outline" className="border-2">

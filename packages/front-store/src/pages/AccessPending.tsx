@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Hexagon, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import authBg from "@/assets/auth-bg.jpg";
+import logo from "@/assets/logo.png";
 
 const AccessPending = () => {
   return (
@@ -16,7 +17,7 @@ const AccessPending = () => {
     >
       <div className="w-full max-w-lg">
         <div className="flex items-center gap-2 mb-8">
-          <Hexagon className="h-8 w-8 text-primary" />
+          <img src={logo} alt="Chroma" className="h-8 w-8" />
           <span className="text-2xl font-bold text-primary">Chroma</span>
         </div>
 

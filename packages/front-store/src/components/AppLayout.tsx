@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { 
-  Hexagon, 
-  ShoppingCart, 
-  Package, 
-  LogOut, 
+import {
+  ShoppingCart,
+  Package,
+  LogOut,
   Menu,
   ChevronRight,
   Settings,
   Home,
-  Repeat
+  Repeat,
 } from "lucide-react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import {
@@ -21,6 +20,7 @@ import CartDrawer from "@/components/CartDrawer";
 import { getActiveCondo, listCompanies, setActiveCondo } from "@/lib/medusa";
 import { registerWebPush } from "@/lib/push";
 import dashboardBg from "@/assets/dashboard-bg.jpg";
+import logo from "@/assets/logo.png";
 
 type CondoOption = {
   id: string;
@@ -118,7 +118,7 @@ const AppLayout = () => {
         <aside className="hidden lg:flex w-72 border-r border-border/70 bg-background/80 backdrop-blur-xl flex-col flex-shrink-0">
           <div className="p-6 border-b border-border/70">
             <Link to="/dashboard" className="flex items-center gap-2">
-              <Hexagon className="h-8 w-8 text-primary" />
+              <img src={logo} alt="Chroma" className="h-8 w-8" />
               <span className="text-xl font-bold text-primary">Chroma</span>
             </Link>
           </div>
@@ -181,7 +181,7 @@ const AppLayout = () => {
         <div className="lg:hidden fixed top-0 left-0 right-0 bg-background/85 backdrop-blur-xl border-b border-border/70 z-50">
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-2">
-              <Hexagon className="h-6 w-6 text-primary" />
+              <img src={logo} alt="Chroma" className="h-6 w-6" />
               <span className="font-bold text-primary">Chroma</span>
             </div>
             <div className="flex items-center gap-2">
@@ -195,7 +195,7 @@ const AppLayout = () => {
                 <SheetContent side="left" className="w-72 p-0 bg-card/95 backdrop-blur-xl">
                   <div className="p-6 border-b border-border/70">
                     <div className="flex items-center gap-2">
-                      <Hexagon className="h-8 w-8 text-primary" />
+                      <img src={logo} alt="Chroma" className="h-8 w-8" />
                       <span className="text-xl font-bold text-primary">Chroma</span>
                     </div>
                   </div>

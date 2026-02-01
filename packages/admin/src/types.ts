@@ -140,6 +140,7 @@ export type SectionId =
   | "email-logs"
   | "pagamentos"
   | "produtos"
+  | "entregas"
   | "estoque"
   | "pedidos"
   | "promocoes"
@@ -159,6 +160,22 @@ export type StockLocation = {
   id: string
   name?: string
   sales_channels?: SalesChannel[]
+}
+
+export type ShippingProfile = {
+  id: string
+  name?: string
+  type?: string
+}
+
+export type ShippingOption = {
+  id: string
+  name?: string
+  price_type?: string
+  region?: { id: string; name?: string; currency_code?: string }
+  shipping_profile?: { id: string; name?: string }
+  prices?: { currency_code?: string; amount?: number }[]
+  provider_id?: string
 }
 
 export type MediaPayload = { images: string[]; videos: string[]; youtube: string[] }

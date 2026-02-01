@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
+import logo from "@/assets/logo.png";
 
 const useCases = [
   {
@@ -82,7 +83,7 @@ const Index = () => {
       <header className="border-b-2 border-border">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Hexagon className="h-8 w-8 text-primary" />
+            <img src={logo} alt="Chroma" className="h-8 w-8" />
             <span className="text-2xl font-bold tracking-tight text-primary">Chroma</span>
           </div>
           <div className="flex gap-4">
@@ -241,7 +242,7 @@ const Index = () => {
       <footer className="border-t-2 border-border py-8">
         <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <Hexagon className="h-6 w-6 text-primary" />
+            <img src={logo} alt="Chroma" className="h-6 w-6" />
             <span className="font-bold text-primary">Chroma</span>
           </div>
           <p className="text-muted-foreground text-sm">

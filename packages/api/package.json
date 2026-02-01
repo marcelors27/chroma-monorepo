@@ -8,6 +8,7 @@
     "dev": "medusa develop",
     "start": "node ./scripts/start-with-migrations.js",
     "seed": "node ./seed/seed.js",
+    "seed:products-10": "node ./seed/seed-10-products.js",
     "list:payment-providers": "node ./scripts/list-payment-providers.js",
     "list:shipping-config": "node ./scripts/list-shipping-config.js",
     "assign:shipping-profile": "node ./scripts/assign-shipping-profile.js",

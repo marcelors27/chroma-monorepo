@@ -3,10 +3,11 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Hexagon, Mail, Lock, User, ArrowLeft } from "lucide-react";
+import { Mail, Lock, User, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import authBg from "@/assets/auth-bg.jpg";
+import logo from "@/assets/logo.png";
 import {
   completeSocialAuth,
   listCompanies,
@@ -223,7 +224,7 @@ const Auth = () => {
 
         <div className="max-w-md w-full mx-auto lg:mx-0">
           <div className="flex items-center gap-2 mb-8">
-            <Hexagon className="h-8 w-8 text-primary" />
+            <img src={logo} alt="Chroma" className="h-8 w-8" />
             <span className="text-2xl font-bold text-primary">Chroma</span>
           </div>
 
@@ -423,7 +424,7 @@ const Auth = () => {
       >
         <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" />
         <div className="max-w-md text-foreground relative z-10">
-          <Hexagon className="h-16 w-16 mb-8 text-primary" />
+          <img src={logo} alt="Chroma" className="h-16 w-16 mb-8" />
           <h2 className="text-4xl font-bold mb-4">
             Gerencie as compras do seu condomínio
           </h2>

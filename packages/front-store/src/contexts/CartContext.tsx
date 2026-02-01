@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import {
   addDefaultShippingMethod,
+  addShippingMethod,
   addLineItem,
   completeCart,
   createCart,
@@ -61,7 +62,8 @@ interface CartContextType {
   refreshCart: () => Promise<void>;
   completeBackendCheckout: (
     address: Record<string, any>,
-    paymentMethod: string
+    paymentMethod: string,
+    shippingOptionId?: string | null
   ) => Promise<{
     status: "completed" | "pending";
     orderId?: string | null;
@@ -378,7 +380,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
-  const completeBackendCheckout = async (address: Record<string, any>, paymentMethod: string) => {
+  const completeBackendCheckout = async (
+    address: Record<string, any>,
+    paymentMethod: string,
+    shippingOptionId?: string | null
+  ) => {
     if (DEBUG) console.debug("[cart] completeBackendCheckout:start", { cartId, address, paymentMethod });
     if (!cartId) throw new Error("Carrinho não encontrado");
     const isAsyncPayment = paymentMethod !== "credit";
@@ -418,7 +424,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         cartSnapshot = await setCartShippingAddress(cartSnapshot.id, address);
       }
       if (!cartSnapshot?.shipping_methods?.length) {
-        cartSnapshot = await addDefaultShippingMethod(cartSnapshot.id);
+        if (shippingOptionId) {
+          cartSnapshot = await addShippingMethod(cartSnapshot.id, shippingOptionId);
+        } else {
+          cartSnapshot = await addDefaultShippingMethod(cartSnapshot.id);
+        }
       }
 
       if (!paymentCollection?.id || paymentCollection?.id === "") {

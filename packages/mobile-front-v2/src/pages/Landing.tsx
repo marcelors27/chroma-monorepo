@@ -1,6 +1,7 @@
-import { Dimensions, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Package, Shield, Truck, CreditCard, ChevronRight, Star } from "lucide-react-native";
+import logo from "@/assets/logo.png";
 
 const features = [
   {
@@ -59,6 +60,7 @@ export default function Landing() {
       >
         <View style={styles.heroOverlay} />
         <View style={styles.heroContent}>
+          <Image source={logo} style={styles.brandLogo} />
           <View style={styles.heroPill}>
             <Star color="#5DA2E6" size={16} />
             <Text style={styles.heroPillText}>A loja do síndico moderno</Text>
@@ -173,6 +175,11 @@ const styles = StyleSheet.create({
   heroContent: {
     alignItems: "center",
     gap: 18,
+  },
+  brandLogo: {
+    width: 64,
+    height: 64,
+    resizeMode: "contain",
   },
   heroPill: {
     flexDirection: "row",

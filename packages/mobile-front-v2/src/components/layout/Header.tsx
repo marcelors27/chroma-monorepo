@@ -1,6 +1,6 @@
 import { ChevronDown, Building2, Check, ArrowLeft } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { NotificationPanel } from "@/components/ui/NotificationPanel";
 import { useCondo } from "@/contexts/CondoContext";
 import {
@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import logo from "@/assets/logo.png";
 
 interface HeaderProps {
   title?: string;
@@ -41,13 +42,15 @@ export function Header({
         )}
         <View style={styles.titleBlock}>
           {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-          <Text style={styles.title}>
-            {title || (
-              <>
-                <Text style={styles.titleAccent}>Chroma</Text> Store
-              </>
-            )}
-          </Text>
+          {title ? (
+            <Text style={styles.title}>{title}</Text>
+          ) : (
+            <View style={styles.brandRow}>
+              <Image source={logo} style={styles.brandLogo} />
+              <Text style={[styles.title, styles.titleAccent]}>Chroma</Text>
+              <Text style={styles.title}> Store</Text>
+            </View>
+          )}
 
           {showCondoSelector && (
             <DropdownMenu>
@@ -141,6 +144,16 @@ const styles = StyleSheet.create({
     color: "#E6E8EA",
     fontSize: 26,
     fontWeight: "700",
+  },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  brandLogo: {
+    width: 22,
+    height: 22,
+    resizeMode: "contain",
   },
   titleAccent: {
     color: "#5DA2E6",

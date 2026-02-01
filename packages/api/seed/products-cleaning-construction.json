@@ -1,0 +1,589 @@
+[
+  {
+    "title": "Desinfetante Citrus",
+    "description": "Desinfetante concentrado com fragrância cítrica para limpeza pesada e higienização de áreas comuns.",
+    "thumbnail": "https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Fragrância",
+        "values": [
+          "Citrus"
+        ]
+      },
+      {
+        "title": "Volume",
+        "values": [
+          "1L",
+          "5L"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Citrus 1L",
+        "sku": "LIM-DES-CIT-1L",
+        "options": {
+          "Fragrância": "Citrus",
+          "Volume": "1L"
+        },
+        "prices": [
+          {
+            "amount": 990,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 181
+      },
+      {
+        "title": "Citrus 5L",
+        "sku": "LIM-DES-CIT-5L",
+        "options": {
+          "Fragrância": "Citrus",
+          "Volume": "5L"
+        },
+        "prices": [
+          {
+            "amount": 3290,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 114
+      }
+    ],
+    "metadata": {
+      "featured": true,
+      "badge": "Destaque"
+    }
+  },
+  {
+    "title": "Detergente Neutro",
+    "description": "Detergente neutro para limpeza de superfícies e utensílios, alto rendimento.",
+    "thumbnail": "https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Volume",
+        "values": [
+          "1L",
+          "5L"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "1L",
+        "sku": "LIM-DET-NEU-1L",
+        "options": {
+          "Volume": "1L"
+        },
+        "prices": [
+          {
+            "amount": 790,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 103
+      },
+      {
+        "title": "5L",
+        "sku": "LIM-DET-NEU-5L",
+        "options": {
+          "Volume": "5L"
+        },
+        "prices": [
+          {
+            "amount": 2990,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 194
+      }
+    ]
+  },
+  {
+    "title": "Água Sanitária",
+    "description": "Água sanitária para higienização de pisos, banheiros e áreas de serviço.",
+    "thumbnail": "https://images.unsplash.com/photo-1581579185169-2f4a7f26e2b3?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Volume",
+        "values": [
+          "1L",
+          "5L"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "1L",
+        "sku": "LIM-ASA-1L",
+        "options": {
+          "Volume": "1L"
+        },
+        "prices": [
+          {
+            "amount": 590,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 135
+      },
+      {
+        "title": "5L",
+        "sku": "LIM-ASA-5L",
+        "options": {
+          "Volume": "5L"
+        },
+        "prices": [
+          {
+            "amount": 2490,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 131
+      }
+    ]
+  },
+  {
+    "title": "Limpador Multiuso",
+    "description": "Limpador multiuso indicado para superfícies laváveis, com alto poder desengordurante.",
+    "thumbnail": "https://images.unsplash.com/photo-1585421514287-efb74c2b9d56?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Fragrância",
+        "values": [
+          "Lavanda",
+          "Citrus"
+        ]
+      },
+      {
+        "title": "Volume",
+        "values": [
+          "1L",
+          "5L"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Lavanda 1L",
+        "sku": "LIM-MUL-LAV-1L",
+        "options": {
+          "Fragrância": "Lavanda",
+          "Volume": "1L"
+        },
+        "prices": [
+          {
+            "amount": 890,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 128
+      },
+      {
+        "title": "Citrus 1L",
+        "sku": "LIM-MUL-CIT-1L",
+        "options": {
+          "Fragrância": "Citrus",
+          "Volume": "1L"
+        },
+        "prices": [
+          {
+            "amount": 890,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 117
+      },
+      {
+        "title": "Lavanda 5L",
+        "sku": "LIM-MUL-LAV-5L",
+        "options": {
+          "Fragrância": "Lavanda",
+          "Volume": "5L"
+        },
+        "prices": [
+          {
+            "amount": 3490,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 194
+      },
+      {
+        "title": "Citrus 5L",
+        "sku": "LIM-MUL-CIT-5L",
+        "options": {
+          "Fragrância": "Citrus",
+          "Volume": "5L"
+        },
+        "prices": [
+          {
+            "amount": 3490,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 113
+      }
+    ]
+  },
+  {
+    "title": "Saco de Lixo Reforçado",
+    "description": "Saco de lixo reforçado ideal para áreas comuns e coleta interna.",
+    "thumbnail": "https://images.unsplash.com/photo-1581579183995-7d1250f2e17b?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Volume",
+        "values": [
+          "50L",
+          "100L"
+        ]
+      },
+      {
+        "title": "Pacote",
+        "values": [
+          "50 unidades",
+          "100 unidades"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "50L 50 un",
+        "sku": "LIM-SAC-50L-50",
+        "options": {
+          "Volume": "50L",
+          "Pacote": "50 unidades"
+        },
+        "prices": [
+          {
+            "amount": 3990,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 186
+      },
+      {
+        "title": "50L 100 un",
+        "sku": "LIM-SAC-50L-100",
+        "options": {
+          "Volume": "50L",
+          "Pacote": "100 unidades"
+        },
+        "prices": [
+          {
+            "amount": 6990,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 194
+      },
+      {
+        "title": "100L 50 un",
+        "sku": "LIM-SAC-100L-50",
+        "options": {
+          "Volume": "100L",
+          "Pacote": "50 unidades"
+        },
+        "prices": [
+          {
+            "amount": 4990,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 169
+      },
+      {
+        "title": "100L 100 un",
+        "sku": "LIM-SAC-100L-100",
+        "options": {
+          "Volume": "100L",
+          "Pacote": "100 unidades"
+        },
+        "prices": [
+          {
+            "amount": 8990,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 111
+      }
+    ]
+  },
+  {
+    "title": "Cimento CP-II",
+    "description": "Cimento CP-II para estruturas e alvenaria.",
+    "thumbnail": "https://images.unsplash.com/photo-1581091215367-59ab6c1f8034?auto=format&fit=crop&w=800&q=80",
+    "type": "Material de obra",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "25kg",
+          "50kg"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Saco 25kg",
+        "sku": "OBRA-CIM-25",
+        "options": {
+          "Unidade": "25kg"
+        },
+        "prices": [
+          {
+            "amount": 2290,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 175
+      },
+      {
+        "title": "Saco 50kg",
+        "sku": "OBRA-CIM-50",
+        "options": {
+          "Unidade": "50kg"
+        },
+        "prices": [
+          {
+            "amount": 3790,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 154
+      }
+    ],
+    "metadata": {
+      "featured": true,
+      "badge": "Destaque"
+    }
+  },
+  {
+    "title": "Argamassa AC-II",
+    "description": "Argamassa colante AC-II para assentamento de pisos e revestimentos.",
+    "thumbnail": "https://images.unsplash.com/photo-1604079629972-09ba2f1b6d1c?auto=format&fit=crop&w=800&q=80",
+    "type": "Material de obra",
+    "options": [
+      {
+        "title": "Unidade",
+        "values": [
+          "5kg",
+          "20kg"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Saco 5kg",
+        "sku": "OBRA-ARG-5",
+        "options": {
+          "Unidade": "5kg"
+        },
+        "prices": [
+          {
+            "amount": 990,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 104
+      },
+      {
+        "title": "Saco 20kg",
+        "sku": "OBRA-ARG-20",
+        "options": {
+          "Unidade": "20kg"
+        },
+        "prices": [
+          {
+            "amount": 2690,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 103
+      }
+    ]
+  },
+  {
+    "title": "Tinta Acrílica Branca",
+    "description": "Tinta acrílica premium branca para ambientes internos e externos.",
+    "thumbnail": "https://images.unsplash.com/photo-1451976426598-a759dd6f3c75?auto=format&fit=crop&w=800&q=80",
+    "type": "Material de obra",
+    "options": [
+      {
+        "title": "Acabamento",
+        "values": [
+          "Fosco",
+          "Semibrilho"
+        ]
+      },
+      {
+        "title": "Volume",
+        "values": [
+          "3.6L",
+          "18L"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Fosco 3.6L",
+        "sku": "OBRA-TIN-FOS-3.6",
+        "options": {
+          "Acabamento": "Fosco",
+          "Volume": "3.6L"
+        },
+        "prices": [
+          {
+            "amount": 7490,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 111
+      },
+      {
+        "title": "Fosco 18L",
+        "sku": "OBRA-TIN-FOS-18",
+        "options": {
+          "Acabamento": "Fosco",
+          "Volume": "18L"
+        },
+        "prices": [
+          {
+            "amount": 22990,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 127
+      },
+      {
+        "title": "Semibrilho 3.6L",
+        "sku": "OBRA-TIN-SEMI-3.6",
+        "options": {
+          "Acabamento": "Semibrilho",
+          "Volume": "3.6L"
+        },
+        "prices": [
+          {
+            "amount": 7990,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 129
+      },
+      {
+        "title": "Semibrilho 18L",
+        "sku": "OBRA-TIN-SEMI-18",
+        "options": {
+          "Acabamento": "Semibrilho",
+          "Volume": "18L"
+        },
+        "prices": [
+          {
+            "amount": 23990,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 164
+      }
+    ],
+    "metadata": {
+      "featured": true,
+      "badge": "Destaque"
+    }
+  },
+  {
+    "title": "Rolo de Pintura",
+    "description": "Rolo de pintura para látex e acrílico, ideal para grandes áreas.",
+    "thumbnail": "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&q=80",
+    "type": "Material de obra",
+    "options": [
+      {
+        "title": "Tamanho",
+        "values": [
+          "9cm",
+          "23cm"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Rolo 9cm",
+        "sku": "OBRA-ROL-9",
+        "options": {
+          "Tamanho": "9cm"
+        },
+        "prices": [
+          {
+            "amount": 990,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 177
+      },
+      {
+        "title": "Rolo 23cm",
+        "sku": "OBRA-ROL-23",
+        "options": {
+          "Tamanho": "23cm"
+        },
+        "prices": [
+          {
+            "amount": 1890,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 103
+      }
+    ]
+  },
+  {
+    "title": "Luvas de Borracha Reforçada (par)",
+    "description": "Luvas reforçadas para limpeza pesada e manuseio de produtos químicos.",
+    "thumbnail": "https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?auto=format&fit=crop&w=800&q=80",
+    "type": "Limpeza",
+    "options": [
+      {
+        "title": "Tamanho",
+        "values": [
+          "M",
+          "G"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "title": "Par tamanho M",
+        "sku": "LIM-LUV-M",
+        "options": {
+          "Tamanho": "M"
+        },
+        "prices": [
+          {
+            "amount": 1190,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 171
+      },
+      {
+        "title": "Par tamanho G",
+        "sku": "LIM-LUV-G",
+        "options": {
+          "Tamanho": "G"
+        },
+        "prices": [
+          {
+            "amount": 1290,
+            "currency_code": "brl"
+          }
+        ],
+        "inventory_quantity": 125
+      }
+    ]
+  }
+]

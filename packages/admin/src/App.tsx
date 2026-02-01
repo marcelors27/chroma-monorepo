@@ -11,6 +11,7 @@ import EmailLogsSection from "./modules/EmailLogsSection"
 import OrdersSection from "./modules/OrdersSection"
 import PaymentsSection from "./modules/PaymentsSection"
 import ProductsSection from "./modules/ProductsSection"
+import DeliveryMethodsSection from "./modules/DeliveryMethodsSection"
 import PromotionsSection from "./modules/PromotionsSection"
 import PushNotificationsSection from "./modules/PushNotificationsSection"
 import StockSection from "./modules/StockSection"
@@ -18,6 +19,7 @@ import UsersSection from "./modules/UsersSection"
 import ToastContainer from "./modules/ToastContainer"
 import adminAuthBg from "./assets/admin-auth-bg.jpg"
 import adminDashboardBg from "./assets/admin-dashboard-bg.jpg"
+import logo from "./assets/logo.png"
 import {
   AdminCompany,
   MarketingBanner,
@@ -67,6 +69,7 @@ export default function App() {
   const [salesChannels, setSalesChannels] = useState<SalesChannel[]>([])
   const [regions, setRegions] = useState<Region[]>([])
   const [stockLocations, setStockLocations] = useState<StockLocation[]>([])
+  const [deliveryMethodsCount, setDeliveryMethodsCount] = useState(0)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [dashboardDays, setDashboardDays] = useState<7 | 30 | 90>(7)
   const location = useLocation()
@@ -83,6 +86,7 @@ export default function App() {
       { id: "pagamentos", label: "Pagamentos", path: "/pagamentos", count: pendingCompanies.length },
       { id: "push", label: "Push", path: "/push", count: 0 },
       { id: "produtos", label: "Produtos", path: "/produtos", count: products.length },
+      { id: "entregas", label: "Formas de entrega", path: "/entregas", count: deliveryMethodsCount },
       { id: "estoque", label: "Estoque", path: "/estoque", count: stockLocations.length },
       { id: "pedidos", label: "Pedidos", path: "/pedidos", count: orders.length },
       { id: "promocoes", label: "Promoções", path: "/promocoes", count: priceLists.length },
@@ -96,6 +100,7 @@ export default function App() {
       pendingCompanies.length,
       priceLists.length,
       products.length,
+      deliveryMethodsCount,
       salesChannels.length,
       stockLocations.length,
       storeUsers.length,
@@ -166,6 +171,7 @@ export default function App() {
           salesChannelsRes,
           regionsRes,
           stockLocationsRes,
+          shippingOptionsRes,
         ] = await Promise.all([
           fetch(`${MEDUSA_URL}/admin/products?limit=50&fields=${productFields}`, { headers }),
           fetch(`${MEDUSA_URL}/admin/orders?limit=50&fields=${ordersFields}`, { headers }),
@@ -178,6 +184,7 @@ export default function App() {
           fetch(`${MEDUSA_URL}/admin/sales-channels?limit=200`, { headers }),
           fetch(`${MEDUSA_URL}/admin/regions?limit=200`, { headers }),
           fetch(stockLocationsUrl, { headers }),
+          fetch(`${MEDUSA_URL}/admin/shipping-options?limit=200`, { headers }),
         ])
 
         if (productsRes.ok) {
@@ -268,6 +275,10 @@ export default function App() {
         if (stockLocationsRes.ok) {
           const json = await stockLocationsRes.json()
           setStockLocations(json.stock_locations ?? [])
+        }
+        if (shippingOptionsRes.ok) {
+          const json = await shippingOptionsRes.json()
+          setDeliveryMethodsCount((json.shipping_options ?? []).length)
         }
       } catch (err) {
         console.error("Erro ao buscar dados", err)
@@ -370,7 +381,10 @@ export default function App() {
         <div className="page-background" style={loginBackgroundStyle}>
           <div className="layout">
             <header className="grid" style={{ gap: "0.75rem" }}>
-              <span className="pill">Chroma Admin</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <img src={logo} alt="Chroma" style={{ width: "32px", height: "32px" }} />
+                <span className="pill">Chroma Admin</span>
+              </div>
               <h1 style={{ fontSize: "2.1rem" }}>Painel da operação</h1>
               <p className="muted" style={{ maxWidth: "640px" }}>
                 Autentique com o usuário admin do Medusa para ver produtos, estoque e pedidos.
@@ -418,7 +432,10 @@ export default function App() {
           <div className="app-shell">
             <aside className="sidebar">
               <div className="grid" style={{ gap: "0.4rem" }}>
-                <span className="pill">Chroma Admin</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <img src={logo} alt="Chroma" style={{ width: "28px", height: "28px" }} />
+                  <span className="pill">Chroma Admin</span>
+                </div>
                 <h2>Painel da operação</h2>
                 <span className="muted" style={{ fontSize: "0.9rem" }}>
                   Selecione um módulo para trabalhar.
@@ -567,6 +584,17 @@ export default function App() {
                       salesChannels={salesChannels}
                       stockLocations={stockLocations}
                       openOrders={openOrders}
+                    />
+                  }
+                />
+                <Route
+                  path="/entregas"
+                  element={
+                    <DeliveryMethodsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      regions={regions}
+                      onCountChange={setDeliveryMethodsCount}
                     />
                   }
                 />
