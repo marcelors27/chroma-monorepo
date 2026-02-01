@@ -14,11 +14,22 @@ type FormState = {
   price: string
   serviceZoneId: string
   profileId: string
-  providerId: string
   currencyCode: string
 }
 
+type StockLocationWithSets = {
+  id: string
+  name?: string
+  fulfillment_sets?: { id: string; name?: string; type?: string }[]
+}
+
 const DEFAULT_PROVIDER = "manual"
+const slugifyTypeCode = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "default"
 
 export default function DeliveryMethodsSection({
   medusaUrl,
@@ -35,12 +46,15 @@ export default function DeliveryMethodsSection({
     price: "",
     serviceZoneId: "",
     profileId: "",
-    providerId: DEFAULT_PROVIDER,
     currencyCode: "",
   })
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
   const [serviceZones, setServiceZones] = useState<ServiceZone[]>([])
+  const [fulfillmentSetLocations, setFulfillmentSetLocations] = useState<
+    Map<string, { locationId: string; locationName?: string }>
+  >(new Map())
+  const [fulfillmentProviders, setFulfillmentProviders] = useState<{ id: string }[]>([])
 
   const serviceZoneById = useMemo(() => {
     const map = new Map<string, ServiceZone>()
@@ -108,10 +122,80 @@ export default function DeliveryMethodsSection({
     }
   }
 
+  const loadFulfillmentProviders = async () => {
+    try {
+      const res = await fetch(
+        `${medusaUrl}/admin/fulfillment-providers?limit=200&fields=${encodeURIComponent("+id")}`,
+        { headers }
+      )
+      if (!res.ok) return
+      const json = await res.json()
+      setFulfillmentProviders(json?.fulfillment_providers || [])
+    } catch {
+      // Ignore; handled in UI
+    }
+  }
+
+  const loadFulfillmentSetLocations = async () => {
+    try {
+      const res = await fetch(
+        `${medusaUrl}/admin/stock-locations?limit=200&fields=${encodeURIComponent(
+          "+name,+fulfillment_sets,+fulfillment_sets.name,+fulfillment_sets.type"
+        )}`,
+        { headers }
+      )
+      if (!res.ok) return
+      const json = await res.json()
+      const locations: StockLocationWithSets[] = json?.stock_locations || []
+      const map = new Map<string, { locationId: string; locationName?: string }>()
+      locations.forEach((location) => {
+        location.fulfillment_sets?.forEach((set) => {
+          if (set?.id) {
+            map.set(set.id, { locationId: location.id, locationName: location.name })
+          }
+        })
+      })
+      setFulfillmentSetLocations(map)
+    } catch {
+      // Ignore; handled in UI
+    }
+  }
+
+  const ensureProviderEnabled = async (locationId: string, providerId: string) => {
+    const res = await fetch(
+      `${medusaUrl}/admin/stock-locations/${locationId}/fulfillment-providers`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ add: [providerId] }),
+      }
+    )
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(body || "Não foi possível habilitar o provider no local.")
+    }
+  }
+
+  const ensureProviderEnabledForAll = async (providerId: string) => {
+    const res = await fetch(
+      `${medusaUrl}/admin/stock-locations?limit=200&fields=${encodeURIComponent("+id")}`,
+      { headers }
+    )
+    if (!res.ok) return
+    const json = await res.json()
+    const locations: { id: string }[] = json?.stock_locations || []
+    for (const location of locations) {
+      if (!location?.id) continue
+      await ensureProviderEnabled(location.id, providerId)
+    }
+  }
+
   useEffect(() => {
     loadOptions()
     loadProfiles()
     loadServiceZones()
+    loadFulfillmentSetLocations()
+    loadFulfillmentProviders()
   }, [])
 
   useEffect(() => {
@@ -167,14 +251,26 @@ export default function DeliveryMethodsSection({
         name: form.name.trim(),
         service_zone_id: form.serviceZoneId,
         shipping_profile_id: form.profileId,
-        provider_id: form.providerId || DEFAULT_PROVIDER,
+        provider_id: fulfillmentProviders[0]?.id || DEFAULT_PROVIDER,
         price_type: "flat",
+        type: {
+          label: form.name.trim(),
+          code: slugifyTypeCode(form.name),
+        },
         prices: [
           {
             currency_code: currency,
             amount: Math.round(amountValue * 100),
           },
         ],
+      }
+      const zone = serviceZoneById.get(form.serviceZoneId)
+      const setId = zone?.fulfillment_set?.id
+      const locationInfo = setId ? fulfillmentSetLocations.get(setId) : null
+      if (locationInfo?.locationId) {
+        await ensureProviderEnabled(locationInfo.locationId, payload.provider_id)
+      } else {
+        await ensureProviderEnabledForAll(payload.provider_id)
       }
       const res = await fetch(`${medusaUrl}/admin/shipping-options`, {
         method: "POST",
@@ -297,15 +393,6 @@ export default function DeliveryMethodsSection({
                 ))}
                 {!regions.length && <option value="brl">BRL</option>}
               </select>
-            </label>
-            <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Provider</span>
-              <input
-                className="field-input"
-                value={form.providerId}
-                onChange={(e) => setFormField("providerId", e.target.value)}
-                placeholder={DEFAULT_PROVIDER}
-              />
             </label>
           </div>
           <button className="btn" type="button" onClick={handleCreate} disabled={saving}>

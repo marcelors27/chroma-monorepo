@@ -16,7 +16,7 @@ const applyCors = (req, res) => {
   res.header("Access-Control-Allow-Origin", origin)
   res.header("Access-Control-Allow-Credentials", "true")
   res.header("Access-Control-Allow-Headers", ALLOW_HEADERS)
-  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
 }
 
 const storeCompaniesCors = (req, res, next) => {
@@ -32,6 +32,34 @@ const storeCompaniesCors = (req, res, next) => {
   }
   applyCors(req, res)
   next()
+}
+
+const adminCors = (req, res, next) => {
+  const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
+  safeLog(logger, {
+    msg: "adminCors:called",
+    method: req.method,
+    path: req.path,
+    origin: req.headers?.origin,
+  })
+  if (req.method === "OPTIONS") {
+    applyCors(req, res)
+    return res.sendStatus(204)
+  }
+  applyCors(req, res)
+  next()
+}
+
+const adminPreflightOnly = (req, res) => {
+  const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
+  safeLog(logger, {
+    msg: "adminPreflightOnly:called",
+    method: req.method,
+    path: req.path,
+    origin: req.headers?.origin,
+  })
+  applyCors(req, res)
+  return res.sendStatus(204)
 }
 
 const paymentHookLogger = (req, res, next) => {
@@ -383,6 +411,26 @@ const storeLoginDisabledGuard = () => {
 
 const middlewares = defineMiddlewares([
   {
+    method: ["ALL"],
+    matcher: ["/admin", "/admin/*"],
+    middlewares: [adminCors],
+  },
+  {
+    method: ["OPTIONS"],
+    matcher: [
+      "/admin/service-zones",
+      "/admin/service-zones/*",
+      "/admin/fulfillment-sets",
+      "/admin/fulfillment-sets/*",
+    ],
+    middlewares: [adminPreflightOnly],
+  },
+  {
+    method: ["ALL"],
+    matcher: "/store/*",
+    middlewares: [storeCompaniesCors],
+  },
+  {
     method: ["POST"],
     matcher: ["/auth/store/emailpass"],
     middlewares: [decryptLoginPayloadMiddleware(), storeLoginDisabledGuard(), storeLoginCompanyGuard()],
@@ -480,11 +528,6 @@ const middlewares = defineMiddlewares([
         allowUnregistered: true,
       }),
     ],
-  },
-  {
-    method: ["OPTIONS"],
-    matcher: "/store/*",
-    middlewares: [storeCompaniesCors],
   },
   {
     method: ["ALL"],

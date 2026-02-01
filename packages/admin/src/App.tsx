@@ -12,6 +12,7 @@ import OrdersSection from "./modules/OrdersSection"
 import PaymentsSection from "./modules/PaymentsSection"
 import ProductsSection from "./modules/ProductsSection"
 import DeliveryMethodsSection from "./modules/DeliveryMethodsSection"
+import ServiceZonesSection from "./modules/ServiceZonesSection"
 import PromotionsSection from "./modules/PromotionsSection"
 import PushNotificationsSection from "./modules/PushNotificationsSection"
 import StockSection from "./modules/StockSection"
@@ -70,6 +71,7 @@ export default function App() {
   const [regions, setRegions] = useState<Region[]>([])
   const [stockLocations, setStockLocations] = useState<StockLocation[]>([])
   const [deliveryMethodsCount, setDeliveryMethodsCount] = useState(0)
+  const [serviceZonesCount, setServiceZonesCount] = useState(0)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [dashboardDays, setDashboardDays] = useState<7 | 30 | 90>(7)
   const location = useLocation()
@@ -87,6 +89,7 @@ export default function App() {
       { id: "push", label: "Push", path: "/push", count: 0 },
       { id: "produtos", label: "Produtos", path: "/produtos", count: products.length },
       { id: "entregas", label: "Formas de entrega", path: "/entregas", count: deliveryMethodsCount },
+      { id: "zonas-servico", label: "Zonas de serviço", path: "/zonas-servico", count: serviceZonesCount },
       { id: "estoque", label: "Estoque", path: "/estoque", count: stockLocations.length },
       { id: "pedidos", label: "Pedidos", path: "/pedidos", count: orders.length },
       { id: "promocoes", label: "Promoções", path: "/promocoes", count: priceLists.length },
@@ -101,10 +104,49 @@ export default function App() {
       priceLists.length,
       products.length,
       deliveryMethodsCount,
+      serviceZonesCount,
       salesChannels.length,
       stockLocations.length,
       storeUsers.length,
     ]
+  )
+
+  const sectionById = useMemo(() => {
+    const map = new Map<string, (typeof sections)[number]>()
+    sections.forEach((section) => map.set(section.id, section))
+    return map
+  }, [sections])
+
+  const navGroups = useMemo(
+    () => [
+      {
+        label: "Comercial",
+        items: ["dashboard", "pedidos", "produtos"].map((id) => sectionById.get(id)).filter(Boolean),
+      },
+      {
+        label: "Marketing",
+        items: ["noticias", "marketing", "promocoes", "push"]
+          .map((id) => sectionById.get(id))
+          .filter(Boolean),
+      },
+      {
+        label: "Financeiro",
+        items: ["pagamentos", "cobrancas"].map((id) => sectionById.get(id)).filter(Boolean),
+      },
+      {
+        label: "Operações",
+        items: ["estoque", "entregas", "zonas-servico"]
+          .map((id) => sectionById.get(id))
+          .filter(Boolean),
+      },
+      {
+        label: "Configurações",
+        items: ["canais", "usuarios", "emails", "email-logs"]
+          .map((id) => sectionById.get(id))
+          .filter(Boolean),
+      },
+    ],
+    [sectionById]
   )
 
   const headers = useMemo(
@@ -442,15 +484,27 @@ export default function App() {
                 </span>
               </div>
               <nav className="nav">
-                {sections.map((item) => (
-                  <NavLink
-                    key={item.id}
-                    className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
-                    to={item.path}
-                  >
-                    <span>{item.label}</span>
-                    <span className="nav-badge">{item.count}</span>
-                  </NavLink>
+                {navGroups.map((group) => (
+                  <div key={group.label} style={{ marginTop: "0.75rem" }}>
+                    <span
+                      className="muted"
+                      style={{ fontSize: "0.75rem", letterSpacing: "0.06em" }}
+                    >
+                      {group.label}
+                    </span>
+                    <div className="grid" style={{ gap: "0.35rem", marginTop: "0.35rem" }}>
+                      {group.items.map((item) => (
+                        <NavLink
+                          key={item!.id}
+                          className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+                          to={item!.path}
+                        >
+                          <span>{item!.label}</span>
+                          <span className="nav-badge">{item!.count}</span>
+                        </NavLink>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </nav>
             </aside>
@@ -595,6 +649,16 @@ export default function App() {
                       headers={headers}
                       regions={regions}
                       onCountChange={setDeliveryMethodsCount}
+                    />
+                  }
+                />
+                <Route
+                  path="/zonas-servico"
+                  element={
+                    <ServiceZonesSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      onCountChange={setServiceZonesCount}
                     />
                   }
                 />

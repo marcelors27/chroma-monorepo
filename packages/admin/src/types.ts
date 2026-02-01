@@ -141,6 +141,7 @@ export type SectionId =
   | "pagamentos"
   | "produtos"
   | "entregas"
+  | "zonas-servico"
   | "estoque"
   | "pedidos"
   | "promocoes"
@@ -160,6 +161,19 @@ export type StockLocation = {
   id: string
   name?: string
   sales_channels?: SalesChannel[]
+}
+
+export type FulfillmentSet = {
+  id: string
+  name?: string
+  type?: string
+  location?: { id: string; name?: string }
+}
+
+export type GeoZone = {
+  id?: string
+  type?: string
+  country_code?: string
 }
 
 export type ShippingProfile = {
@@ -195,6 +209,7 @@ export type ServiceZone = {
     type?: string
     location?: { id: string; name?: string }
   }
+  geo_zones?: GeoZone[]
 }
 
 export type MediaPayload = { images: string[]; videos: string[]; youtube: string[] }
