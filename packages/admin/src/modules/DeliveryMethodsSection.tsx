@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 
-import { Region, ShippingOption, ShippingProfile } from "../types"
+import { Region, ServiceZone, ShippingOption, ShippingProfile } from "../types"
 
 type DeliveryMethodsSectionProps = {
   medusaUrl: string
@@ -12,9 +12,10 @@ type DeliveryMethodsSectionProps = {
 type FormState = {
   name: string
   price: string
-  regionId: string
+  serviceZoneId: string
   profileId: string
   providerId: string
+  currencyCode: string
 }
 
 const DEFAULT_PROVIDER = "manual"
@@ -32,22 +33,24 @@ export default function DeliveryMethodsSection({
   const [form, setForm] = useState<FormState>({
     name: "",
     price: "",
-    regionId: "",
+    serviceZoneId: "",
     profileId: "",
     providerId: DEFAULT_PROVIDER,
+    currencyCode: "",
   })
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
+  const [serviceZones, setServiceZones] = useState<ServiceZone[]>([])
 
-  const currencyByRegion = useMemo(() => {
-    const map = new Map<string, string>()
-    regions.forEach((region) => {
-      if (region.id && region.currency_code) {
-        map.set(region.id, region.currency_code)
+  const serviceZoneById = useMemo(() => {
+    const map = new Map<string, ServiceZone>()
+    serviceZones.forEach((zone) => {
+      if (zone.id) {
+        map.set(zone.id, zone)
       }
     })
     return map
-  }, [regions])
+  }, [serviceZones])
 
   const setFormField = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -59,7 +62,7 @@ export default function DeliveryMethodsSection({
     try {
       const res = await fetch(
         `${medusaUrl}/admin/shipping-options?limit=200&fields=${encodeURIComponent(
-          "+prices,+region,+shipping_profile,+provider_id,+price_type"
+          "+prices,+region,+service_zone,+service_zone.fulfillment_set,+service_zone.fulfillment_set.location,+shipping_profile,+provider_id,+price_type"
         )}`,
         { headers }
       )
@@ -89,22 +92,54 @@ export default function DeliveryMethodsSection({
     }
   }
 
+  const loadServiceZones = async () => {
+    try {
+      const res = await fetch(
+        `${medusaUrl}/admin/service-zones?limit=200&fields=${encodeURIComponent(
+          "+name,+region,+fulfillment_set,+fulfillment_set.location"
+        )}`,
+        { headers }
+      )
+      if (!res.ok) return
+      const json = await res.json()
+      setServiceZones(json?.service_zones || [])
+    } catch {
+      // Ignore; handled in UI
+    }
+  }
+
   useEffect(() => {
     loadOptions()
     loadProfiles()
+    loadServiceZones()
   }, [])
 
   useEffect(() => {
-    if (!form.regionId && regions.length) {
-      setFormField("regionId", regions[0].id)
+    if (!form.currencyCode && regions.length) {
+      const first = regions[0]?.currency_code || "brl"
+      setFormField("currencyCode", first)
     }
-  }, [regions, form.regionId])
+  }, [regions, form.currencyCode])
 
   useEffect(() => {
     if (!form.profileId && profiles.length) {
       setFormField("profileId", profiles[0].id)
     }
   }, [profiles, form.profileId])
+
+  useEffect(() => {
+    if (!form.serviceZoneId && serviceZones.length) {
+      setFormField("serviceZoneId", serviceZones[0].id)
+    }
+  }, [serviceZones, form.serviceZoneId])
+
+  useEffect(() => {
+    const zone = serviceZoneById.get(form.serviceZoneId)
+    const zoneCurrency = zone?.region?.currency_code
+    if (zoneCurrency) {
+      setFormField("currencyCode", zoneCurrency)
+    }
+  }, [form.serviceZoneId, serviceZoneById])
 
   const handleCreate = async () => {
     setSaving(true)
@@ -114,20 +149,23 @@ export default function DeliveryMethodsSection({
       if (!form.name.trim()) {
         throw new Error("Informe o nome da forma de entrega.")
       }
-      if (!form.regionId) {
-        throw new Error("Selecione a região.")
+      if (!form.serviceZoneId) {
+        throw new Error("Selecione a zona de serviço.")
       }
       if (!form.profileId) {
         throw new Error("Selecione o shipping profile.")
       }
-      const currency = currencyByRegion.get(form.regionId) || "brl"
+      const zoneCurrency =
+        serviceZoneById.get(form.serviceZoneId)?.region?.currency_code || null
+      const currency =
+        zoneCurrency || form.currencyCode || regions[0]?.currency_code || "brl"
       const amountValue = Number(form.price.replace(",", "."))
       if (Number.isNaN(amountValue) || amountValue < 0) {
         throw new Error("Preço inválido.")
       }
       const payload = {
         name: form.name.trim(),
-        region_id: form.regionId,
+        service_zone_id: form.serviceZoneId,
         shipping_profile_id: form.profileId,
         provider_id: form.providerId || DEFAULT_PROVIDER,
         price_type: "flat",
@@ -212,18 +250,22 @@ export default function DeliveryMethodsSection({
           </label>
           <div className="grid grid-3">
             <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Região</span>
+              <span className="muted">Zona de serviço</span>
               <select
                 className="field-input"
-                value={form.regionId}
-                onChange={(e) => setFormField("regionId", e.target.value)}
+                value={form.serviceZoneId}
+                onChange={(e) => setFormField("serviceZoneId", e.target.value)}
               >
                 <option value="">Selecione</option>
-                {regions.map((region) => (
-                  <option key={region.id} value={region.id}>
-                    {region.name || region.id}
-                  </option>
-                ))}
+                {serviceZones.map((zone) => {
+                  const locationName = zone.fulfillment_set?.location?.name
+                  const label = zone.name || locationName || zone.id
+                  return (
+                    <option key={zone.id} value={zone.id}>
+                      {label}
+                    </option>
+                  )
+                })}
               </select>
             </label>
             <label className="grid" style={{ gap: "0.35rem" }}>
@@ -239,6 +281,21 @@ export default function DeliveryMethodsSection({
                     {profile.name || profile.id}
                   </option>
                 ))}
+              </select>
+            </label>
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Moeda</span>
+              <select
+                className="field-input"
+                value={form.currencyCode}
+                onChange={(e) => setFormField("currencyCode", e.target.value)}
+              >
+                {regions.map((region) => (
+                  <option key={region.id} value={region.currency_code || "brl"}>
+                    {(region.currency_code || "brl").toUpperCase()}
+                  </option>
+                ))}
+                {!regions.length && <option value="brl">BRL</option>}
               </select>
             </label>
             <label className="grid" style={{ gap: "0.35rem" }}>
@@ -273,7 +330,11 @@ export default function DeliveryMethodsSection({
                 <div key={option.id} className="panel grid" style={{ gap: "0.35rem" }}>
                   <strong>{option.name || "Entrega"}</strong>
                   <span className="muted">
-                    Região: {option.region?.name || option.region?.id || "—"}
+                    Zona de serviço:{" "}
+                    {option.service_zone?.name ||
+                      option.service_zone?.fulfillment_set?.location?.name ||
+                      option.service_zone?.id ||
+                      "—"}
                   </span>
                   <span className="muted">
                     Perfil: {option.shipping_profile?.name || option.shipping_profile?.id || "—"}

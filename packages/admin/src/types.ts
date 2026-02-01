@@ -174,8 +174,27 @@ export type ShippingOption = {
   price_type?: string
   region?: { id: string; name?: string; currency_code?: string }
   shipping_profile?: { id: string; name?: string }
+  service_zone?: {
+    id: string
+    name?: string
+    region?: { id: string; name?: string; currency_code?: string }
+    fulfillment_set?: {
+      type?: string
+      location?: { id: string; name?: string }
+    }
+  }
   prices?: { currency_code?: string; amount?: number }[]
   provider_id?: string
+}
+
+export type ServiceZone = {
+  id: string
+  name?: string
+  region?: { id: string; name?: string; currency_code?: string }
+  fulfillment_set?: {
+    type?: string
+    location?: { id: string; name?: string }
+  }
 }
 
 export type MediaPayload = { images: string[]; videos: string[]; youtube: string[] }
