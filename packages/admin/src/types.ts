@@ -206,6 +206,7 @@ export type ServiceZone = {
   name?: string
   region?: { id: string; name?: string; currency_code?: string }
   fulfillment_set?: {
+    id?: string
     type?: string
     location?: { id: string; name?: string }
   }
