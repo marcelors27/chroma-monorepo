@@ -421,7 +421,7 @@ export default function App() {
     <>
       {!token ? (
         <div className="page-background" style={loginBackgroundStyle}>
-          <div className="layout">
+          <div className="layout" data-testid="admin-login">
             <header className="grid" style={{ gap: "0.75rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <img src={logo} alt="Chroma" style={{ width: "32px", height: "32px" }} />
@@ -443,6 +443,7 @@ export default function App() {
                   type="email"
                   required
                   className="field-input"
+                  data-testid="admin-email"
                 />
               </label>
 
@@ -454,12 +455,13 @@ export default function App() {
                   type="password"
                   required
                   className="field-input"
+                  data-testid="admin-password"
                 />
               </label>
 
               {error && <div className="muted">Erro: {error}</div>}
 
-              <button className="btn" type="submit" disabled={isLoading}>
+              <button className="btn" type="submit" disabled={isLoading} data-testid="admin-submit">
                 {isLoading ? "Autenticando..." : "Acessar admin"}
               </button>
               <p className="muted" style={{ fontSize: "0.9rem" }}>
@@ -498,6 +500,7 @@ export default function App() {
                           key={item!.id}
                           className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
                           to={item!.path}
+                          data-testid={`admin-nav-${item!.id}`}
                         >
                           <span>{item!.label}</span>
                           <span className="nav-badge">{item!.count}</span>

@@ -237,7 +237,7 @@ const Auth = () => {
               : "Cadastre-se e informe os dados da empresa depois."}
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" data-testid="auth-form">
             {!isLogin && (
               <div className="space-y-2">
                 <Label htmlFor="name">Nome completo</Label>
@@ -245,6 +245,7 @@ const Auth = () => {
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     id="name"
+                    data-testid="auth-name"
                     placeholder="Seu nome"
                     className="pl-10 h-12 border-2"
                     value={formData.name}
@@ -260,6 +261,7 @@ const Auth = () => {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="email"
+                  data-testid="auth-email"
                   type="email"
                   placeholder="seu@email.com"
                   className="pl-10 h-12 border-2"
@@ -275,6 +277,7 @@ const Auth = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="password"
+                  data-testid="auth-password"
                   type="password"
                   placeholder="••••••••"
                   className="pl-10 h-12 border-2"
@@ -330,6 +333,7 @@ const Auth = () => {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     id="confirmPassword"
+                    data-testid="auth-confirm-password"
                     type="password"
                     placeholder="••••••••"
                     className="pl-10 h-12 border-2"
@@ -340,10 +344,11 @@ const Auth = () => {
               </div>
             )}
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full h-12 text-lg"
               disabled={isLoading}
+              data-testid="auth-submit"
             >
               {isLoading ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
             </Button>
@@ -406,6 +411,7 @@ const Auth = () => {
               type="button"
               onClick={() => setIsLogin(!isLogin)}
               className="text-primary font-medium hover:underline"
+              data-testid="auth-toggle"
             >
               {isLogin ? "Criar conta" : "Entrar"}
             </button>

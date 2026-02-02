@@ -9,6 +9,7 @@ import {
   Settings,
   Home,
   Repeat,
+  Hexagon,
 } from "lucide-react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import {

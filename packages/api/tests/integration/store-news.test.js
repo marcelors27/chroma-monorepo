@@ -19,10 +19,25 @@ describe("store/news GET", () => {
 
     await GET(req, res);
 
+    expect(res.statusCode).toBe(200);
     expect(calls.table).toBe("news");
     expect(calls.limit).toBe(10);
     expect(calls.offset).toBe(5);
     expect(res.body.news).toHaveLength(1);
     expect(res.body.news[0].id).toBe("news_1");
+  });
+
+  it("aplica filtro de noticias publicadas no banco", async () => {
+    const { db, calls } = createDbMock([{ id: "news_2", is_published: false }]);
+    const req = {
+      query: {},
+      scope: { resolve: (key) => (key === ContainerRegistrationKeys.PG_CONNECTION ? db : null) }
+    };
+    const res = createRes();
+
+    await GET(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(calls.where).toContainEqual({ is_published: true });
   });
 });

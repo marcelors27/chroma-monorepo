@@ -213,7 +213,9 @@ const Orders = () => {
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Meus Pedidos</h1>
+            <h1 className="text-3xl font-bold" data-testid="orders-title">
+              Meus Pedidos
+            </h1>
             <p className="text-muted-foreground">Acompanhe o status dos seus pedidos</p>
           </div>
         </div>
@@ -385,7 +387,12 @@ const Orders = () => {
                           </p>
                         </div>
                       </div>
-                      <Button variant="outline" className="gap-2 border-2" onClick={() => setSelectedOrder(order)}>
+                      <Button
+                        variant="outline"
+                        className="gap-2 border-2"
+                        onClick={() => setSelectedOrder(order)}
+                        data-testid="orders-details"
+                      >
                         <Eye className="h-4 w-4" />
                         Ver detalhes
                       </Button>
@@ -490,6 +497,7 @@ const Orders = () => {
                   variant="outline"
                   className="border-2"
                   onClick={() => openRecurrenceDialog(selectedOrder)}
+                  data-testid="orders-recurrence"
                 >
                   Tornar recorrente
                 </Button>

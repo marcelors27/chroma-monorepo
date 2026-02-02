@@ -53,3 +53,24 @@ Cypress.Commands.add("loginCustomer", (email: string, password: string) => {
 Cypress.Commands.add("withAuthToken", (token: string) => {
   Cypress.env("authToken", token);
 });
+
+Cypress.Commands.add("loginAndVisit", (path: string) => {
+  cy.fixture("user").then((user) => {
+    cy.apiRequest({
+      method: "POST",
+      path: "/auth/customer/emailpass",
+      body: { email: user.email, password: user.password },
+      failOnStatusCode: false
+    }).then((response) => {
+      const token = (response.body as any)?.token;
+      if (!token) {
+        throw new Error("Auth token não encontrado para o teste");
+      }
+      cy.visit(path, {
+        onBeforeLoad(win) {
+          win.localStorage.setItem("chroma_front_store_token", token);
+        }
+      });
+    });
+  });
+});

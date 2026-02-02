@@ -781,12 +781,8 @@ export const setCartShippingAddress = async (
 };
 
 export const addDefaultShippingMethod = async (cartId: string) => {
-  const shippingOptions = await apiFetch<{ shipping_options: any[] }>(
-    withStoreQuery(`/store/shipping-options?cart_id=${cartId}`),
-    { method: "GET" }
-  );
-
-  const defaultOption = shippingOptions?.shipping_options?.[0];
+  const options = await listShippingOptions(cartId);
+  const defaultOption = options?.[0];
   if (!defaultOption?.id) {
     throw new Error("Nenhum metodo de entrega disponivel.");
   }
@@ -794,6 +790,22 @@ export const addDefaultShippingMethod = async (cartId: string) => {
   const data = await apiFetch<{ cart: MedusaCart }>(withStoreQuery(`/store/carts/${cartId}/shipping-methods`), {
     method: "POST",
     body: JSON.stringify({ option_id: defaultOption.id }),
+  });
+  return data?.cart;
+};
+
+export const listShippingOptions = async (cartId: string) => {
+  const options = await apiFetch<{ shipping_options: any[] }>(
+    withStoreQuery(`/store/shipping-options?cart_id=${cartId}`),
+    { method: "GET" }
+  );
+  return options?.shipping_options || [];
+};
+
+export const addShippingMethod = async (cartId: string, optionId: string) => {
+  const data = await apiFetch<{ cart: MedusaCart }>(withStoreQuery(`/store/carts/${cartId}/shipping-methods`), {
+    method: "POST",
+    body: JSON.stringify({ option_id: optionId }),
   });
   return data?.cart;
 };

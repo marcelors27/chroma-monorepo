@@ -3,14 +3,14 @@ const itIf = run ? it : it.skip;
 
 describe("E2E :: Home", () => {
   itIf("carrega banners e noticias", () => {
-    cy.visit("/home");
-    cy.contains("Promoções");
-    cy.contains("Notícias");
+    cy.loginAndVisit("/home");
+    cy.get("[data-testid='home-promotions-title']");
+    cy.get("[data-testid='home-news-title']");
   });
 
   itIf("adiciona promocao ao carrinho", () => {
-    cy.visit("/home");
-    cy.contains("button", "Adicionar ao carrinho").first().click({ force: true });
-    cy.get("button").contains("Carrinho").click({ force: true });
+    cy.loginAndVisit("/home");
+    cy.get("[data-testid='home-promo-add']").first().click({ force: true });
+    cy.get("[data-testid='cart-trigger']").click({ force: true });
   });
 });

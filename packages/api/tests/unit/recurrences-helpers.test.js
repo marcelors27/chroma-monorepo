@@ -17,8 +17,11 @@ describe("store/recurrences helpers", () => {
     const now = new Date("2024-01-10T12:00:00.000Z");
     vi.useFakeTimers();
     vi.setSystemTime(now);
-    const next = _test.computeNextRun({ frequency: "monthly", dayOfMonth: 5 });
-    expect(new Date(next).getTime()).toBeGreaterThan(now.getTime());
-    vi.useRealTimers();
+    try {
+      const next = _test.computeNextRun({ frequency: "monthly", dayOfMonth: 5 });
+      expect(new Date(next).getTime()).toBeGreaterThan(now.getTime());
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

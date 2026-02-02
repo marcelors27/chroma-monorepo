@@ -3,13 +3,13 @@ const itIf = run ? it : it.skip;
 
 describe("E2E :: Checkout", () => {
   itIf("exige itens no carrinho", () => {
-    cy.visit("/checkout");
-    cy.contains("Carrinho vazio");
+    cy.loginAndVisit("/checkout");
+    cy.get("[data-testid='checkout-empty']").should("exist");
   });
 
   itIf("seleciona metodo de pagamento e finaliza", () => {
-    cy.visit("/checkout");
-    cy.contains("PIX").click({ force: true });
-    cy.contains("button", "Finalizar Pedido").click({ force: true });
+    cy.loginAndVisit("/checkout");
+    cy.get("[data-testid='checkout-payment-pix']").click({ force: true });
+    cy.get("[data-testid='checkout-submit']").click({ force: true });
   });
 });

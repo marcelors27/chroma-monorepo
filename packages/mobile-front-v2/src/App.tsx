@@ -13,6 +13,7 @@ import { TamaguiProvider } from "tamagui";
 import tamaguiConfig from "../tamagui.config";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
 import Produtos from "./pages/Produtos";
 import ProductDetails from "./pages/ProductDetails";
@@ -313,6 +314,7 @@ function RootNavigator() {
         <>
           <Stack.Screen name="Landing" component={Landing} />
           <Stack.Screen name="Auth" component={Auth} />
+          <Stack.Screen name="ResetPassword" component={ResetPassword} />
         </>
       ) : !hasApprovedCondo ? (
         <>

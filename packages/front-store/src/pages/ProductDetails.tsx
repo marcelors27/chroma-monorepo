@@ -459,12 +459,18 @@ const ProductDetails = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button className="flex-1 h-12 text-lg gap-2" onClick={handleAddToCart}>
+              <Button
+                className="flex-1 h-12 text-lg gap-2"
+                onClick={handleAddToCart}
+                data-testid="product-add-to-cart"
+              >
                 <ShoppingCart className="h-5 w-5" />
                 Adicionar ao carrinho
               </Button>
               <Button variant="outline" className="flex-1 h-12 text-lg" asChild>
-                <Link to="/checkout">Finalizar compra</Link>
+                <Link to="/checkout" data-testid="product-checkout">
+                  Finalizar compra
+                </Link>
               </Button>
             </div>
 

@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View, Pressable, Image } from "react-native";
-import { Minus, Plus, Trash2, QrCode, CreditCard, Receipt, RefreshCw, ChevronRight } from "lucide-react-native";
+import {
+  Minus,
+  Plus,
+  Trash2,
+  QrCode,
+  CreditCard,
+  Receipt,
+  ChevronRight,
+  Truck,
+} from "lucide-react-native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
@@ -11,7 +20,9 @@ import {
   fetchSavedPaymentMethodsFromBackend,
   formatMoney,
   getCustomerMe,
+  listShippingOptions,
   SavedPaymentMethod,
+  setCartShippingAddress,
   upsertSavedPaymentMethod,
 } from "@/lib/medusa";
 
@@ -19,10 +30,14 @@ type RecurrenceOption = "unica" | "semanal" | "quinzenal" | "mensal";
 
 export default function Carrinho() {
   const [selectedPayment, setSelectedPayment] = useState<"pix" | "cartao" | "boleto">("pix");
+  const [shippingOptions, setShippingOptions] = useState<any[]>([]);
+  const [shippingOptionId, setShippingOptionId] = useState<string | null>(null);
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [shippingError, setShippingError] = useState<string | null>(null);
   const [recurrenceByItem, setRecurrenceByItem] = useState<Record<string, RecurrenceOption>>({});
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [customerEmail, setCustomerEmail] = useState("");
-  const { items, totalPrice, updateQuantity, removeItem, completeBackendCheckout, clearCart } = useCart();
+  const { items, totalPrice, updateQuantity, removeItem, completeBackendCheckout, clearCart, cartId } = useCart();
   const { activeCondo } = useCondo();
 
   const formattedTotal = formatMoney(totalPrice);
@@ -32,6 +47,12 @@ export default function Carrinho() {
       ? [customerEmail]
       : [];
   const boletoEmailText = boletoEmails.length ? boletoEmails.join(", ") : "E-mail não informado";
+  const resolveShippingLabel = (name?: string | null) => {
+    const value = (name || "").toLowerCase();
+    if (/(retira|buscar|pickup)/i.test(value)) return "Buscar na loja";
+    if (/(1\\s?dia|express|rápida|rapida)/i.test(value)) return "Receber em um dia";
+    return name || "Entrega";
+  };
 
   useEffect(() => {
     const loadPaymentData = async () => {
@@ -73,6 +94,39 @@ export default function Carrinho() {
     setSelectedPayment(mapped);
   }, [savedPaymentMethods]);
 
+  useEffect(() => {
+    const loadShippingOptions = async () => {
+      if (!cartId || !activeCondo) return;
+      setShippingLoading(true);
+      setShippingError(null);
+      try {
+        const shippingAddress = {
+          first_name: "Condomínio",
+          last_name: "Compras",
+          address_1: activeCondo.name || "Condomínio",
+          city: "São Paulo",
+          country_code: "br",
+          postal_code: "00000-000",
+          metadata: {
+            condo_id: activeCondo.id,
+            company_id: activeCondo.id,
+          },
+        };
+        await setCartShippingAddress(cartId, shippingAddress);
+        const options = await listShippingOptions(cartId);
+        setShippingOptions(options);
+        setShippingOptionId((current) => current || options?.[0]?.id || null);
+      } catch (err: any) {
+        setShippingOptions([]);
+        setShippingOptionId(null);
+        setShippingError(err?.message || "Não foi possível carregar as opções de entrega.");
+      } finally {
+        setShippingLoading(false);
+      }
+    };
+    loadShippingOptions();
+  }, [cartId, activeCondo?.id]);
+
   const handleCheckout = async () => {
     if (!items.length) {
       toast.error("Seu carrinho está vazio.");
@@ -84,6 +138,10 @@ export default function Carrinho() {
     }
 
     const paymentMethod = selectedPayment === "cartao" ? "credit" : selectedPayment;
+    if (!shippingOptionId) {
+      toast.error("Selecione a forma de entrega.");
+      return;
+    }
 
     try {
       const shippingAddress = {
@@ -99,7 +157,7 @@ export default function Carrinho() {
         },
       };
 
-      const orderId = await completeBackendCheckout(shippingAddress, paymentMethod);
+      const orderId = await completeBackendCheckout(shippingAddress, paymentMethod, shippingOptionId);
 
       const recurringItems = items.filter((item) => recurrenceByItem[item.id] && recurrenceByItem[item.id] !== "unica");
       for (const item of recurringItems) {
@@ -175,6 +233,38 @@ export default function Carrinho() {
                     <Plus color="#E6E8EA" size={16} />
                   </Pressable>
                 </View>
+                <View style={styles.recurrenceInline}>
+                  <Text style={styles.recurrenceInlineLabel}>Recorrência</Text>
+                  <View style={styles.recurrenceChips}>
+                    {[
+                      { id: "unica", title: "Única" },
+                      { id: "semanal", title: "Semanal" },
+                      { id: "quinzenal", title: "Quinzenal" },
+                      { id: "mensal", title: "Mensal" },
+                    ].map((option) => {
+                      const active = recurrenceByItem[item.id] === option.id;
+                      return (
+                        <Pressable
+                          key={option.id}
+                          onPress={() =>
+                            setRecurrenceByItem((current) => ({
+                              ...current,
+                              [item.id]: option.id as RecurrenceOption,
+                            }))
+                          }
+                          style={[
+                            styles.recurrenceChip,
+                            active ? styles.recurrenceChipActive : styles.recurrenceChipIdle,
+                          ]}
+                        >
+                          <Text style={[styles.recurrenceChipText, active && styles.recurrenceChipTextActive]}>
+                            {option.title}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
               </View>
               <Pressable onPress={() => removeItem(item.id)} style={styles.removeButton}>
                 <Trash2 color="#E64646" size={20} />
@@ -186,6 +276,42 @@ export default function Carrinho() {
         {items.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>Seu carrinho está vazio.</Text>
+          </View>
+        )}
+
+        <Text style={styles.sectionTitle}>Método de entrega</Text>
+        {shippingError && <Text style={styles.errorText}>{shippingError}</Text>}
+        {shippingLoading ? (
+          <Text style={styles.helperText}>Carregando opções...</Text>
+        ) : shippingOptions.length === 0 ? (
+          <Text style={styles.helperText}>
+            Sem opções disponíveis. Cadastre no admin em Configurações → Logística → Opções de envio.
+          </Text>
+        ) : (
+          <View style={styles.sectionList}>
+            {shippingOptions.map((option) => {
+              const active = shippingOptionId === option.id;
+              return (
+                <Pressable
+                  key={option.id}
+                  onPress={() => setShippingOptionId(option.id)}
+                  style={styles.paymentCard}
+                >
+                  <View style={styles.paymentIcon}>
+                    <Truck color="#8C98A8" size={20} />
+                  </View>
+                  <View style={styles.paymentInfo}>
+                    <Text style={styles.paymentTitle}>{resolveShippingLabel(option.name)}</Text>
+                    {option.name && (
+                      <Text style={styles.paymentSubtitle}>{option.name}</Text>
+                    )}
+                  </View>
+                  <View style={[styles.radioOuter, active ? styles.radioOuterActive : styles.radioOuterIdle]}>
+                    {active && <View style={styles.radioInner} />}
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
         )}
 
@@ -243,47 +369,6 @@ export default function Carrinho() {
             <Text style={styles.boletoInfoValue}>{boletoEmailText}</Text>
           </View>
         )}
-
-        <View style={styles.recurrenceHeader}>
-          <RefreshCw color="#8C98A8" size={18} />
-          <Text style={styles.sectionTitleText}>Recorrência</Text>
-        </View>
-        <View style={styles.recurrenceList}>
-          {items.map((item) => (
-            <View key={item.id} style={styles.recurrenceItem}>
-              <Text style={styles.recurrenceItemTitle}>{item.name}</Text>
-              <View style={styles.recurrenceChips}>
-                {[
-                  { id: "unica", title: "Única" },
-                  { id: "semanal", title: "Semanal" },
-                  { id: "quinzenal", title: "Quinzenal" },
-                  { id: "mensal", title: "Mensal" },
-                ].map((option) => {
-                  const active = recurrenceByItem[item.id] === option.id;
-                  return (
-                    <Pressable
-                      key={option.id}
-                      onPress={() =>
-                        setRecurrenceByItem((current) => ({
-                          ...current,
-                          [item.id]: option.id as RecurrenceOption,
-                        }))
-                      }
-                      style={[
-                        styles.recurrenceChip,
-                        active ? styles.recurrenceChipActive : styles.recurrenceChipIdle,
-                      ]}
-                    >
-                      <Text style={[styles.recurrenceChipText, active && styles.recurrenceChipTextActive]}>
-                        {option.title}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-          ))}
-        </View>
 
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
@@ -378,6 +463,16 @@ const styles = StyleSheet.create({
   emptyText: {
     color: "#8C98A8",
     fontSize: 13,
+  },
+  errorText: {
+    color: "#E64646",
+    fontSize: 12,
+    marginTop: 8,
+  },
+  helperText: {
+    color: "#8C98A8",
+    fontSize: 12,
+    marginTop: 8,
   },
   sectionTitle: {
     color: "#E6E8EA",
@@ -495,31 +590,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 4,
   },
-  recurrenceHeader: {
-    marginTop: 20,
-    flexDirection: "row",
-    alignItems: "center",
+  recurrenceInline: {
+    marginTop: 12,
     gap: 8,
   },
-  sectionTitleText: {
-    color: "#E6E8EA",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  recurrenceList: {
-    marginTop: 12,
-    gap: 12,
-  },
-  recurrenceItem: {
-    backgroundColor: "rgba(24, 28, 36, 0.95)",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(46, 54, 68, 0.6)",
-    padding: 14,
-  },
-  recurrenceItemTitle: {
-    color: "#E6E8EA",
-    fontSize: 14,
+  recurrenceInlineLabel: {
+    color: "#8C98A8",
+    fontSize: 12,
     fontWeight: "600",
   },
   recurrenceChips: {

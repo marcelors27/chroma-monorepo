@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  addDefaultShippingMethod,
+  addShippingMethod,
   addLineItem,
   completeCart,
   createCart,
   deleteLineItem,
   earnCompanyPoints,
   ensureCart,
+  listShippingOptions,
   mapCartToItems,
   retrieveCart,
   setCartShippingAddress,
@@ -49,7 +50,11 @@ interface CartContextType {
   updateQuantity: (id: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
   refreshCart: () => Promise<void>;
-  completeBackendCheckout: (address: Record<string, any>, paymentMethod: string) => Promise<string | null>;
+  completeBackendCheckout: (
+    address: Record<string, any>,
+    paymentMethod: string,
+    shippingOptionId?: string | null
+  ) => Promise<string | null>;
   totalItems: number;
   totalPrice: number;
 }
@@ -201,8 +206,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const completeBackendCheckout = async (address: Record<string, any>, paymentMethod: string) => {
-    if (DEBUG) console.debug("[cart] completeBackendCheckout:start", { cartId, address, paymentMethod });
+  const completeBackendCheckout = async (
+    address: Record<string, any>,
+    paymentMethod: string,
+    shippingOptionId?: string | null
+  ) => {
+    if (DEBUG)
+      console.debug("[cart] completeBackendCheckout:start", { cartId, address, paymentMethod, shippingOptionId });
     if (!cartId) throw new Error("Carrinho não encontrado");
     try {
       const applyPoints = async (orderId?: string | null) => {
@@ -224,7 +234,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
         cartSnapshot = await setCartShippingAddress(cartSnapshot.id, address);
       }
       if (!cartSnapshot?.shipping_methods?.length) {
-        cartSnapshot = await addDefaultShippingMethod(cartSnapshot.id);
+        if (shippingOptionId) {
+          cartSnapshot = await addShippingMethod(cartSnapshot.id, shippingOptionId);
+        } else {
+          const options = await listShippingOptions(cartSnapshot.id);
+          const fallback = options?.[0]?.id;
+          if (!fallback) {
+            throw new Error("Nenhum metodo de entrega disponivel.");
+          }
+          cartSnapshot = await addShippingMethod(cartSnapshot.id, fallback);
+        }
       }
 
       await setPaymentSession(cartSnapshot.id, providerId, data);

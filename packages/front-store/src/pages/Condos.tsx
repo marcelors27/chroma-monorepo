@@ -536,7 +536,9 @@ const Condos = () => {
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Meus Condomínios</h1>
+            <h1 className="text-3xl font-bold" data-testid="condos-title">
+              Meus Condomínios
+            </h1>
             <p className="text-muted-foreground">
               Gerencie os CNPJs e dados cadastrados na sua conta
             </p>
@@ -550,7 +552,7 @@ const Condos = () => {
               }
             }}>
               <DialogTrigger asChild>
-                <Button className="gap-2" onClick={openNewDialog}>
+                <Button className="gap-2" onClick={openNewDialog} data-testid="condos-new">
                   <Plus className="h-4 w-4" />
                   Novo Condomínio
                 </Button>

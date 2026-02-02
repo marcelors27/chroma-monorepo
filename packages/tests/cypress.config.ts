@@ -1,6 +1,6 @@
 import { defineConfig } from "cypress";
 
-const baseUrl = process.env.CYPRESS_BASE_URL || "http://localhost:5173";
+const baseUrl = process.env.CYPRESS_BASE_URL || "http://localhost:8080";
 const apiBaseUrl = process.env.CYPRESS_API_BASE_URL || "http://localhost:9000";
 
 export default defineConfig({

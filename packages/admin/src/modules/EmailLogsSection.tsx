@@ -108,7 +108,7 @@ export default function EmailLogsSection({
   return (
     <div className="panel">
       <div style={{ marginBottom: "1rem" }}>
-        <h2>Histórico geral de e-mails</h2>
+        <h2 data-testid="admin-email-logs-title">Histórico geral de e-mails</h2>
         <p className="muted">Visualize e filtre os envios registrados por usuário e condomínio.</p>
       </div>
 

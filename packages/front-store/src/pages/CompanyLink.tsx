@@ -166,9 +166,10 @@ const CompanyLink = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {companies.map((company, index) => (
-              <div 
-                key={company.id} 
+              <div
+                key={company.id}
                 className="border-2 border-border p-6 bg-card hover:border-primary transition-colors"
+                data-testid={`company-card-${index + 1}`}
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-lg">
@@ -181,6 +182,7 @@ const CompanyLink = () => {
                       size="sm"
                       onClick={() => removeCompany(company.id)}
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      data-testid="company-remove"
                     >
                       <Trash2 className="h-4 w-4 mr-1" />
                       Remover
@@ -259,15 +261,17 @@ const CompanyLink = () => {
               variant="outline"
               className="w-full h-12 border-2 border-dashed"
               onClick={addCompany}
+              data-testid="company-add"
             >
               <Plus className="h-5 w-5 mr-2" />
               Adicionar outra empresa
             </Button>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full h-14 text-lg"
               disabled={isLoading}
+              data-testid="company-submit"
             >
               {isLoading ? "Vinculando..." : `Continuar com ${companies.length} empresa(s)`}
             </Button>

@@ -126,7 +126,7 @@ export default function BillingResendSection({
   return (
     <div className="panel">
       <div style={{ marginBottom: "1rem" }}>
-        <h2>Reenvio de cobranças</h2>
+        <h2 data-testid="admin-billing-resend-title">Reenvio de cobranças</h2>
         <p className="muted">Envie novamente cobranças de PIX ou boleto para usuário/condomínio.</p>
       </div>
 

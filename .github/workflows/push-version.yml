@@ -58,39 +58,3 @@ jobs:
           body: |
             Release triggered by commit:
             ${{ github.event.head_commit.message }}
-
-      - name: Setup pnpm
-        if: ${{ steps.bump.outputs.version != '' }}
-        run: |
-          corepack enable
-          corepack prepare pnpm@9 --activate
-
-      - name: Install dependencies
-        if: ${{ steps.bump.outputs.version != '' }}
-        run: pnpm install --frozen-lockfile
-
-      - name: EAS build (mobile-front-v2 ios)
-        if: ${{ steps.bump.outputs.version != '' }}
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          pnpm dlx eas-cli@latest build \
-            --platform ios \
-            --profile production \
-            --non-interactive
-        working-directory: packages/mobile-front-v2
-
-      - name: EAS submit (mobile-front-v2 ios)
-        if: ${{ steps.bump.outputs.version != '' }}
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_ASC_API_KEY: ${{ secrets.EXPO_ASC_API_KEY }}
-          EXPO_ASC_API_KEY_ID: ${{ secrets.EXPO_ASC_API_KEY_ID }}
-          EXPO_ASC_API_KEY_ISSUER_ID: ${{ secrets.EXPO_ASC_API_KEY_ISSUER_ID }}
-        run: |
-          pnpm dlx eas-cli@latest submit \
-            --platform ios \
-            --profile production \
-            --latest \
-            --non-interactive
-        working-directory: packages/mobile-front-v2

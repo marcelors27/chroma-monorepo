@@ -3,14 +3,14 @@ const itIf = run ? it : it.skip;
 
 describe("E2E :: Catalogo", () => {
   itIf("filtra e ordena produtos", () => {
-    cy.visit("/dashboard");
-    cy.get("input[placeholder='Buscar por nome...']").type("cimento");
-    cy.contains("button", "Filtros").click({ force: true });
-    cy.contains("Limpar filtros").click({ force: true });
+    cy.loginAndVisit("/dashboard");
+    cy.get("[data-testid='catalog-search']").type("cimento");
+    cy.get("[data-testid='catalog-filters-toggle']").click({ force: true });
+    cy.get("[data-testid='catalog-filters-clear']").click({ force: true });
   });
 
   itIf("adiciona item do catalogo ao carrinho", () => {
-    cy.visit("/dashboard");
-    cy.contains("button", "Adicionar ao carrinho").first().click({ force: true });
+    cy.loginAndVisit("/dashboard");
+    cy.get("[data-testid='catalog-add-to-cart']").first().click({ force: true });
   });
 });

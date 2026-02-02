@@ -172,7 +172,9 @@ const Recurrences = () => {
     <div className="min-h-screen space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Compras Recorrentes</h1>
+          <h1 className="text-3xl font-bold" data-testid="recurrences-title">
+            Compras Recorrentes
+          </h1>
           <p className="text-muted-foreground mt-1">
             Agende compras semanais, quinzenais ou mensais para o condomínio.
           </p>
@@ -225,6 +227,7 @@ const Recurrences = () => {
                   variant="outline"
                   className="border-2"
                   onClick={() => toggleStatus(recurrence)}
+                  data-testid="recurrence-toggle"
                 >
                   {recurrence.status === "active" ? "Pausar" : "Retomar"}
                 </Button>

@@ -3,12 +3,12 @@ const itIf = run ? it : it.skip;
 
 describe("E2E :: Recorrencias", () => {
   itIf("lista recorrencias", () => {
-    cy.visit("/recurrences");
-    cy.contains("Compras Recorrentes");
+    cy.loginAndVisit("/recurrences");
+    cy.get("[data-testid='recurrences-title']").should("exist");
   });
 
   itIf("pausa e retoma recorrencia", () => {
-    cy.visit("/recurrences");
-    cy.contains("Pausar").first().click({ force: true });
+    cy.loginAndVisit("/recurrences");
+    cy.get("[data-testid='recurrence-toggle']").first().click({ force: true });
   });
 });

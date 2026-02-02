@@ -3,12 +3,12 @@ const itIf = run ? it : it.skip;
 
 describe("E2E :: Condominios", () => {
   itIf("lista condominios", () => {
-    cy.visit("/condos");
-    cy.contains("Condomínios");
+    cy.loginAndVisit("/condos");
+    cy.get("[data-testid='condos-title']").should("exist");
   });
 
   itIf("abre modal de novo condominio", () => {
-    cy.visit("/condos");
-    cy.contains("button", "Novo Condomínio").click({ force: true });
+    cy.loginAndVisit("/condos");
+    cy.get("[data-testid='condos-new']").click({ force: true });
   });
 });

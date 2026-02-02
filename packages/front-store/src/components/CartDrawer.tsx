@@ -25,7 +25,12 @@ const CartDrawer = () => {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="relative border-2">
+        <Button
+          variant="outline"
+          size="icon"
+          className="relative border-2"
+          data-testid="cart-trigger"
+        >
           <ShoppingCart className="h-5 w-5" />
           {totalItems > 0 && (
             <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">

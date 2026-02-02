@@ -262,7 +262,7 @@ export default function EmailTemplatesSection({ medusaUrl, headers, pushToast }:
     <div className="panel">
       <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
         <div>
-          <h2>Templates de email</h2>
+          <h2 data-testid="admin-email-templates-title">Templates de email</h2>
           <p className="muted">Gerencie os templates do Resend usados nas notificacoes.</p>
         </div>
         <button className="btn btn-secondary" type="button" onClick={handleBootstrap}>

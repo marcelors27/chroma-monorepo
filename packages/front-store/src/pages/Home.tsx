@@ -371,7 +371,9 @@ const Home = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Tag className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-bold">Promoções em Destaque</h2>
+            <h2 className="text-xl font-bold" data-testid="home-promotions-title">
+              Promoções em Destaque
+            </h2>
           </div>
           <Link to="/dashboard">
             <Button variant="ghost" className="gap-1">
@@ -450,6 +452,7 @@ const Home = () => {
                       className="w-full mt-auto gap-2"
                       onClick={() => handleAddToCart(promo)}
                       disabled={!promo.variantId}
+                      data-testid="home-promo-add"
                     >
                       <ShoppingCart className="h-4 w-4" />
                       Adicionar ao Carrinho
@@ -466,7 +469,9 @@ const Home = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Newspaper className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-bold">Notícias e Dicas</h2>
+            <h2 className="text-xl font-bold" data-testid="home-news-title">
+              Notícias e Dicas
+            </h2>
           </div>
         </div>
 
@@ -497,7 +502,7 @@ const Home = () => {
 
           {!isNewsLoading &&
             newsItems.map((item) => (
-            <Link key={item.id} to={`/news/${item.id}`}>
+            <Link key={item.id} to={`/news/${item.id}`} data-testid="home-news-link">
               <Card className="border-2 hover:border-primary transition-colors cursor-pointer h-full">
                 {item.image_url && (
                   <div className="relative w-full h-40 overflow-hidden border-b border-border/60">

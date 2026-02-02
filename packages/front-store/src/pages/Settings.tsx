@@ -201,7 +201,7 @@ const Settings = () => {
         backgroundAttachment: 'fixed',
       }}
     >
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto" data-testid="settings-page">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Configurações</h1>
           <p className="text-muted-foreground">
@@ -211,11 +211,11 @@ const Settings = () => {
 
         <Tabs defaultValue="perfil" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="perfil" className="gap-2">
+            <TabsTrigger value="perfil" className="gap-2" data-testid="settings-tab-profile">
               <User className="h-4 w-4" />
               Perfil
             </TabsTrigger>
-            <TabsTrigger value="seguranca" className="gap-2">
+            <TabsTrigger value="seguranca" className="gap-2" data-testid="settings-tab-security">
               <Lock className="h-4 w-4" />
               Segurança
             </TabsTrigger>
@@ -236,6 +236,7 @@ const Settings = () => {
                       <Label htmlFor="nome">Nome *</Label>
                       <Input
                         id="nome"
+                        data-testid="settings-profile-first-name"
                         placeholder="Seu nome"
                         className="h-12 border-2"
                         value={profileData.nome}
@@ -246,6 +247,7 @@ const Settings = () => {
                       <Label htmlFor="sobrenome">Sobrenome</Label>
                       <Input
                         id="sobrenome"
+                        data-testid="settings-profile-last-name"
                         placeholder="Seu sobrenome"
                         className="h-12 border-2"
                         value={profileData.sobrenome}
@@ -260,6 +262,7 @@ const Settings = () => {
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="email"
+                        data-testid="settings-profile-email"
                         type="email"
                         placeholder="seu@email.com"
                         className="h-12 border-2 pl-10"
@@ -275,6 +278,7 @@ const Settings = () => {
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="telefone"
+                        data-testid="settings-profile-phone"
                         placeholder="(00) 00000-0000"
                         className="h-12 border-2 pl-10"
                         value={profileData.telefone}
@@ -288,6 +292,7 @@ const Settings = () => {
                     <Label htmlFor="cargo">Cargo / Função</Label>
                     <Input
                       id="cargo"
+                      data-testid="settings-profile-role"
                       placeholder="Ex: Síndico, Administrador"
                       className="h-12 border-2"
                       value={profileData.cargo}
@@ -295,7 +300,12 @@ const Settings = () => {
                     />
                   </div>
 
-                  <Button type="submit" className="w-full gap-2" disabled={isSavingProfile}>
+                  <Button
+                    type="submit"
+                    className="w-full gap-2"
+                    disabled={isSavingProfile}
+                    data-testid="settings-profile-save"
+                  >
                     <Save className="h-4 w-4" />
                     {isSavingProfile ? "Salvando..." : "Salvar Alterações"}
                   </Button>
@@ -320,6 +330,7 @@ const Settings = () => {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="senhaAtual"
+                        data-testid="settings-password-current"
                         type={showPasswords.atual ? "text" : "password"}
                         placeholder="Digite sua senha atual"
                         className="h-12 border-2 pl-10 pr-10"
@@ -342,6 +353,7 @@ const Settings = () => {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="novaSenha"
+                        data-testid="settings-password-new"
                         type={showPasswords.nova ? "text" : "password"}
                         placeholder="Digite a nova senha"
                         className="h-12 border-2 pl-10 pr-10"
@@ -365,6 +377,7 @@ const Settings = () => {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="confirmarSenha"
+                        data-testid="settings-password-confirm"
                         type={showPasswords.confirmar ? "text" : "password"}
                         placeholder="Confirme a nova senha"
                         className="h-12 border-2 pl-10 pr-10"
@@ -381,7 +394,12 @@ const Settings = () => {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full gap-2" disabled={isSavingPassword}>
+                  <Button
+                    type="submit"
+                    className="w-full gap-2"
+                    disabled={isSavingPassword}
+                    data-testid="settings-password-save"
+                  >
                     <Lock className="h-4 w-4" />
                     {isSavingPassword ? "Alterando..." : "Alterar Senha"}
                   </Button>

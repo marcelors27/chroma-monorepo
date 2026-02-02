@@ -14,35 +14,33 @@ const visitAdmin = (path = "/") => {
 
 const loginAdmin = () => {
   visitAdmin("/");
-  cy.contains("Chroma Admin").should("exist");
-  cy.get("input[type='email']").clear().type(adminEmail);
-  cy.get("input[type='password']").clear().type(adminPassword, { log: false });
-  cy.contains("button", "Acessar admin").click();
+  cy.get("[data-testid='admin-login']").should("exist");
+  cy.get("[data-testid='admin-email']").clear().type(adminEmail);
+  cy.get("[data-testid='admin-password']").clear().type(adminPassword, { log: false });
+  cy.get("[data-testid='admin-submit']").click();
 };
 
 describe("E2E :: Admin e-mails", () => {
   itIf("renderiza a tela de login", () => {
     visitAdmin("/");
-    cy.contains("Chroma Admin").should("exist");
-    cy.contains("Entrar").should("exist");
+    cy.get("[data-testid='admin-login']").should("exist");
   });
 
   itIfAuth("navega para templates de email", () => {
     loginAdmin();
-    cy.contains("a", "E-mails").click();
-    cy.contains("Templates de email").should("exist");
-    cy.contains("Templates cadastrados").should("exist");
+    cy.get("[data-testid='admin-nav-emails']").click();
+    cy.get("[data-testid='admin-email-templates-title']").should("exist");
   });
 
   itIfAuth("navega para reenvio de cobrancas", () => {
     loginAdmin();
-    cy.contains("a", "Reenvio cobranças").click();
-    cy.contains("Reenvio de cobranças").should("exist");
+    cy.get("[data-testid='admin-nav-cobrancas']").click();
+    cy.get("[data-testid='admin-billing-resend-title']").should("exist");
   });
 
   itIfAuth("navega para historico de emails", () => {
     loginAdmin();
-    cy.contains("a", "Histórico e-mails").click();
-    cy.contains("Histórico geral de e-mails").should("exist");
+    cy.get("[data-testid='admin-nav-email-logs']").click();
+    cy.get("[data-testid='admin-email-logs-title']").should("exist");
   });
 });

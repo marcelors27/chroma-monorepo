@@ -236,12 +236,14 @@ const Dashboard = () => {
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
                 className="pl-9"
+                data-testid="catalog-search"
               />
             </div>
             <Button
               variant={showFilters ? "secondary" : "outline"}
               onClick={() => setShowFilters(!showFilters)}
               className="gap-2"
+              data-testid="catalog-filters-toggle"
             >
               <Filter className="h-4 w-4" />
               Filtros
@@ -252,7 +254,12 @@ const Dashboard = () => {
               )}
             </Button>
             {hasActiveFilters && (
-              <Button variant="ghost" onClick={clearFilters} className="gap-2">
+              <Button
+                variant="ghost"
+                onClick={clearFilters}
+                className="gap-2"
+                data-testid="catalog-filters-clear"
+              >
                 <X className="h-4 w-4" />
                 Limpar
               </Button>
@@ -419,6 +426,7 @@ const ProductCard = ({
         onClick={() => {
           sessionStorage.setItem("dashboard-scroll", String(window.scrollY));
         }}
+        data-testid="catalog-product-link"
       >
         <div className="aspect-square bg-secondary mb-2 sm:mb-4 border-2 border-border overflow-hidden">
           <img 
@@ -444,6 +452,7 @@ const ProductCard = ({
         className="w-full text-xs sm:text-sm h-8 sm:h-10"
         onClick={() => onAdd(product)}
         disabled={!canAdd}
+        data-testid="catalog-add-to-cart"
       >
         <span className="sm:hidden">Comprar</span>
         <span className="hidden sm:inline">Adicionar ao carrinho</span>
