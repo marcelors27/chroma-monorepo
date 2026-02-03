@@ -1,4 +1,5 @@
-import { Slider as TamaguiSlider } from "tamagui";
+import React from "react";
+import { Slider as TamaguiSlider } from "@tamagui/slider";
 
 type UISliderProps = {
   value: number;

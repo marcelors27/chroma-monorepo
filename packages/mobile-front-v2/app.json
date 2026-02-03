@@ -20,7 +20,7 @@
     ],
     "android": {
       "package": "com.chroma.mobilestore",
-      "googleServicesFile": "google-services.json",
+      "googleServicesFile": "../../keys/mobile-front-v2/google-services.json",
       "statusBar": {
         "barStyle": "light-content",
         "backgroundColor": "#000000"

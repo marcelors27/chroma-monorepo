@@ -37,6 +37,17 @@ Para subir tudo junto na raiz: `pnpm dev` (usa `concurrently`).
 - `packages/api/seed/` — `products.json` e script `seed.js` que autentica no admin e cria produtos.
 - `packages/store/` — Next 14 com páginas em `pages/`, estilos em `styles/`.
 - `packages/admin/` — Vite + React com login de admin e tabelas de produtos/pedidos.
+- `keys/` — arquivos sensiveis (ignorado no Git).
+
+## Arquivos sensiveis (keys/)
+Esta pasta contem chaves e credenciais e **eh ignorada pelo Git**. Veja o guia em `keys/README.md`.
+
+Resumo dos caminhos atuais:
+- Android (mobile): `keys/mobile-front-v2/google-services.json` e `keys/mobile-front-v2/debug.keystore`.
+- Service account Firebase (se usado pela API): `keys/mobile-front-v2/totemic-vine-484901-g8-767002905f28.json`.
+- API: `keys/api/chroma_auth_private.pem` e `keys/api/chroma_auth_public.pem`.
+
+Para Firebase Admin na API, configure `FIREBASE_SERVICE_ACCOUNT_PATH` apontando para o arquivo em `keys/` (veja detalhes em `keys/README.md`).
 
 ## Produção/variáveis
 - Ajuste `STORE_CORS`, `ADMIN_CORS`, `AUTH_CORS`, `DATABASE_URL` e `REDIS_URL` no `.env` da API.

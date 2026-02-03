@@ -10,6 +10,7 @@ import {
   Home,
   Repeat,
   Hexagon,
+  Star,
 } from "lucide-react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import {
@@ -150,9 +151,19 @@ const AppLayout = () => {
                 ))}
               </select>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Pontos: {selectedCondo?.pointsBalance ?? 0}
-            </p>
+            <div className="mt-3 flex items-center gap-3 rounded-xl border border-border/60 bg-card/70 px-3 py-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/15 text-amber-300">
+                <Star className="h-4 w-4" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Pontos do condominio
+                </p>
+                <p className="text-lg font-semibold text-foreground">
+                  {selectedCondo?.pointsBalance ?? 0}
+                </p>
+              </div>
+            </div>
           </div>
 
           <nav className="flex-1 p-4">

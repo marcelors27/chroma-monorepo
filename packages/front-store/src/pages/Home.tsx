@@ -21,6 +21,8 @@ import {
   getProductImage,
   getVariant,
   getVariantPricing,
+  getCustomerMe,
+  getTokenValue,
   listNews,
   listMarketingBanners,
   listProducts,
@@ -32,7 +34,13 @@ import {
 
 const Home = () => {
   const { addItem } = useCart();
+  const authToken = getTokenValue();
   const { data, isLoading } = useQuery({ queryKey: ["home-products"], queryFn: listProducts });
+  const { data: customerData } = useQuery({
+    queryKey: ["customer-me"],
+    queryFn: getCustomerMe,
+    enabled: Boolean(authToken),
+  });
   const { data: newsData, isLoading: isNewsLoading } = useQuery({
     queryKey: ["home-news"],
     queryFn: () => listNews({ limit: 4 }),
@@ -44,7 +52,25 @@ const Home = () => {
 
   const promotions = useMemo(() => {
     const items = data?.products || [];
+    const isTruthy = (value: unknown) => {
+      if (value === true || value === 1) return true;
+      if (typeof value === "string") {
+        const normalized = value.trim().toLowerCase();
+        return ["true", "1", "yes", "sim"].includes(normalized);
+      }
+      return false;
+    };
+    const isFeatured = (product: MedusaProduct) => {
+      const metadata = product?.metadata || {};
+      return (
+        isTruthy((metadata as any).featured) ||
+        isTruthy((metadata as any).destaque) ||
+        isTruthy((metadata as any).em_destaque)
+      );
+    };
+
     return items
+      .filter((product: MedusaProduct) => isFeatured(product))
       .map((product: MedusaProduct) => {
         const variant = getVariant(product);
         const pricing = getVariantPricing(variant);
@@ -62,7 +88,6 @@ const Home = () => {
           category: getProductCategory(product),
         };
       })
-      .filter((promo) => promo.onSale)
       .slice(0, 3);
   }, [data]);
 
@@ -91,6 +116,16 @@ const Home = () => {
       month: 'short',
     });
   };
+
+  const customer = customerData?.customer;
+  const greetingName = [
+    customer?.first_name,
+    customer?.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim() || ((customer?.metadata as any)?.nome ?? (customer?.metadata as any)?.name ?? "");
+  const greeting = `Olá, ${greetingName}`.trim();
 
   const newsItems = (newsData?.news || []) as MedusaNews[];
   const banners = (bannerData?.banners || []) as MedusaMarketingBanner[];
@@ -219,7 +254,7 @@ const Home = () => {
       <div className="max-w-6xl mx-auto relative z-10 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Olá, bem-vindo!</h1>
+        <h1 className="text-3xl font-bold text-foreground">{greeting}</h1>
         <p className="text-muted-foreground mt-1">
           Confira as melhores ofertas e novidades para seu condomínio
         </p>

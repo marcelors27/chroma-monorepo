@@ -36,6 +36,7 @@ Thumbs.db
 *.pfx
 *.jks
 *.keystore
+keys/
 
 android/.gradle/
 android/local.properties
