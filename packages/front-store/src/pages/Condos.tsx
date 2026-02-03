@@ -149,6 +149,9 @@ const Condos = () => {
   const [transferEndDate, setTransferEndDate] = useState("");
   const [transferPermanent, setTransferPermanent] = useState(false);
   const [isTransferSubmitting, setIsTransferSubmitting] = useState(false);
+  const hasApprovedCondo = useMemo(() => condos.some((condo) => condo.approved), [condos]);
+  const isFirstAccess = !hasApprovedCondo;
+  const isFirstAccessCreation = isFirstAccess && !editingCondo;
 
   const mapCompanyToCondo = (company: any): Condo => {
     const metadata = company?.metadata || {};
@@ -637,27 +640,159 @@ const Condos = () => {
                   </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="mt-4">
-                  <Tabs defaultValue="basico" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4 mb-6">
-                      <TabsTrigger value="basico" className="gap-1 text-xs sm:text-sm">
-                        <Building2 className="h-4 w-4 hidden sm:block" />
-                        Básico
-                      </TabsTrigger>
-                      <TabsTrigger value="endereco" className="gap-1 text-xs sm:text-sm">
-                        <MapPin className="h-4 w-4 hidden sm:block" />
-                        Endereço
-                      </TabsTrigger>
-                      <TabsTrigger value="contato" className="gap-1 text-xs sm:text-sm">
-                        <Phone className="h-4 w-4 hidden sm:block" />
-                        Contato
-                      </TabsTrigger>
-                      <TabsTrigger value="predio" className="gap-1 text-xs sm:text-sm">
-                        <Home className="h-4 w-4 hidden sm:block" />
-                        Prédio
-                      </TabsTrigger>
-                    </TabsList>
+                  {isFirstAccessCreation ? (
+                    <div className="space-y-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                          <Building2 className="h-4 w-4" />
+                          Dados do condomínio
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Nome do Condomínio *</Label>
+                          <Input
+                            id="name"
+                            placeholder="Ex: Condomínio Residencial Vista Mar"
+                            className="h-12 border-2"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="cnpj">CNPJ *</Label>
+                          <div className="relative">
+                            <Input
+                              id="cnpj"
+                              placeholder="00.000.000/0000-00"
+                              className="h-12 border-2 pr-10"
+                              value={formData.cnpj}
+                              onChange={handleCNPJChange}
+                              maxLength={18}
+                            />
+                            {isLoadingCNPJ && (
+                              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
 
-                    <TabsContent value="basico" className="space-y-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                          <MapPin className="h-4 w-4" />
+                          Endereço
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2 col-span-1">
+                            <Label htmlFor="cep">CEP</Label>
+                            <div className="relative">
+                              <Input
+                                id="cep"
+                                placeholder="00000-000"
+                                className="h-12 border-2 pr-10"
+                                value={formData.cep || formData.zip}
+                                onChange={handleCEPChange}
+                                maxLength={9}
+                              />
+                              {isLoadingCEP && (
+                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                              )}
+                            </div>
+                          </div>
+                          <div className="space-y-2 col-span-2">
+                            <Label htmlFor="address">Logradouro</Label>
+                            <Input
+                              id="address"
+                              placeholder="Rua, Avenida, etc."
+                              className="h-12 border-2"
+                              value={formData.address}
+                              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="numero">Número</Label>
+                            <Input
+                              id="numero"
+                              placeholder="Nº"
+                              className="h-12 border-2"
+                              value={formData.numero}
+                              onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2 col-span-2">
+                            <Label htmlFor="complemento">Complemento</Label>
+                            <Input
+                              id="complemento"
+                              placeholder="Bloco, Apto, etc."
+                              className="h-12 border-2"
+                              value={formData.complemento}
+                              onChange={(e) => setFormData({ ...formData, complemento: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="bairro">Bairro</Label>
+                          <Input
+                            id="bairro"
+                            placeholder="Nome do bairro"
+                            className="h-12 border-2"
+                            value={formData.bairro || formData.neighborhood}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                bairro: e.target.value,
+                                neighborhood: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2 col-span-2">
+                            <Label htmlFor="city">Cidade</Label>
+                            <Input
+                              id="city"
+                              placeholder="São Paulo"
+                              className="h-12 border-2"
+                              value={formData.city}
+                              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="state">Estado</Label>
+                            <Input
+                              id="state"
+                              placeholder="SP"
+                              className="h-12 border-2"
+                              maxLength={2}
+                              value={formData.state}
+                              onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <Tabs defaultValue="basico" className="w-full">
+                      <TabsList className="grid w-full grid-cols-4 mb-6">
+                        <TabsTrigger value="basico" className="gap-1 text-xs sm:text-sm">
+                          <Building2 className="h-4 w-4 hidden sm:block" />
+                          Básico
+                        </TabsTrigger>
+                        <TabsTrigger value="endereco" className="gap-1 text-xs sm:text-sm">
+                          <MapPin className="h-4 w-4 hidden sm:block" />
+                          Endereço
+                        </TabsTrigger>
+                        <TabsTrigger value="contato" className="gap-1 text-xs sm:text-sm">
+                          <Phone className="h-4 w-4 hidden sm:block" />
+                          Contato
+                        </TabsTrigger>
+                        <TabsTrigger value="predio" className="gap-1 text-xs sm:text-sm">
+                          <Home className="h-4 w-4 hidden sm:block" />
+                          Prédio
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="basico" className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">Nome do Condomínio *</Label>
                         <Input
@@ -1067,6 +1202,7 @@ const Condos = () => {
                       </div>
                     </TabsContent>
                   </Tabs>
+                  )}
 
                   <div className="flex gap-4 pt-6 mt-6 border-t-2 border-border">
                     <Button 

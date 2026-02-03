@@ -379,36 +379,40 @@ export default function CondominioDetalhes() {
             onChangeText={(value) => handleChange("state", value)}
             marginTop={4}
           />
-          <Label marginTop={12}>Telefone</Label>
-          <Input
-            value={formData.phone}
-            editable={isEditing}
-            onChangeText={(value) => handleChange("phone", value)}
-            marginTop={4}
-          />
-          <Label marginTop={12}>E-mail</Label>
-          <Input
-            value={formData.email}
-            editable={isEditing}
-            onChangeText={(value) => handleChange("email", value)}
-            marginTop={4}
-          />
-          <Label marginTop={12}>E-mails para boleto/PIX</Label>
-          <Input
-            value={formData.billingEmails}
-            editable={isEditing}
-            onChangeText={(value) => handleChange("billingEmails", value)}
-            marginTop={4}
-            placeholder="financeiro@condominio.com.br, sindico@condominio.com.br"
-          />
-          <Label marginTop={12}>Observações</Label>
-          <Textarea
-            value={formData.notes}
-            editable={isEditing}
-            onChangeText={(value) => handleChange("notes", value)}
-            marginTop={4}
-            minHeight={120}
-          />
+          {!isFirstAccess && (
+            <>
+              <Label marginTop={12}>Telefone</Label>
+              <Input
+                value={formData.phone}
+                editable={isEditing}
+                onChangeText={(value) => handleChange("phone", value)}
+                marginTop={4}
+              />
+              <Label marginTop={12}>E-mail</Label>
+              <Input
+                value={formData.email}
+                editable={isEditing}
+                onChangeText={(value) => handleChange("email", value)}
+                marginTop={4}
+              />
+              <Label marginTop={12}>E-mails para boleto/PIX</Label>
+              <Input
+                value={formData.billingEmails}
+                editable={isEditing}
+                onChangeText={(value) => handleChange("billingEmails", value)}
+                marginTop={4}
+                placeholder="financeiro@condominio.com.br, sindico@condominio.com.br"
+              />
+              <Label marginTop={12}>Observações</Label>
+              <Textarea
+                value={formData.notes}
+                editable={isEditing}
+                onChangeText={(value) => handleChange("notes", value)}
+                marginTop={4}
+                minHeight={120}
+              />
+            </>
+          )}
           {isNew ? (
             <View style={styles.saveRow}>
               <Button
