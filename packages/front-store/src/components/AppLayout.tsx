@@ -19,7 +19,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import CartDrawer from "@/components/CartDrawer";
-import { getActiveCondo, listCompanies, setActiveCondo } from "@/lib/medusa";
+import { clearSession, getActiveCondo, listCompanies, setActiveCondo } from "@/lib/medusa";
 import { registerWebPush } from "@/lib/push";
 import dashboardBg from "@/assets/dashboard-bg.jpg";
 import logo from "@/assets/logo.png";
@@ -38,6 +38,9 @@ const AppLayout = () => {
   const [condos, setCondos] = useState<CondoOption[]>([]);
   const [selectedCondo, setSelectedCondo] = useState<CondoOption | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isFirstAccessCondos = location.pathname === "/condos" && condos.length === 0;
+  const showSidebar = !isFirstAccessCondos;
+  const showMobileHeader = !isFirstAccessCondos;
 
   useEffect(() => {
     let mounted = true;
@@ -101,6 +104,9 @@ const AppLayout = () => {
   }, [selectedCondo?.id]);
 
   const handleLogout = () => {
+    clearSession();
+    setActiveCondo(null);
+    setSelectedCondo(null);
     navigate("/");
   };
 
@@ -117,7 +123,8 @@ const AppLayout = () => {
 
       <div className="relative z-10 flex min-h-screen w-full">
         {/* Sidebar - Desktop */}
-        <aside className="hidden lg:flex w-72 border-r border-border/70 bg-background/80 backdrop-blur-xl flex-col flex-shrink-0">
+        {showSidebar && (
+          <aside className="hidden lg:flex w-72 border-r border-border/70 bg-background/80 backdrop-blur-xl flex-col flex-shrink-0">
           <div className="p-6 border-b border-border/70">
             <Link to="/dashboard" className="flex items-center gap-2">
               <img src={logo} alt="Chroma" className="h-8 w-8" />
@@ -187,121 +194,138 @@ const AppLayout = () => {
               Sair
             </Button>
           </div>
-        </aside>
+          </aside>
+        )}
 
         {/* Mobile Header */}
-        <div className="lg:hidden fixed top-0 left-0 right-0 bg-background/85 backdrop-blur-xl border-b border-border/70 z-50">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-2">
-              <img src={logo} alt="Chroma" className="h-6 w-6" />
-              <span className="font-bold text-primary">Chroma</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CartDrawer />
-              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="icon" className="border border-border/60 bg-background/40">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-72 p-0 bg-card/95 backdrop-blur-xl">
-                  <div className="p-6 border-b border-border/70">
-                    <div className="flex items-center gap-2">
-                      <img src={logo} alt="Chroma" className="h-8 w-8" />
-                      <span className="text-xl font-bold text-primary">Chroma</span>
-                    </div>
-                  </div>
-                  <div className="p-4 border-b border-border/70">
-                    <p className="text-sm text-muted-foreground mb-2">Condomínio ativo</p>
-                    <div className="relative" title={selectedCondo?.name || "Sem empresa aprovada"}>
-                      <select 
-                        className="w-full p-3 border border-border/60 bg-background/40 font-medium text-foreground rounded-md appearance-none cursor-pointer text-base min-h-[48px] touch-manipulation truncate pr-8"
-                        style={{ fontSize: '16px' }}
-                        value={selectedCondo?.id || ""}
-                        disabled={!condos.length}
-                        onChange={(e) => {
-                          const condo = condos.find(c => c.id === e.target.value);
-                          if (condo) setSelectedCondo(condo);
-                        }}
-                      >
-                        {condos.length === 0 && (
-                          <option value="">Sem empresa aprovada</option>
-                        )}
-                        {condos.map((condo) => (
-                          <option key={condo.id} value={condo.id} className="text-base py-2">
-                            {condo.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Pontos: {selectedCondo?.pointsBalance ?? 0}
-                    </p>
-                  </div>
-                  <nav className="p-4">
-                    <ul className="space-y-2">
-                      <NavItem 
-                        icon={<Home />} 
-                        label="Início" 
-                        href="/home" 
-                        active={isActive("/home")}
-                        onClick={() => setMobileMenuOpen(false)}
-                      />
-                      <NavItem 
-                        icon={<ShoppingCart />} 
-                        label="Produtos" 
-                        href="/dashboard" 
-                        active={isActive("/dashboard")}
-                        onClick={() => setMobileMenuOpen(false)}
-                      />
-                      <NavItem 
-                        icon={<Package />} 
-                        label="Meus Pedidos" 
-                        href="/orders" 
-                        active={isActive("/orders")}
-                        onClick={() => setMobileMenuOpen(false)}
-                      />
-                      <NavItem 
-                        icon={<Repeat />} 
-                        label="Recorrentes" 
-                        href="/recurrences" 
-                        active={isActive("/recurrences")}
-                        onClick={() => setMobileMenuOpen(false)}
-                      />
-                      <NavItem 
-                        icon={<Hexagon />} 
-                        label="Condomínios" 
-                        href="/condos" 
-                        active={isActive("/condos")}
-                        onClick={() => setMobileMenuOpen(false)}
-                      />
-                      <NavItem 
-                        icon={<Settings />} 
-                        label="Configurações" 
-                        href="/settings" 
-                        active={isActive("/settings")}
-                        onClick={() => setMobileMenuOpen(false)}
-                      />
-                    </ul>
-                  </nav>
-                  <div className="p-4 border-t border-border/70 mt-auto">
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-start gap-2 border border-border/60 bg-background/40"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Sair
+        {showMobileHeader && (
+          <div className="lg:hidden fixed top-0 left-0 right-0 bg-background/85 backdrop-blur-xl border-b border-border/70 z-50">
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-2">
+                <img src={logo} alt="Chroma" className="h-6 w-6" />
+                <span className="font-bold text-primary">Chroma</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CartDrawer />
+                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="icon" className="border border-border/60 bg-background/40">
+                      <Menu className="h-5 w-5" />
                     </Button>
-                  </div>
-                </SheetContent>
-              </Sheet>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-72 p-0 bg-card/95 backdrop-blur-xl">
+                    <div className="p-6 border-b border-border/70">
+                      <div className="flex items-center gap-2">
+                        <img src={logo} alt="Chroma" className="h-8 w-8" />
+                        <span className="text-xl font-bold text-primary">Chroma</span>
+                      </div>
+                    </div>
+                    <div className="p-4 border-b border-border/70">
+                      <p className="text-sm text-muted-foreground mb-2">Condomínio ativo</p>
+                      <div className="relative" title={selectedCondo?.name || "Sem empresa aprovada"}>
+                        <select 
+                          className="w-full p-3 border border-border/60 bg-background/40 font-medium text-foreground rounded-md appearance-none cursor-pointer text-base min-h-[48px] touch-manipulation truncate pr-8"
+                          style={{ fontSize: '16px' }}
+                          value={selectedCondo?.id || ""}
+                          disabled={!condos.length}
+                          onChange={(e) => {
+                            const condo = condos.find(c => c.id === e.target.value);
+                            if (condo) setSelectedCondo(condo);
+                          }}
+                        >
+                          {condos.length === 0 && (
+                            <option value="">Sem empresa aprovada</option>
+                          )}
+                          {condos.map((condo) => (
+                            <option key={condo.id} value={condo.id} className="text-base py-2">
+                              {condo.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Pontos: {selectedCondo?.pointsBalance ?? 0}
+                      </p>
+                    </div>
+                    <nav className="p-4">
+                      <ul className="space-y-2">
+                        <NavItem 
+                          icon={<Home />} 
+                          label="Início" 
+                          href="/home" 
+                          active={isActive("/home")}
+                          onClick={() => setMobileMenuOpen(false)}
+                        />
+                        <NavItem 
+                          icon={<ShoppingCart />} 
+                          label="Produtos" 
+                          href="/dashboard" 
+                          active={isActive("/dashboard")}
+                          onClick={() => setMobileMenuOpen(false)}
+                        />
+                        <NavItem 
+                          icon={<Package />} 
+                          label="Meus Pedidos" 
+                          href="/orders" 
+                          active={isActive("/orders")}
+                          onClick={() => setMobileMenuOpen(false)}
+                        />
+                        <NavItem 
+                          icon={<Repeat />} 
+                          label="Recorrentes" 
+                          href="/recurrences" 
+                          active={isActive("/recurrences")}
+                          onClick={() => setMobileMenuOpen(false)}
+                        />
+                        <NavItem 
+                          icon={<Hexagon />} 
+                          label="Condomínios" 
+                          href="/condos" 
+                          active={isActive("/condos")}
+                          onClick={() => setMobileMenuOpen(false)}
+                        />
+                        <NavItem 
+                          icon={<Settings />} 
+                          label="Configurações" 
+                          href="/settings" 
+                          active={isActive("/settings")}
+                          onClick={() => setMobileMenuOpen(false)}
+                        />
+                      </ul>
+                    </nav>
+                    <div className="p-4 border-t border-border/70 mt-auto">
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start gap-2 border border-border/60 bg-background/40"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Sair
+                      </Button>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Main Content */}
-        <main className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 min-h-screen relative z-10">
+        <main
+          className={`flex-1 lg:p-8 p-4 ${showMobileHeader ? "pt-20" : "pt-6"} lg:pt-8 min-h-screen relative z-10`}
+        >
+          {isFirstAccessCondos && (
+            <div className="flex items-center justify-between mb-6 border-b border-border/70 pb-4">
+              <div className="flex items-center gap-2">
+                <img src={logo} alt="Chroma" className="h-7 w-7" />
+                <span className="text-lg font-bold text-primary">Chroma</span>
+              </div>
+              <Button variant="outline" className="border border-border/60" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </Button>
+            </div>
+          )}
           <Outlet context={{ selectedCondo }} />
         </main>
       </div>

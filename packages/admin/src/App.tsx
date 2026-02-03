@@ -10,6 +10,7 @@ import BillingResendSection from "./modules/BillingResendSection"
 import EmailLogsSection from "./modules/EmailLogsSection"
 import OrdersSection from "./modules/OrdersSection"
 import PaymentsSection from "./modules/PaymentsSection"
+import PendingCondosSection from "./modules/PendingCondosSection"
 import ProductsSection from "./modules/ProductsSection"
 import DeliveryMethodsSection from "./modules/DeliveryMethodsSection"
 import ServiceZonesSection from "./modules/ServiceZonesSection"
@@ -85,8 +86,14 @@ export default function App() {
       { id: "emails", label: "E-mails", path: "/emails", count: 0 },
       { id: "cobrancas", label: "Reenvio cobranças", path: "/cobrancas", count: 0 },
       { id: "email-logs", label: "Histórico e-mails", path: "/email-logs", count: 0 },
-      { id: "pagamentos", label: "Pagamentos", path: "/pagamentos", count: pendingCompanies.length },
+      { id: "pagamentos", label: "Pagamentos", path: "/pagamentos", count: 0 },
       { id: "push", label: "Push", path: "/push", count: 0 },
+      {
+        id: "condominios-pendentes",
+        label: "Condomínios pendentes",
+        path: "/condominios-pendentes",
+        count: pendingCompanies.length,
+      },
       { id: "produtos", label: "Produtos", path: "/produtos", count: products.length },
       { id: "entregas", label: "Formas de entrega", path: "/entregas", count: deliveryMethodsCount },
       { id: "zonas-servico", label: "Zonas de serviço", path: "/zonas-servico", count: serviceZonesCount },
@@ -141,7 +148,7 @@ export default function App() {
       },
       {
         label: "Configurações",
-        items: ["canais", "usuarios", "emails", "email-logs"]
+        items: ["condominios-pendentes", "canais", "usuarios", "emails", "email-logs"]
           .map((id) => sectionById.get(id))
           .filter(Boolean),
       },
@@ -548,12 +555,6 @@ export default function App() {
                     <PaymentsSection
                       medusaUrl={MEDUSA_URL}
                       headers={headers}
-                      pendingCompanies={pendingCompanies}
-                      setPendingCompanies={setPendingCompanies}
-                      pendingCompaniesError={pendingCompaniesError}
-                      setPendingCompaniesError={setPendingCompaniesError}
-                      pendingCompanyActionId={pendingCompanyActionId}
-                      setPendingCompanyActionId={setPendingCompanyActionId}
                       companies={companies}
                       setCompanies={setCompanies}
                       companiesError={companiesError}
@@ -563,6 +564,21 @@ export default function App() {
                       companySavingId={companySavingId}
                       setCompanySavingId={setCompanySavingId}
                       stockLocations={stockLocations}
+                    />
+                  }
+                />
+                <Route
+                  path="/condominios-pendentes"
+                  element={
+                    <PendingCondosSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      pendingCompanies={pendingCompanies}
+                      setPendingCompanies={setPendingCompanies}
+                      pendingCompaniesError={pendingCompaniesError}
+                      setPendingCompaniesError={setPendingCompaniesError}
+                      pendingCompanyActionId={pendingCompanyActionId}
+                      setPendingCompanyActionId={setPendingCompanyActionId}
                     />
                   }
                 />

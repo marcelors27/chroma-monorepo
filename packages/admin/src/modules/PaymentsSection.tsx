@@ -1,17 +1,10 @@
 import type { Dispatch, SetStateAction } from "react"
 
-import { AdminCompany, PendingCompany, StockLocation } from "../types"
-import { formatCnpj } from "../utils/format"
+import { AdminCompany, StockLocation } from "../types"
 
 type PaymentsSectionProps = {
   medusaUrl: string
   headers: Record<string, string>
-  pendingCompanies: PendingCompany[]
-  setPendingCompanies: Dispatch<SetStateAction<PendingCompany[]>>
-  pendingCompaniesError: string | null
-  setPendingCompaniesError: Dispatch<SetStateAction<string | null>>
-  pendingCompanyActionId: string | null
-  setPendingCompanyActionId: Dispatch<SetStateAction<string | null>>
   companies: AdminCompany[]
   setCompanies: Dispatch<SetStateAction<AdminCompany[]>>
   companiesError: string | null
@@ -26,12 +19,6 @@ type PaymentsSectionProps = {
 export default function PaymentsSection({
   medusaUrl,
   headers,
-  pendingCompanies,
-  setPendingCompanies,
-  pendingCompaniesError,
-  setPendingCompaniesError,
-  pendingCompanyActionId,
-  setPendingCompanyActionId,
   companies,
   setCompanies,
   companiesError,
@@ -42,26 +29,6 @@ export default function PaymentsSection({
   setCompanySavingId,
   stockLocations,
 }: PaymentsSectionProps) {
-  async function setCompanyApproval(companyId: string, approved: boolean) {
-    setPendingCompanyActionId(companyId)
-    try {
-      const endpoint = approved ? "approve" : "reject"
-      const res = await fetch(`${medusaUrl}/admin/companies/${companyId}/${endpoint}`, {
-        method: "POST",
-        headers,
-      })
-      if (!res.ok) {
-        const body = await res.text()
-        throw new Error(body || "Não foi possível atualizar status")
-      }
-      setPendingCompanies((prev) => prev.filter((company) => company.id !== companyId))
-    } catch (err: any) {
-      setPendingCompaniesError(err?.message || "Erro ao alterar status")
-    } finally {
-      setPendingCompanyActionId(null)
-    }
-  }
-
   const handleCompanyEmailChange = (companyId: string, value: string) => {
     setCompanyEmailEdits((prev) => ({ ...prev, [companyId]: value }))
   }
@@ -104,11 +71,6 @@ export default function PaymentsSection({
 
       <section className="grid grid-3">
         <div className="panel grid" style={{ gap: "0.35rem" }}>
-          <span className="muted">Pendências</span>
-          <strong style={{ fontSize: "1.6rem" }}>{pendingCompanies.length}</strong>
-          <span className="muted">Empresas aguardando</span>
-        </div>
-        <div className="panel grid" style={{ gap: "0.35rem" }}>
           <span className="muted">Condomínios</span>
           <strong style={{ fontSize: "1.6rem" }}>{companies.length}</strong>
           <span className="muted">Com cadastro ativo</span>
@@ -119,81 +81,6 @@ export default function PaymentsSection({
             {companies.filter((company) => companyEmailEdits[company.id]?.trim()).length}
           </strong>
           <span className="muted">E-mails configurados</span>
-        </div>
-      </section>
-
-      <section className="panel">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "0.75rem",
-          }}
-        >
-          <div>
-            <h3>Empresas aguardando aprovação</h3>
-            <p className="muted" style={{ marginTop: "0.25rem" }}>
-              Use os dados da empresa para liberar ou negar o acesso ao catálogo.
-            </p>
-          </div>
-          <span className="pill">{pendingCompanies.length} pendentes</span>
-        </div>
-
-        {pendingCompaniesError && <div className="muted">Erro: {pendingCompaniesError}</div>}
-
-        <div style={{ overflowX: "auto" }}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Empresa</th>
-                <th>Nome fantasia</th>
-                <th>CNPJ</th>
-                <th>E-mail</th>
-                <th>Criado em</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendingCompanies.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: "center" }}>
-                    Nenhum cadastro aguardando análise.
-                  </td>
-                </tr>
-              ) : (
-                pendingCompanies.map((company) => (
-                  <tr key={company.id}>
-                    <td>{company.trade_name || "—"}</td>
-                    <td>{company.fantasy_name || "—"}</td>
-                    <td>{formatCnpj(company.cnpj || undefined)}</td>
-                    <td>{company.customer_email || "—"}</td>
-                    <td>
-                      {company.created_at
-                        ? new Date(company.created_at).toLocaleDateString("pt-BR")
-                        : "—"}
-                    </td>
-                    <td style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                      <button
-                        className="btn btn-sm"
-                        onClick={() => setCompanyApproval(company.id, true)}
-                        disabled={pendingCompanyActionId === company.id}
-                      >
-                        Aprovar
-                      </button>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setCompanyApproval(company.id, false)}
-                        disabled={pendingCompanyActionId === company.id}
-                      >
-                        Rejeitar
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
         </div>
       </section>
 
