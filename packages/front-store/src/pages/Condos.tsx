@@ -648,16 +648,6 @@ const Condos = () => {
                           Dados do condomínio
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="name">Nome do Condomínio *</Label>
-                          <Input
-                            id="name"
-                            placeholder="Ex: Condomínio Residencial Vista Mar"
-                            className="h-12 border-2"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
                           <Label htmlFor="cnpj">CNPJ *</Label>
                           <div className="relative">
                             <Input
@@ -672,6 +662,16 @@ const Condos = () => {
                               <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
                             )}
                           </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Nome do Condomínio *</Label>
+                          <Input
+                            id="name"
+                            placeholder="Ex: Condomínio Residencial Vista Mar"
+                            className="h-12 border-2"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          />
                         </div>
                       </div>
 

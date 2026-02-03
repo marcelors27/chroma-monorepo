@@ -131,6 +131,7 @@ const Home = () => {
   const banners = (bannerData?.banners || []) as MedusaMarketingBanner[];
   const [bannerIndex, setBannerIndex] = useState(0);
   const [isBannerPaused, setIsBannerPaused] = useState(false);
+  const [bannerColors, setBannerColors] = useState<Record<string, string>>({});
   const [isDragging, setIsDragging] = useState(false);
   const bannerTrackRef = useRef<HTMLDivElement | null>(null);
   const dragStartXRef = useRef(0);
@@ -192,6 +193,48 @@ const Home = () => {
   const goToNextBanner = () => {
     if (banners.length <= 1) return;
     setBannerIndex((prev) => (prev + 1) % banners.length);
+  };
+
+  const extractAverageColor = (img: HTMLImageElement) => {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+
+    const width = Math.min(img.naturalWidth || img.width || 1, 64);
+    const height = Math.min(img.naturalHeight || img.height || 1, 64);
+    canvas.width = width;
+    canvas.height = height;
+
+    try {
+      context.drawImage(img, 0, 0, width, height);
+      const { data } = context.getImageData(0, 0, width, height);
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i + 3];
+        if (alpha < 128) continue;
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+        count += 1;
+      }
+      if (!count) return null;
+      r = Math.round(r / count);
+      g = Math.round(g / count);
+      b = Math.round(b / count);
+      return `rgb(${r}, ${g}, ${b})`;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleBannerImageLoad = (bannerId: string) => (event: React.SyntheticEvent<HTMLImageElement>) => {
+    if (bannerColors[bannerId]) return;
+    const color = extractAverageColor(event.currentTarget);
+    if (!color) return;
+    setBannerColors((prev) => ({ ...prev, [bannerId]: color }));
   };
 
   const resolveNextIndex = (delta: number) => {
@@ -312,7 +355,10 @@ const Home = () => {
                     banner.animation_mobile_url || banner.image_mobile_url || desktopMedia;
                   const content = (
                     <div className="relative w-full shrink-0">
-                      <div className="relative w-full aspect-[1440/360]">
+                      <div
+                        className="relative w-full aspect-[1440/360]"
+                        style={{ backgroundColor: bannerColors[banner.id] || "hsl(var(--card))" }}
+                      >
                         {desktopMedia && (
                           <>
                             {isVideo(desktopMedia) ? (
@@ -329,6 +375,8 @@ const Home = () => {
                                 className="hidden md:block absolute inset-0 h-full w-full object-cover"
                                 src={desktopMedia}
                                 alt={banner.title}
+                                crossOrigin="anonymous"
+                                onLoad={handleBannerImageLoad(banner.id)}
                               />
                             )}
                             {isVideo(mobileMedia) ? (
@@ -345,6 +393,8 @@ const Home = () => {
                                 className="md:hidden absolute inset-0 h-full w-full object-cover"
                                 src={mobileMedia}
                                 alt={banner.title}
+                                crossOrigin="anonymous"
+                                onLoad={handleBannerImageLoad(banner.id)}
                               />
                             )}
                           </>
