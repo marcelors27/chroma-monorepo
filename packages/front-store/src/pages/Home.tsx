@@ -363,7 +363,7 @@ const Home = () => {
                           <>
                             {isVideo(desktopMedia) ? (
                               <video
-                                className="hidden md:block absolute inset-0 h-full w-full object-cover"
+                                className="hidden md:block absolute inset-0 h-full w-full object-contain"
                                 src={desktopMedia}
                                 autoPlay
                                 muted
@@ -372,7 +372,7 @@ const Home = () => {
                               />
                             ) : (
                               <img
-                                className="hidden md:block absolute inset-0 h-full w-full object-cover"
+                                className="hidden md:block absolute inset-0 h-full w-full object-contain"
                                 src={desktopMedia}
                                 alt={banner.title}
                                 crossOrigin="anonymous"
@@ -381,7 +381,7 @@ const Home = () => {
                             )}
                             {isVideo(mobileMedia) ? (
                               <video
-                                className="md:hidden absolute inset-0 h-full w-full object-cover"
+                                className="md:hidden absolute inset-0 h-full w-full object-contain"
                                 src={mobileMedia}
                                 autoPlay
                                 muted
@@ -390,7 +390,7 @@ const Home = () => {
                               />
                             ) : (
                               <img
-                                className="md:hidden absolute inset-0 h-full w-full object-cover"
+                                className="md:hidden absolute inset-0 h-full w-full object-contain"
                                 src={mobileMedia}
                                 alt={banner.title}
                                 crossOrigin="anonymous"
