@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,10 @@ const CompanyLink = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    navigate("/condos?new=1", { replace: true });
+  }, [navigate]);
   
   const [companies, setCompanies] = useState<Company[]>([
     { id: crypto.randomUUID(), cnpj: "", companyName: "", document: null, documentName: "" }

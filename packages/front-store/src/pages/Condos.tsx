@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,12 +56,15 @@ interface Condo {
   approved?: boolean;
   inscricaoEstadual: string;
   inscricaoMunicipal: string;
+  role: string;
   // Endereço
   cep: string;
+  zip: string;
   address: string;
   numero: string;
   complemento: string;
   bairro: string;
+  neighborhood: string;
   city: string;
   state: string;
   // Contato
@@ -78,6 +82,14 @@ interface Condo {
   sindico: string;
   administradora: string;
   observacoes: string;
+  units: string;
+  floors: string;
+  parkingSpots: string;
+  adminName: string;
+  adminPhone: string;
+  monthlyFee: string;
+  foundedAt: string;
+  notes: string;
 }
 
 const emptyFormData: Omit<Condo, 'id'> = {
@@ -86,11 +98,14 @@ const emptyFormData: Omit<Condo, 'id'> = {
   razaoSocial: "",
   inscricaoEstadual: "",
   inscricaoMunicipal: "",
+  role: "Síndico",
   cep: "",
+  zip: "",
   address: "",
   numero: "",
   complemento: "",
   bairro: "",
+  neighborhood: "",
   city: "",
   state: "",
   phone: "",
@@ -106,10 +121,19 @@ const emptyFormData: Omit<Condo, 'id'> = {
   sindico: "",
   administradora: "",
   observacoes: "",
+  units: "",
+  floors: "",
+  parkingSpots: "",
+  adminName: "",
+  adminPhone: "",
+  monthlyFee: "",
+  foundedAt: "",
+  notes: "",
 };
 
 const Condos = () => {
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [condos, setCondos] = useState<Condo[]>([]);
   const [isLoadingCondos, setIsLoadingCondos] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -136,11 +160,14 @@ const Condos = () => {
       approved: Boolean(company.approved),
       inscricaoEstadual: metadata.inscricaoEstadual || "",
       inscricaoMunicipal: metadata.inscricaoMunicipal || "",
-      cep: metadata.cep || "",
+      role: metadata.role || "Síndico",
+      cep: metadata.cep || metadata.zip || "",
+      zip: metadata.zip || metadata.cep || "",
       address: metadata.address || "",
       numero: metadata.numero || "",
       complemento: metadata.complemento || "",
       bairro: metadata.bairro || "",
+      neighborhood: metadata.neighborhood || metadata.bairro || "",
       city: metadata.city || "",
       state: metadata.state || "",
       phone: metadata.phone || "",
@@ -158,7 +185,20 @@ const Condos = () => {
       sindico: metadata.sindico || "",
       administradora: metadata.administradora || "",
       observacoes: metadata.observacoes || "",
+      units: metadata.units ?? metadata.totalUnidades ?? "",
+      floors: metadata.floors ?? metadata.totalAndares ?? "",
+      parkingSpots: metadata.parkingSpots ?? "",
+      adminName: metadata.adminName ?? "",
+      adminPhone: metadata.adminPhone ?? "",
+      monthlyFee: metadata.monthlyFee ?? "",
+      foundedAt: metadata.foundedAt ?? "",
+      notes: metadata.notes ?? metadata.observacoes ?? "",
     };
+  };
+
+  const toNumberOrZero = (value: string) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   };
 
   const buildCompanyMetadata = (data: Omit<Condo, "id">) => ({
@@ -166,11 +206,13 @@ const Condos = () => {
     razaoSocial: data.razaoSocial,
     inscricaoEstadual: data.inscricaoEstadual,
     inscricaoMunicipal: data.inscricaoMunicipal,
-    cep: data.cep,
+    cep: data.cep || data.zip,
+    zip: data.zip || data.cep,
     address: data.address,
     numero: data.numero,
     complemento: data.complemento,
     bairro: data.bairro,
+    neighborhood: data.neighborhood || data.bairro,
     city: data.city,
     state: data.state,
     phone: data.phone,
@@ -191,7 +233,29 @@ const Condos = () => {
     sindico: data.sindico,
     administradora: data.administradora,
     observacoes: data.observacoes,
+    units: toNumberOrZero(data.units),
+    floors: toNumberOrZero(data.floors),
+    parkingSpots: toNumberOrZero(data.parkingSpots),
+    role: data.role || "Síndico",
+    adminName: data.adminName,
+    adminPhone: data.adminPhone,
+    monthlyFee: toNumberOrZero(data.monthlyFee),
+    foundedAt: data.foundedAt,
+    notes: data.notes,
   });
+
+  useEffect(() => {
+    const shouldOpen = searchParams.get("new") === "1";
+    if (!shouldOpen) return;
+    setEditingCondo(null);
+    setFormData(emptyFormData);
+    setIsDialogOpen(true);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("new");
+      return next;
+    }, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     let mounted = true;
@@ -243,13 +307,15 @@ const Condos = () => {
         name: data.nome_fantasia || data.razao_social || prev.name,
         razaoSocial: data.razao_social || "",
         cep: data.cep ? formatCEP(data.cep) : prev.cep,
+        zip: data.cep ? formatCEP(data.cep) : prev.zip,
         address: data.logradouro || prev.address,
         numero: data.numero || prev.numero,
         complemento: data.complemento || prev.complemento,
         bairro: data.bairro || prev.bairro,
+        neighborhood: data.bairro || prev.neighborhood,
         city: data.municipio || prev.city,
         state: data.uf || prev.state,
-        phone: data.ddd_telefone_1 ? `(${data.ddd_telefone_1.substring(0, 2)}) ${data.ddd_telefone_1.substring(2)}` : prev.phone,
+        phone: data.ddd_telefone_1 ? data.ddd_telefone_1 : prev.phone,
         email: data.email || prev.email,
       }));
 
@@ -290,10 +356,8 @@ const Condos = () => {
 
     setIsLoadingCEP(true);
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
-      const data = await response.json();
-      
-      if (data.erro) {
+      const response = await fetch(`https://brasilapi.com.br/api/cep/v1/${cleanCEP}`);
+      if (!response.ok) {
         toast({
           title: "CEP não encontrado",
           description: "Verifique o CEP informado.",
@@ -302,13 +366,17 @@ const Condos = () => {
         return;
       }
 
+      const data = await response.json();
+
       setFormData(prev => ({
         ...prev,
-        address: data.logradouro || "",
-        bairro: data.bairro || "",
-        city: data.localidade || "",
-        state: data.uf || "",
-        complemento: data.complemento || prev.complemento,
+        address: data.street || prev.address,
+        bairro: data.neighborhood || prev.bairro,
+        neighborhood: data.neighborhood || prev.neighborhood,
+        city: data.city || prev.city,
+        state: data.state || prev.state,
+        cep: data.cep ? formatCEP(data.cep) : prev.cep,
+        zip: data.cep ? formatCEP(data.cep) : prev.zip,
       }));
 
       toast({
@@ -328,7 +396,7 @@ const Condos = () => {
 
   const handleCEPChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCEP(e.target.value);
-    setFormData({ ...formData, cep: formatted });
+    setFormData({ ...formData, cep: formatted, zip: formatted });
     
     // Auto-fetch when CEP is complete
     if (formatted.replace(/\D/g, "").length === 8) {
@@ -347,6 +415,11 @@ const Condos = () => {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhone(e.target.value);
     setFormData({ ...formData, phone: formatted });
+  };
+
+  const handleAdminPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(e.target.value);
+    setFormData({ ...formData, adminPhone: formatted });
   };
 
   const openEditDialog = (condo: Condo) => {
@@ -385,7 +458,7 @@ const Condos = () => {
 
     try {
       const payload = {
-        trade_name: formData.razaoSocial || formData.name,
+        trade_name: formData.name,
         fantasy_name: formData.name,
         cnpj: formData.cnpj.replace(/\D/g, ""),
         metadata: buildCompanyMetadata(formData),
@@ -624,6 +697,16 @@ const Condos = () => {
                           Digite o CNPJ completo para buscar dados automaticamente
                         </p>
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="role">Cargo do responsável</Label>
+                        <Input
+                          id="role"
+                          placeholder="Síndico"
+                          className="h-12 border-2"
+                          value={formData.role}
+                          onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                        />
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="inscricaoEstadual">Inscrição Estadual</Label>
@@ -657,7 +740,7 @@ const Condos = () => {
                               id="cep"
                               placeholder="00000-000"
                               className="h-12 border-2 pr-10"
-                              value={formData.cep}
+                              value={formData.cep || formData.zip}
                               onChange={handleCEPChange}
                               maxLength={9}
                             />
@@ -705,8 +788,14 @@ const Condos = () => {
                           id="bairro"
                           placeholder="Nome do bairro"
                           className="h-12 border-2"
-                          value={formData.bairro}
-                          onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
+                          value={formData.bairro || formData.neighborhood}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              bairro: e.target.value,
+                              neighborhood: e.target.value,
+                            })
+                          }
                         />
                       </div>
                       <div className="grid grid-cols-3 gap-4">
@@ -746,6 +835,29 @@ const Condos = () => {
                           maxLength={15}
                         />
                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="adminName">Responsável</Label>
+                          <Input
+                            id="adminName"
+                            placeholder="Nome do responsável"
+                            className="h-12 border-2"
+                            value={formData.adminName}
+                            onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="adminPhone">Telefone do responsável</Label>
+                          <Input
+                            id="adminPhone"
+                            placeholder="(00) 00000-0000"
+                            className="h-12 border-2"
+                            value={formData.adminPhone}
+                            onChange={handleAdminPhoneChange}
+                            maxLength={15}
+                          />
+                        </div>
+                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="email">E-mail</Label>
                         <Input
@@ -780,9 +892,77 @@ const Condos = () => {
                           onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="notes">Observações</Label>
+                        <Textarea
+                          id="notes"
+                          placeholder="Informações adicionais sobre o condomínio..."
+                          className="border-2 min-h-[100px]"
+                          value={formData.notes}
+                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        />
+                      </div>
                     </TabsContent>
 
                     <TabsContent value="predio" className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="units">Unidades</Label>
+                          <Input
+                            id="units"
+                            type="number"
+                            placeholder="Ex: 120"
+                            className="h-12 border-2"
+                            value={formData.units}
+                            onChange={(e) => setFormData({ ...formData, units: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="floors">Andares</Label>
+                          <Input
+                            id="floors"
+                            type="number"
+                            placeholder="Ex: 15"
+                            className="h-12 border-2"
+                            value={formData.floors}
+                            onChange={(e) => setFormData({ ...formData, floors: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="parkingSpots">Vagas</Label>
+                          <Input
+                            id="parkingSpots"
+                            type="number"
+                            placeholder="Ex: 80"
+                            className="h-12 border-2"
+                            value={formData.parkingSpots}
+                            onChange={(e) => setFormData({ ...formData, parkingSpots: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="monthlyFee">Taxa mensal</Label>
+                          <Input
+                            id="monthlyFee"
+                            type="number"
+                            placeholder="Ex: 350.00"
+                            className="h-12 border-2"
+                            value={formData.monthlyFee}
+                            onChange={(e) => setFormData({ ...formData, monthlyFee: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="foundedAt">Fundação</Label>
+                        <Input
+                          id="foundedAt"
+                          type="date"
+                          className="h-12 border-2"
+                          value={formData.foundedAt}
+                          onChange={(e) => setFormData({ ...formData, foundedAt: e.target.value })}
+                        />
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="totalUnidades">Total de Unidades</Label>
@@ -1045,10 +1225,10 @@ const Condos = () => {
                             {condo.phone}
                           </p>
                         )}
-                        {condo.totalUnidades && (
+                        {(condo.totalUnidades || condo.units) && (
                           <p className="text-sm text-muted-foreground flex items-center gap-1">
                             <Users className="h-3 w-3" />
-                            {condo.totalUnidades} unidades • {condo.totalBlocos} blocos
+                            {condo.totalUnidades || condo.units} unidades • {condo.totalBlocos} blocos
                           </p>
                         )}
                       </div>

@@ -33,7 +33,7 @@ const AccessPending = () => {
 
             <div className="space-y-3">
               <Button asChild className="w-full">
-                <Link to="/company-link">Cadastrar empresa</Link>
+                <Link to="/condos?new=1">Cadastrar empresa</Link>
               </Button>
               <Button asChild variant="outline" className="w-full border-2">
                 <Link to="/auth">Voltar ao login</Link>

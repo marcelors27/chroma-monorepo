@@ -47,7 +47,7 @@ const Auth = () => {
           title: "Seu acesso está em avaliação",
           description: "Vincule uma empresa para continuar.",
         });
-        navigate("/company-link");
+        navigate("/condos?new=1");
         return;
       }
     } catch {}
@@ -112,7 +112,7 @@ const Auth = () => {
           title: "Cadastro enviado!",
           description: "Vamos validar seus dados e liberar o catálogo.",
         });
-        navigate("/company-link");
+        navigate("/condos?new=1");
       }
     } catch (err: any) {
       toast({
