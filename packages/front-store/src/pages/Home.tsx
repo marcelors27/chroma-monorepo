@@ -375,7 +375,6 @@ const Home = () => {
                                 className="hidden md:block absolute inset-0 h-full w-full object-contain"
                                 src={desktopMedia}
                                 alt={banner.title}
-                                crossOrigin="anonymous"
                                 onLoad={handleBannerImageLoad(banner.id)}
                               />
                             )}
@@ -393,7 +392,6 @@ const Home = () => {
                                 className="md:hidden absolute inset-0 h-full w-full object-contain"
                                 src={mobileMedia}
                                 alt={banner.title}
-                                crossOrigin="anonymous"
                                 onLoad={handleBannerImageLoad(banner.id)}
                               />
                             )}
