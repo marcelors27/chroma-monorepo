@@ -31,7 +31,11 @@ const sdk = new NodeSDK({
     exporter: new OTLPMetricExporter(),
   }),
   logRecordProcessors: [new BatchLogRecordProcessor(new OTLPLogExporter())],
-  instrumentations: [getNodeAutoInstrumentations()],
+  instrumentations: [
+    getNodeAutoInstrumentations({
+      "@opentelemetry/instrumentation-aws-sdk": { enabled: false },
+    }),
+  ],
 })
 
 sdk
