@@ -62,6 +62,7 @@ function patchConsoleLogs() {
   if (process.env.OTEL_LOGS_ENABLED === "false") return
 
   const logger = logs.getLogger("console")
+  const minLevel = normalizeMinLevel(process.env.OTEL_LOGS_LEVEL || "debug")
   const levelMap = {
     debug: { severityNumber: SeverityNumber.DEBUG, severityText: "DEBUG" },
     info: { severityNumber: SeverityNumber.INFO, severityText: "INFO" },
@@ -75,11 +76,16 @@ function patchConsoleLogs() {
     console[method] = (...args) => {
       original.apply(console, args)
       try {
-        const { severityNumber, severityText } = levelMap[method]
+        const inferred = inferLogLevel(args, method)
+        const { severityNumber, severityText } = inferred || levelMap[method]
+        if (severityNumber < minLevel) return
+
+        const { message, attributes } = extractLogMessageAndAttributes(args)
         logger.emit({
           severityNumber,
           severityText,
-          body: args.map(formatLogArg).join(" "),
+          body: message,
+          attributes,
         })
       } catch {
         // never block app logging
@@ -116,4 +122,71 @@ function formatLogArg(arg) {
   } catch {
     return String(arg)
   }
+}
+
+function normalizeMinLevel(level) {
+  switch (String(level).toLowerCase()) {
+    case "error":
+      return SeverityNumber.ERROR
+    case "warn":
+    case "warning":
+      return SeverityNumber.WARN
+    case "info":
+      return SeverityNumber.INFO
+    case "debug":
+    case "trace":
+    default:
+      return SeverityNumber.DEBUG
+  }
+}
+
+function inferLogLevel(args) {
+  const first = args?.[0]
+  if (!first || typeof first !== "object") return null
+  const level = first.level ?? first.severity ?? first.severityText
+  if (!level) return null
+  const normalized = String(level).toLowerCase()
+  if (["fatal", "error"].includes(normalized)) {
+    return { severityNumber: SeverityNumber.ERROR, severityText: "ERROR" }
+  }
+  if (["warn", "warning"].includes(normalized)) {
+    return { severityNumber: SeverityNumber.WARN, severityText: "WARN" }
+  }
+  if (["info", "information"].includes(normalized)) {
+    return { severityNumber: SeverityNumber.INFO, severityText: "INFO" }
+  }
+  if (["debug", "trace"].includes(normalized)) {
+    return { severityNumber: SeverityNumber.DEBUG, severityText: "DEBUG" }
+  }
+  return null
+}
+
+function extractLogMessageAndAttributes(args) {
+  if (!args?.length) return { message: "", attributes: {} }
+  const attributes = {}
+  const messageParts = []
+  for (const arg of args) {
+    if (arg instanceof Error) {
+      attributes["error.type"] = arg.name
+      attributes["error.message"] = arg.message
+      attributes["error.stack"] = arg.stack
+      messageParts.push(arg.message)
+      continue
+    }
+    if (typeof arg === "object" && arg !== null) {
+      Object.entries(arg).forEach(([key, value]) => {
+        if (key === "message" || key === "msg") {
+          messageParts.push(String(value))
+        } else if (value !== undefined) {
+          attributes[key] = value
+        }
+      })
+      if (!("message" in arg) && !("msg" in arg)) {
+        messageParts.push(formatLogArg(arg))
+      }
+      continue
+    }
+    messageParts.push(formatLogArg(arg))
+  }
+  return { message: messageParts.join(" "), attributes }
 }
