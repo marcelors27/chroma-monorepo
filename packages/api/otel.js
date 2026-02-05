@@ -7,12 +7,19 @@ const { BatchLogRecordProcessor } = require("@opentelemetry/sdk-logs")
 const { PeriodicExportingMetricReader } = require("@opentelemetry/sdk-metrics")
 const { logs, SeverityNumber } = require("@opentelemetry/api-logs")
 
-const isOtelEnabled = Boolean(
+const hasOtelEndpoint = Boolean(
   process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
     process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ||
     process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT ||
     process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
 )
+
+const isExplicitlyEnabled = process.env.OTEL_ENABLED === "true"
+const isExplicitlyDisabled = process.env.OTEL_ENABLED === "false"
+const isProduction = process.env.NODE_ENV === "production"
+
+const isOtelEnabled =
+  !isExplicitlyDisabled && hasOtelEndpoint && (isProduction || isExplicitlyEnabled)
 
 if (!isOtelEnabled) {
   return
