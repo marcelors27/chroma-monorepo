@@ -27,13 +27,18 @@ if (!isOtelEnabled) {
 
 const sdk = new NodeSDK({
   traceExporter: new OTLPTraceExporter(),
-  metricReader: new PeriodicExportingMetricReader({
-    exporter: new OTLPMetricExporter(),
-  }),
+  metricReader:
+    process.env.OTEL_METRICS_ENABLED === "false"
+      ? undefined
+      : new PeriodicExportingMetricReader({
+          exporter: new OTLPMetricExporter(),
+        }),
   logRecordProcessors: [new BatchLogRecordProcessor(new OTLPLogExporter())],
   instrumentations: [
     getNodeAutoInstrumentations({
       "@opentelemetry/instrumentation-aws-sdk": { enabled: false },
+      "@opentelemetry/instrumentation-http":
+        process.env.OTEL_METRICS_ENABLED === "false" ? { enabled: false } : undefined,
     }),
   ],
 })
