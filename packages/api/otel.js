@@ -95,6 +95,40 @@ function patchConsoleLogs() {
   })
 }
 
+function patchStdIoLogs() {
+  if (process.env.OTEL_LOGS_ENABLED === "false") return
+  if (process.env.OTEL_LOGS_CAPTURE_STDIO === "false") return
+
+  const logger = logs.getLogger("stdio")
+  const minLevel = normalizeMinLevel(process.env.OTEL_LOGS_LEVEL || "debug")
+  const writeStdout = process.stdout.write.bind(process.stdout)
+  const writeStderr = process.stderr.write.bind(process.stderr)
+
+  process.stdout.write = (chunk, encoding, cb) => {
+    emitStdIoLog(logger, chunk, SeverityNumber.INFO, minLevel)
+    return writeStdout(chunk, encoding, cb)
+  }
+
+  process.stderr.write = (chunk, encoding, cb) => {
+    emitStdIoLog(logger, chunk, SeverityNumber.ERROR, minLevel)
+    return writeStderr(chunk, encoding, cb)
+  }
+}
+
+function emitStdIoLog(logger, chunk, severityNumber, minLevel) {
+  if (severityNumber < minLevel) return
+  const text = Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk)
+  const lines = text.split(/\r?\n/).filter(Boolean)
+  for (const line of lines) {
+    logger.emit({
+      severityNumber,
+      severityText: severityNumber === SeverityNumber.ERROR ? "ERROR" : "INFO",
+      body: line,
+      attributes: { source: "stdio" },
+    })
+  }
+}
+
 function tryStartSdk(sdkInstance) {
   try {
     const result = sdkInstance.start()
@@ -102,12 +136,14 @@ function tryStartSdk(sdkInstance) {
       return result
         .then(() => {
           patchConsoleLogs()
+          patchStdIoLogs()
         })
         .catch((error) => {
           console.error("[otel] failed to start:", error)
         })
     }
     patchConsoleLogs()
+    patchStdIoLogs()
     return result
   } catch (error) {
     console.error("[otel] failed to start:", error)

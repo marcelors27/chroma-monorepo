@@ -95,6 +95,62 @@ const safeLog = (logger, payload) => {
   }
 }
 
+const logRequestPayload = () => {
+  return (req, _res, next) => {
+    if (process.env.OTEL_LOG_REQUESTS_ENABLED !== "true") return next()
+    const contentType = String(req.headers?.["content-type"] || "")
+    if (contentType.includes("multipart/form-data")) return next()
+
+    const logger = console
+    const payload = sanitizePayload(req.body)
+    safeLog(logger, {
+      msg: "request:received",
+      method: req.method,
+      path: req.path,
+      query: req.query,
+      body: payload,
+    })
+    next()
+  }
+}
+
+const REDACT_KEYS = [
+  "password",
+  "pass",
+  "secret",
+  "token",
+  "authorization",
+  "cookie",
+  "key",
+  "client_secret",
+  "api_key",
+  "apikey",
+]
+
+const shouldRedactKey = (key) => {
+  const normalized = String(key).toLowerCase()
+  return REDACT_KEYS.some((needle) => normalized.includes(needle))
+}
+
+const sanitizePayload = (value, depth = 0) => {
+  if (depth > 4) return "[max-depth]"
+  if (value === null || value === undefined) return value
+  if (Buffer.isBuffer(value)) return "[buffer]"
+  if (typeof value === "string") {
+    if (value.length > 1000) return `${value.slice(0, 1000)}…`
+    return value
+  }
+  if (typeof value !== "object") return value
+  if (Array.isArray(value)) {
+    return value.slice(0, 50).map((item) => sanitizePayload(item, depth + 1))
+  }
+  const output = {}
+  for (const [key, val] of Object.entries(value).slice(0, 50)) {
+    output[key] = shouldRedactKey(key) ? "[redacted]" : sanitizePayload(val, depth + 1)
+  }
+  return output
+}
+
 const getAuthServices = (scope) => {
   const services = {}
   try {
@@ -410,6 +466,11 @@ const storeLoginDisabledGuard = () => {
 }
 
 const middlewares = defineMiddlewares([
+  {
+    method: ["POST", "PUT", "PATCH"],
+    matcher: ["/store/*", "/admin/*", "/auth/*"],
+    middlewares: [logRequestPayload()],
+  },
   {
     method: ["ALL"],
     matcher: ["/admin", "/admin/*"],
