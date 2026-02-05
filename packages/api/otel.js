@@ -43,14 +43,7 @@ const sdk = new NodeSDK({
   ],
 })
 
-sdk
-  .start()
-  .then(() => {
-    patchConsoleLogs()
-  })
-  .catch((error) => {
-    console.error("[otel] failed to start:", error)
-  })
+tryStartSdk(sdk)
 
 process.on("SIGTERM", () => {
   sdk
@@ -87,6 +80,26 @@ function patchConsoleLogs() {
       }
     }
   })
+}
+
+function tryStartSdk(sdkInstance) {
+  try {
+    const result = sdkInstance.start()
+    if (result && typeof result.then === "function") {
+      return result
+        .then(() => {
+          patchConsoleLogs()
+        })
+        .catch((error) => {
+          console.error("[otel] failed to start:", error)
+        })
+    }
+    patchConsoleLogs()
+    return result
+  } catch (error) {
+    console.error("[otel] failed to start:", error)
+    return undefined
+  }
 }
 
 function formatLogArg(arg) {
