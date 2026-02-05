@@ -43,6 +43,12 @@ const sdk = new NodeSDK({
   ],
 })
 
+console.info("[otel] bootstrap loaded", {
+  enabled: isOtelEnabled,
+  metricsEnabled: process.env.OTEL_METRICS_ENABLED !== "false",
+  nodeEnv: process.env.NODE_ENV,
+})
+
 tryStartSdk(sdk)
 
 process.on("SIGTERM", () => {
