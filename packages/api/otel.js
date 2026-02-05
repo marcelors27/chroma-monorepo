@@ -6,6 +6,7 @@ const { OTLPLogExporter } = require("@opentelemetry/exporter-logs-otlp-proto")
 const { BatchLogRecordProcessor } = require("@opentelemetry/sdk-logs")
 const { PeriodicExportingMetricReader } = require("@opentelemetry/sdk-metrics")
 const { logs, SeverityNumber } = require("@opentelemetry/api-logs")
+const { context, trace } = require("@opentelemetry/api")
 
 const hasOtelEndpoint = Boolean(
   process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
@@ -164,6 +165,7 @@ function inferLogLevel(args) {
 function extractLogMessageAndAttributes(args) {
   if (!args?.length) return { message: "", attributes: {} }
   const attributes = {}
+  addTraceContext(attributes)
   const messageParts = []
   for (const arg of args) {
     if (arg instanceof Error) {
@@ -189,4 +191,17 @@ function extractLogMessageAndAttributes(args) {
     messageParts.push(formatLogArg(arg))
   }
   return { message: messageParts.join(" "), attributes }
+}
+
+function addTraceContext(attributes) {
+  try {
+    const activeSpan = trace.getSpan(context.active())
+    const spanContext = activeSpan?.spanContext?.()
+    if (!spanContext) return
+    attributes["trace_id"] = spanContext.traceId
+    attributes["span_id"] = spanContext.spanId
+    attributes["trace_flags"] = spanContext.traceFlags
+  } catch {
+    // ignore context errors
+  }
 }
