@@ -25,6 +25,15 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api-logs": "^0.57.2",
+    "@opentelemetry/auto-instrumentations-node": "^0.57.2",
+    "@opentelemetry/exporter-logs-otlp-proto": "^0.57.2",
+    "@opentelemetry/exporter-metrics-otlp-proto": "^0.57.2",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.57.2",
+    "@opentelemetry/sdk-logs": "^0.57.2",
+    "@opentelemetry/sdk-metrics": "^1.30.0",
+    "@opentelemetry/sdk-node": "^0.57.2",
     "@medusajs/admin-shared": "^2.12.3",
     "@medusajs/cli": "2.12.3",
     "@medusajs/dashboard": "^2.12.3",

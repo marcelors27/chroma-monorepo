@@ -142,6 +142,7 @@ async function shouldRunMigrations() {
 
 async function main() {
   const apiDir = path.join(__dirname, "..")
+  const otelBootstrapPath = path.join(apiDir, "otel.js")
   const adminBuildDir = path.join(apiDir, "public", "admin")
   const adminIndexPath = path.join(adminBuildDir, "index.html")
   const adminBuildFromServerDir = path.join(
@@ -178,10 +179,23 @@ async function main() {
     process.exit(1)
   }
 
-  await runCommand("pnpm", ["medusa", "start"], { cwd: apiDir })
+  await runCommand("pnpm", ["medusa", "start"], {
+    cwd: apiDir,
+    env: {
+      ...process.env,
+      NODE_OPTIONS: withNodeRequire(process.env.NODE_OPTIONS, otelBootstrapPath),
+    },
+  })
 }
 
 main().catch((error) => {
   console.error("[start-with-migrations] Startup failed:", error)
   process.exit(1)
 })
+
+function withNodeRequire(existingValue, requirePath) {
+  const requireFlag = `-r ${requirePath}`
+  if (!requirePath) return existingValue || ""
+  if (existingValue?.includes(requireFlag)) return existingValue
+  return [existingValue, requireFlag].filter(Boolean).join(" ")
+}
