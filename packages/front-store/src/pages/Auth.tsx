@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import authBg from "@/assets/auth-bg.jpg";
 import logo from "@/assets/logo.png";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   completeSocialAuth,
   listCompanies,
@@ -350,7 +351,16 @@ const Auth = () => {
               disabled={isLoading}
               data-testid="auth-submit"
             >
-              {isLoading ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
+              {isLoading ? (
+                <span className="inline-flex items-center justify-center gap-2">
+                  <LoadingSpinner size={20} />
+                  Carregando...
+                </span>
+              ) : isLogin ? (
+                "Entrar"
+              ) : (
+                "Criar conta"
+              )}
             </Button>
           </form>
 

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Search } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { ProductCard } from "@/components/ui/ProductCard";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ProductFiltersSheet, ProductFilters } from "@/components/ui/ProductFiltersSheet";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
@@ -224,7 +225,7 @@ export default function Produtos() {
 
         {isLoading && (
           <View style={styles.loadingRow}>
-            <ActivityIndicator color="#5DA2E6" />
+            <LoadingSpinner size={28} />
             <Text style={styles.loadingText}>Carregando produtos...</Text>
           </View>
         )}

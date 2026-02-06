@@ -37,6 +37,10 @@ const PATCH = async (req, res) => {
   if (payload.animation_url !== undefined) updates.animation_url = payload.animation_url || null
   if (payload.animation_mobile_url !== undefined)
     updates.animation_mobile_url = payload.animation_mobile_url || null
+  if (payload.fallback_image_url !== undefined)
+    updates.fallback_image_url = payload.fallback_image_url || null
+  if (payload.fallback_image_mobile_url !== undefined)
+    updates.fallback_image_mobile_url = payload.fallback_image_mobile_url || null
   if (payload.link_type !== undefined) updates.link_type = payload.link_type || null
   if (payload.link_value !== undefined) updates.link_value = payload.link_value || null
   if (payload.sort_order !== undefined) {
@@ -58,6 +62,8 @@ const PATCH = async (req, res) => {
       "image_mobile_url",
       "animation_url",
       "animation_mobile_url",
+      "fallback_image_url",
+      "fallback_image_mobile_url",
       "link_type",
       "link_value",
       "sort_order",

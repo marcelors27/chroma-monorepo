@@ -9,7 +9,13 @@ const { GET } = marketingRoute;
 
 describe("store/marketing-banners GET", () => {
   it("retorna banners ativos com paginacao", async () => {
-    const rows = [{ id: "ban_1", title: "Promo" }];
+    const rows = [{
+      id: "ban_1",
+      title: "Promo",
+      animation_url: "https://cdn.example.com/banner.mp4",
+      fallback_image_url: "https://cdn.example.com/banner-fallback.jpg",
+      fallback_image_mobile_url: "https://cdn.example.com/banner-fallback-mobile.jpg"
+    }];
     const { db, calls } = createDbMock(rows);
     const req = {
       query: { limit: "5", offset: "2" },
@@ -29,6 +35,8 @@ describe("store/marketing-banners GET", () => {
       expect(calls.offset).toBe(2);
       expect(res.body.banners).toHaveLength(1);
       expect(res.body.banners[0].id).toBe("ban_1");
+      expect(res.body.banners[0].fallback_image_url).toBe("https://cdn.example.com/banner-fallback.jpg");
+      expect(res.body.banners[0].fallback_image_mobile_url).toBe("https://cdn.example.com/banner-fallback-mobile.jpg");
     } finally {
       vi.useRealTimers();
     }

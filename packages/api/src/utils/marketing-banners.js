@@ -14,6 +14,8 @@ const mapMarketingBannerRow = (row) => {
     image_mobile_url: row.image_mobile_url,
     animation_url: row.animation_url,
     animation_mobile_url: row.animation_mobile_url,
+    fallback_image_url: row.fallback_image_url,
+    fallback_image_mobile_url: row.fallback_image_mobile_url,
     link_type: row.link_type,
     link_value: row.link_value,
     sort_order: row.sort_order,

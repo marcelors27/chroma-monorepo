@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Image,
   ImageBackground,
   Pressable,
@@ -15,6 +14,7 @@ import { ArrowLeft, Mail } from "lucide-react-native";
 import { requestPasswordReset } from "@/lib/medusa";
 import { toast } from "@/lib/toast";
 import logo from "@/assets/logo.png";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 const AUTH_BG = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&auto=format&fit=crop&q=80";
 
@@ -84,7 +84,7 @@ export default function ResetPassword() {
 
       {isSubmitting && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#E6E8EA" style={styles.loadingIcon} />
+          <LoadingSpinner size={84} style={styles.loadingIcon} />
         </View>
       )}
     </ImageBackground>

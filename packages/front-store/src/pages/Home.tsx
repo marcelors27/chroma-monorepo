@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ import {
 
 const Home = () => {
   const { addItem } = useCart();
+  const navigate = useNavigate();
   const authToken = getTokenValue();
   const { data, isLoading } = useQuery({ queryKey: ["home-products"], queryFn: listProducts });
   const { data: customerData } = useQuery({
@@ -137,6 +138,28 @@ const Home = () => {
   const dragStartXRef = useRef(0);
   const dragDeltaRef = useRef(0);
   const dragActiveRef = useRef(false);
+  const [prefersReducedData, setPrefersReducedData] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const connection = (navigator as any).connection;
+    if (!connection) return;
+
+    const evaluate = () => {
+      const effectiveType = connection.effectiveType;
+      const downlink = connection.downlink;
+      const saveData = Boolean(connection.saveData);
+      const slowType = ["slow-2g", "2g", "3g"].includes(effectiveType);
+      const lowDownlink = typeof downlink === "number" && downlink > 0 && downlink < 1.5;
+      setPrefersReducedData(saveData || slowType || lowDownlink);
+    };
+
+    evaluate();
+    connection.addEventListener?.("change", evaluate);
+    return () => {
+      connection.removeEventListener?.("change", evaluate);
+    };
+  }, []);
 
   const resolveBannerHref = (banner: MedusaMarketingBanner) => {
     if (!banner?.link_type) return null;
@@ -350,47 +373,61 @@ const Home = () => {
               >
                 {banners.map((banner) => {
                   const href = resolveBannerHref(banner);
-                  const desktopMedia = banner.animation_url || banner.image_url || "";
-                  const mobileMedia =
-                    banner.animation_mobile_url || banner.image_mobile_url || desktopMedia;
+                  const desktopAnimation = banner.animation_url || "";
+                  const mobileAnimation = banner.animation_mobile_url || "";
+                  const desktopIsVideo = isVideo(desktopAnimation);
+                  const mobileIsVideo = isVideo(mobileAnimation);
+                  const desktopFallback = banner.fallback_image_url || banner.image_url || "";
+                  const mobileFallback =
+                    banner.fallback_image_mobile_url || banner.image_mobile_url || desktopFallback;
+                  const desktopImage = desktopIsVideo
+                    ? banner.image_url || banner.fallback_image_url || ""
+                    : desktopAnimation || banner.image_url || "";
+                  const mobileImage = mobileIsVideo
+                    ? banner.image_mobile_url || banner.fallback_image_mobile_url || desktopImage
+                    : mobileAnimation || banner.image_mobile_url || desktopImage;
+                  const showDesktopVideo = desktopIsVideo && !prefersReducedData;
+                  const showMobileVideo = mobileIsVideo && !prefersReducedData;
                   const content = (
                     <div className="relative w-full shrink-0">
                       <div
                         className="relative w-full aspect-[1440/360]"
                         style={{ backgroundColor: bannerColors[banner.id] || "hsl(var(--card))" }}
                       >
-                        {desktopMedia && (
+                        {(desktopAnimation || desktopImage || desktopFallback) && (
                           <>
-                            {isVideo(desktopMedia) ? (
+                            {showDesktopVideo ? (
                               <video
                                 className="hidden md:block absolute inset-0 h-full w-full object-contain"
-                                src={desktopMedia}
+                                src={desktopAnimation}
                                 autoPlay
                                 muted
                                 loop
                                 playsInline
+                                poster={desktopFallback || undefined}
                               />
                             ) : (
                               <img
                                 className="hidden md:block absolute inset-0 h-full w-full object-contain"
-                                src={desktopMedia}
+                                src={desktopImage || desktopFallback}
                                 alt={banner.title}
                                 onLoad={handleBannerImageLoad(banner.id)}
                               />
                             )}
-                            {isVideo(mobileMedia) ? (
+                            {showMobileVideo ? (
                               <video
                                 className="md:hidden absolute inset-0 h-full w-full object-contain"
-                                src={mobileMedia}
+                                src={mobileAnimation}
                                 autoPlay
                                 muted
                                 loop
                                 playsInline
+                                poster={mobileFallback || undefined}
                               />
                             ) : (
                               <img
                                 className="md:hidden absolute inset-0 h-full w-full object-contain"
-                                src={mobileMedia}
+                                src={mobileImage || mobileFallback}
                                 alt={banner.title}
                                 onLoad={handleBannerImageLoad(banner.id)}
                               />
@@ -495,7 +532,17 @@ const Home = () => {
               return (
                 <Card
                   key={promo.id}
-                  className="overflow-hidden border-2 hover:border-primary transition-colors group flex flex-col h-full"
+                  className="overflow-hidden border-2 hover:border-primary transition-colors group flex flex-col h-full cursor-pointer"
+                  onClick={() => navigate(`/product/${promo.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate(`/product/${promo.id}`);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Ver detalhes de ${promo.title}`}
                 >
                   <div className="relative aspect-video bg-secondary">
                     <img
@@ -533,7 +580,10 @@ const Home = () => {
                     )}
                     <Button
                       className="w-full mt-auto gap-2"
-                      onClick={() => handleAddToCart(promo)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleAddToCart(promo);
+                      }}
                       disabled={!promo.variantId}
                       data-testid="home-promo-add"
                     >

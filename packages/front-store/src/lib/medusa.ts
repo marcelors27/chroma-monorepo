@@ -191,6 +191,8 @@ export type MedusaMarketingBanner = {
   image_mobile_url?: string | null
   animation_url?: string | null
   animation_mobile_url?: string | null
+  fallback_image_url?: string | null
+  fallback_image_mobile_url?: string | null
   link_type?: string | null
   link_value?: string | null
   sort_order?: number | null

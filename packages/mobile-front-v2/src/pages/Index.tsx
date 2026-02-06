@@ -1,4 +1,4 @@
-import { Dimensions, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, Image } from "react-native";
+import { Dimensions, Linking, Pressable, ScrollView, StyleSheet, Text, View, Image } from "react-native";
 import { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { ArrowRight, MessageCircle, Newspaper, Package, Star, TrendingUp, RefreshCcw } from "lucide-react-native";
@@ -6,10 +6,12 @@ import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Video from "react-native-video";
+import { useNetInfo } from "@react-native-community/netinfo";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { NewsCard } from "@/components/ui/NewsCard";
 import { ProductCard } from "@/components/ui/ProductCard";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { toast } from "@/lib/toast";
 import { useCondo } from "@/contexts/CondoContext";
 import { useCart } from "@/contexts/CartContext";
@@ -32,6 +34,7 @@ export default function Index() {
   const { activeCondo } = useCondo();
   const { addItem } = useCart();
   const { user } = useAuth();
+  const netInfo = useNetInfo();
   const { data, refetch: refetchProducts } = useQuery({ queryKey: ["home-products"], queryFn: listProducts });
   const { data: newsData, refetch: refetchNews } = useQuery({
     queryKey: ["home-news"],
@@ -42,9 +45,11 @@ export default function Index() {
     queryFn: () => listMarketingBanners({ limit: 5 }),
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
   const screenWidth = Dimensions.get("window").width;
   const productCardWidth = (screenWidth - 52) / 2;
   const whatsappTarget = process.env.EXPO_PUBLIC_WHATSAPP_TARGET || "+55 51 981975736";
+  const pullThreshold = 80;
 
   const featuredProducts = (data?.products || [])
     .map((product: MedusaProduct) => {
@@ -112,6 +117,28 @@ export default function Index() {
   const featuredNews = newsItems[0];
   const listNewsItems = newsItems.slice(1);
   const banners = (bannerData?.banners || []) as MedusaMarketingBanner[];
+  const prefersReducedData =
+    netInfo.isConnected === false ||
+    netInfo.isInternetReachable === false ||
+    (netInfo.details && "isConnectionExpensive" in netInfo.details && netInfo.details.isConnectionExpensive === true) ||
+    (netInfo.details &&
+      "cellularGeneration" in netInfo.details &&
+      (netInfo.details.cellularGeneration === "2g" || netInfo.details.cellularGeneration === "3g"));
+  const pullRatio = Math.min(pullDistance / pullThreshold, 1);
+  const showPullIndicator = refreshing || pullDistance > 0;
+  const indicatorOpacity = refreshing ? 1 : pullRatio;
+  const indicatorScale = refreshing ? 1 : 0.85 + 0.15 * pullRatio;
+
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await Promise.all([refetchProducts(), refetchNews(), refetchBanners()]);
+    } finally {
+      setRefreshing(false);
+      setPullDistance(0);
+    }
+  };
 
   const isVideo = (url?: string | null) => {
     if (!url) return false;
@@ -168,39 +195,40 @@ export default function Index() {
       <ScrollView
         contentContainerStyle={styles.content}
         stickyHeaderIndices={refreshing ? [0] : undefined}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={async () => {
-              if (refreshing) return;
-              setRefreshing(true);
-              try {
-                await Promise.all([refetchProducts(), refetchNews(), refetchBanners()]);
-              } finally {
-                setRefreshing(false);
-              }
-            }}
-            tintColor="#8C98A8"
-            colors={["#5DA2E6"]}
-          />
-        }
+        onScroll={(event) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          if (offsetY < 0) {
+            setPullDistance(-offsetY);
+          } else if (pullDistance !== 0) {
+            setPullDistance(0);
+          }
+        }}
+        onScrollEndDrag={(event) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          if (offsetY < -pullThreshold && !refreshing) {
+            handleRefresh();
+          }
+        }}
+        scrollEventThrottle={16}
       >
-        {refreshing && (
-          <View style={styles.refreshRow}>
-            <RefreshCcw color="#8C98A8" size={16} />
-            <Text style={styles.refreshText}>Atualizando...</Text>
+        <View style={[styles.refreshContainer, showPullIndicator && styles.refreshContainerVisible]}>
+          <View style={[styles.refreshRow, { opacity: indicatorOpacity, transform: [{ scale: indicatorScale }] }]}>
+            <LoadingSpinner size={32} />
+            <Text style={styles.refreshText}>
+              {refreshing ? "Atualizando..." : pullRatio >= 1 ? "Solte para atualizar" : "Puxe para atualizar"}
+            </Text>
           </View>
-        )}
+        </View>
         {banners.length > 0 && (
           <View style={styles.bannerSection}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bannerRow}>
               {banners.map((banner) => {
-                const media =
-                  banner.animation_mobile_url ||
-                  banner.image_mobile_url ||
-                  banner.animation_url ||
-                  banner.image_url ||
-                  "";
+                const animation = banner.animation_mobile_url || banner.animation_url || "";
+                const image = banner.image_mobile_url || banner.image_url || "";
+                const fallback = banner.fallback_image_mobile_url || banner.fallback_image_url || image;
+                const isVideoMedia = isVideo(animation);
+                const shouldUseVideo = isVideoMedia && !prefersReducedData;
+                const imageSource = isVideoMedia ? (image || fallback) : animation || image || fallback;
                 return (
                   <Pressable
                     key={banner.id}
@@ -208,10 +236,18 @@ export default function Index() {
                     onPress={() => resolveBannerAction(banner)}
                     disabled={!banner.link_type}
                   >
-                    {isVideo(media) ? (
-                      <Video source={{ uri: media }} style={styles.bannerMedia} muted repeat resizeMode="cover" />
+                    {shouldUseVideo ? (
+                      <Video
+                        source={{ uri: animation }}
+                        style={styles.bannerMedia}
+                        muted
+                        repeat
+                        resizeMode="cover"
+                        poster={fallback || undefined}
+                        posterResizeMode="cover"
+                      />
                     ) : (
-                      <Image source={{ uri: media }} style={styles.bannerMedia} resizeMode="cover" />
+                      <Image source={{ uri: imageSource }} style={styles.bannerMedia} resizeMode="cover" />
                     )}
                   </Pressable>
                 );
@@ -308,6 +344,12 @@ export default function Index() {
                 key={product.id}
                 {...product}
                 style={{ width: productCardWidth }}
+                onPress={() =>
+                  navigation.navigate(
+                    "Produtos" as never,
+                    { screen: "ProductDetails", params: { id: product.id } } as never
+                  )
+                }
                 onAddToCart={() => handleAddToCart(product)}
               />
             ))}
@@ -344,15 +386,26 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   refreshRow: {
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     backgroundColor: "rgba(11, 15, 20, 0.8)",
     borderRadius: 16,
-    alignSelf: "flex-start",
+    alignSelf: "center",
+  },
+  refreshContainer: {
+    height: 0,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  refreshContainerVisible: {
+    height: 68,
+    marginBottom: 12,
+    marginTop: -14,
   },
   refreshText: {
     color: "#8C98A8",

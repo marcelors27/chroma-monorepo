@@ -8,6 +8,7 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
 import { useShare } from "@/hooks/useShare";
 import { getNews, MedusaNews } from "@/lib/medusa";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export default function NoticiaDetalhes() {
   const navigation = useNavigation();
@@ -48,9 +49,10 @@ export default function NoticiaDetalhes() {
   if (isLoading) {
     return (
       <AuthenticatedLayout>
-        <ScrollView style={styles.scrollContent}>
+        <View style={styles.loadingWrap}>
+          <LoadingSpinner size={84} />
           <Text style={styles.title}>Carregando noticia...</Text>
-        </ScrollView>
+        </View>
       </AuthenticatedLayout>
     );
   }
@@ -114,6 +116,12 @@ export default function NoticiaDetalhes() {
 }
 
 const styles = StyleSheet.create({
+  loadingWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,

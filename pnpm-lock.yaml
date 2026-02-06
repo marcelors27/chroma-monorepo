@@ -401,6 +401,9 @@ importers:
       '@react-native-community/datetimepicker':
         specifier: ^8.0.1
         version: 8.5.1(expo@54.0.30)(react-native@0.81.5)(react@19.1.0)
+      '@react-native-community/netinfo':
+        specifier: ^11.3.2
+        version: 11.5.2(react-native@0.81.5)(react@19.1.0)
       '@react-native-community/slider':
         specifier: ^4.5.2
         version: 4.5.7
@@ -437,6 +440,9 @@ importers:
       '@react-navigation/routers':
         specifier: ^6.1.9
         version: 6.1.9
+      '@stripe/stripe-react-native':
+        specifier: ^0.43.0
+        version: 0.43.0(expo@54.0.30)(react-native@0.81.5)(react@19.1.0)
       '@tamagui/accordion':
         specifier: ^1.143.1
         version: 1.143.1(react-dom@19.1.0)(react-native@0.81.5)(react@19.1.0)
@@ -11752,6 +11758,16 @@ packages:
       react-native: 0.81.5(@babel/core@7.28.5)(@types/react@18.3.27)(react@19.1.0)
     dev: false
 
+  /@react-native-community/netinfo@11.5.2(react-native@0.81.5)(react@19.1.0):
+    resolution: {integrity: sha512-/g0m65BtX9HU+bPiCH2517bOHpEIUsGrWFXDzi1a5nNKn5KujQgm04WhL7/OSXWKHyrT8VVtUoJA0XKRxueBpQ==}
+    peerDependencies:
+      react: '*'
+      react-native: '>=0.59'
+    dependencies:
+      react: 19.1.0
+      react-native: 0.81.5(@babel/core@7.28.5)(@types/react@18.3.27)(react@19.1.0)
+    dev: false
+
   /@react-native-community/slider@4.5.7:
     resolution: {integrity: sha512-WMDDZjNF2Bd8M8TrSqKf5xhM9ikdfCHtSPur64Ow3bB/OVrKufUQZ59NmYdNZNeGPvcHHTsafuYTY8zfZfbchQ==}
     dev: false
@@ -13378,6 +13394,21 @@ packages:
   /@stripe/stripe-js@8.6.0:
     resolution: {integrity: sha512-EB0/GGgs4hfezzkiMkinlRgWtjz8fSdwVQhwYS7Sg/RQrSvuNOz+ssPjD+lAzqaYTCB0zlbrt0fcqVziLJrufQ==}
     engines: {node: '>=12.16'}
+    dev: false
+
+  /@stripe/stripe-react-native@0.43.0(expo@54.0.30)(react-native@0.81.5)(react@19.1.0):
+    resolution: {integrity: sha512-yY78EQQDiJMULx9/q1L2VBCSTska4D/d5fzS9A/rUh4klaOlKwYomJdQA0SBpF02XZalExEKs1CQebfhYTHrEQ==}
+    peerDependencies:
+      expo: '>=46.0.9'
+      react: '*'
+      react-native: '*'
+    peerDependenciesMeta:
+      expo:
+        optional: true
+    dependencies:
+      expo: 54.0.30(@babel/core@7.28.5)(react-native-webview@13.16.0)(react-native@0.81.5)(react@19.1.0)
+      react: 19.1.0
+      react-native: 0.81.5(@babel/core@7.28.5)(@types/react@18.3.27)(react@19.1.0)
     dev: false
 
   /@swc/core-darwin-arm64@1.15.7:

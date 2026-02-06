@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useStripe } from "@stripe/stripe-react-native";
 import {
   addShippingMethod,
   addLineItem,
@@ -9,12 +10,19 @@ import {
   ensureCart,
   listShippingOptions,
   mapCartToItems,
+  notifyPendingPayment,
+  PendingPayment,
   retrieveCart,
+  removePendingPayment,
+  removePendingPaymentFromBackend,
   setCartShippingAddress,
   setPaymentSession,
+  setPendingPayment,
+  syncPendingPaymentToBackend,
   updateLineItem,
 } from "@/lib/medusa";
 import { toast } from "@/lib/toast";
+import { useCondo } from "@/contexts/CondoContext";
 
 const DEBUG = process.env.EXPO_PUBLIC_DEBUG_FRONT === "true";
 
@@ -54,7 +62,19 @@ interface CartContextType {
     address: Record<string, any>,
     paymentMethod: string,
     shippingOptionId?: string | null
-  ) => Promise<string | null>;
+  ) => Promise<{
+    status: "completed" | "pending";
+    orderId?: string | null;
+    pendingDetails?: {
+      boleto_line?: string;
+      boleto_url?: string;
+      boleto_expires_at?: string | number;
+      boleto_qr?: string;
+      client_secret?: string;
+    };
+    pendingPayment?: PendingPayment;
+  }>;
+  finalizePendingBoleto: (clientSecret: string) => Promise<{ status: "pending" | "completed"; orderId?: string | null }>;
   totalItems: number;
   totalPrice: number;
 }
@@ -67,6 +87,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [checkoutLocked, setCheckoutLocked] = useState(false);
   const [lastAddId, setLastAddId] = useState(0);
   const [lastAddQty, setLastAddQty] = useState(1);
+  const { initPaymentSheet, presentPaymentSheet, retrievePaymentIntent, confirmPayment } = useStripe();
+  const { activeCondo } = useCondo();
 
   useEffect(() => {
     refreshCart();
@@ -206,6 +228,142 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const findStripeSession = (collection: any, providerId: string) => {
+    if (!collection?.payment_sessions?.length) return null;
+    return (
+      collection.payment_sessions.find(
+        (session: any) => session?.provider_id === providerId || session?.provider_id?.startsWith("pp_stripe")
+      ) || null
+    );
+  };
+
+  const normalizeDigits = (value?: string | null) => (value || "").replace(/\D/g, "");
+
+  const buildBillingDetails = () => {
+    if (!activeCondo) return null;
+    const email =
+      activeCondo.billingEmails?.find(Boolean) || activeCondo.email || undefined;
+    const phone = activeCondo.phone || undefined;
+    const line1 = [activeCondo.address, activeCondo.number].filter(Boolean).join(", ");
+    const line2 = activeCondo.complemento || undefined;
+    const city = activeCondo.city || undefined;
+    const state = activeCondo.state || undefined;
+    const postalCode = normalizeDigits(activeCondo.zip);
+    const country = "BR";
+
+    return {
+      name: activeCondo.razaoSocial || activeCondo.name || "Condomínio",
+      email,
+      phone,
+      address: {
+        line1: line1 || undefined,
+        line2,
+        city,
+        state,
+        postalCode: postalCode || undefined,
+        country,
+      },
+      cnpj: normalizeDigits(activeCondo.cnpj),
+    };
+  };
+
+  const extractStripeDetailsFromIntent = (intent: Record<string, any> | null | undefined) => {
+    if (!intent) return {};
+    const nextAction = intent?.next_action || {};
+    const boleto = nextAction?.boleto_display_details || {};
+    const pix = nextAction?.pix_display_qr_code || nextAction?.pix_display_details || {};
+    const qrImage =
+      boleto?.qr_code?.image_url ||
+      boleto?.qr_code_url ||
+      boleto?.qr_code ||
+      boleto?.image_url;
+    return {
+      boleto_line: boleto?.number || boleto?.barcode || boleto?.line,
+      boleto_url: boleto?.hosted_voucher_url || boleto?.url,
+      boleto_expires_at: boleto?.expires_at,
+      boleto_qr: qrImage,
+      pix_code: pix?.data || pix?.emv || pix?.qr_code?.data,
+      pix_qr: pix?.image_url || pix?.qr_code?.image_url || pix?.image,
+    };
+  };
+
+  const confirmBoletoPayment = async (clientSecret: string) => {
+    const billingDetails = buildBillingDetails();
+    const taxId = normalizeDigits(billingDetails?.cnpj);
+    const hasAddress =
+      Boolean(billingDetails?.address?.line1) &&
+      Boolean(billingDetails?.address?.city) &&
+      Boolean(billingDetails?.address?.state) &&
+      Boolean(billingDetails?.address?.postalCode);
+    if (!billingDetails?.name || !hasAddress) {
+      throw new Error("Endereço do condomínio incompleto para gerar boleto.");
+    }
+    if (!taxId) {
+      throw new Error("CNPJ do condomínio não informado.");
+    }
+    const result = await confirmPayment(clientSecret, {
+      paymentMethodType: "Boleto",
+      paymentMethodData: {
+        billingDetails: {
+          name: billingDetails.name,
+          email: billingDetails.email,
+          phone: billingDetails.phone,
+          address: billingDetails.address,
+        },
+        boleto: {
+          taxId,
+        },
+      },
+    } as any);
+    if (result.error) {
+      throw new Error(result.error.message || "Falha ao gerar boleto.");
+    }
+    return {
+      paymentIntent: result.paymentIntent,
+      details: {
+        ...extractStripeDetailsFromIntent(result.paymentIntent || null),
+        client_secret: clientSecret,
+      },
+    };
+  };
+
+  const applyPointsToOrder = async (orderId?: string | null, cartSnapshot?: any) => {
+    if (!orderId) return;
+    const companyId =
+      cartSnapshot?.shipping_address?.metadata?.company_id ||
+      cartSnapshot?.shipping_address?.metadata?.condo_id;
+    if (!companyId) return;
+    try {
+      await earnCompanyPoints(companyId, orderId);
+    } catch (err: any) {
+      if (DEBUG) console.debug("[cart] points:error", err?.message || err);
+    }
+  };
+
+  const finalizePendingBoleto = async (clientSecret: string) => {
+    if (!cartId) return { status: "pending" as const };
+    try {
+      const intentResult = await retrievePaymentIntent(clientSecret);
+      const status = intentResult?.paymentIntent?.status;
+      if (status !== "succeeded") {
+        return { status: "pending" as const };
+      }
+      setCheckoutLocked(true);
+      const cartSnapshot = await retrieveCart(cartId);
+      const orderId = await completeCart(cartId);
+      await refreshCart();
+      await applyPointsToOrder(orderId, cartSnapshot);
+      await removePendingPayment({ cart_id: cartId });
+      await removePendingPaymentFromBackend({ cart_id: cartId });
+      return { status: "completed" as const, orderId };
+    } catch (err: any) {
+      if (DEBUG) console.debug("[cart] finalizePendingBoleto:error", err?.message || err);
+      return { status: "pending" as const };
+    } finally {
+      setCheckoutLocked(false);
+    }
+  };
+
   const completeBackendCheckout = async (
     address: Record<string, any>,
     paymentMethod: string,
@@ -215,15 +373,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       console.debug("[cart] completeBackendCheckout:start", { cartId, address, paymentMethod, shippingOptionId });
     if (!cartId) throw new Error("Carrinho não encontrado");
     try {
-      const applyPoints = async (orderId?: string | null) => {
-        if (!orderId) return;
-        const companyId = address?.metadata?.company_id || address?.metadata?.condo_id;
-        if (!companyId) return;
-        try {
-          await earnCompanyPoints(companyId, orderId);
-        } catch (err: any) {
-          if (DEBUG) console.debug("[cart] points:error", err?.message || err);
-        }
+      const applyPoints = async (orderId?: string | null, snapshot?: any) => {
+        await applyPointsToOrder(orderId, snapshot);
       };
       const { providerId, data } = resolvePaymentProvider(paymentMethod);
       let cartSnapshot = await retrieveCart(cartId);
@@ -246,13 +397,112 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      await setPaymentSession(cartSnapshot.id, providerId, data);
+      const paymentCollection = await setPaymentSession(cartSnapshot.id, providerId, data);
+
+      if (providerId.startsWith("pp_stripe")) {
+        const session = findStripeSession(paymentCollection, providerId);
+        const clientSecret =
+          session?.data?.client_secret ||
+          session?.data?.payment_intent?.client_secret ||
+          session?.data?.payment_intent?.payment_intent?.client_secret;
+        if (!clientSecret) {
+          throw new Error("Session do Stripe sem client_secret.");
+        }
+
+        if (paymentMethod === "boleto") {
+          const { paymentIntent, details } = await confirmBoletoPayment(clientSecret);
+          const status = paymentIntent?.status;
+          if (status !== "succeeded") {
+            if (DEBUG) console.debug("[cart] completeBackendCheckout:stripe-pending", { status });
+            const pending: PendingPayment = {
+              cart_id: cartSnapshot.id,
+              payment_collection_id: paymentCollection?.id || "",
+              method: paymentMethod,
+              created_at: new Date().toISOString(),
+              details: { ...details, method: paymentMethod },
+            };
+            await setPendingPayment(pending);
+            await syncPendingPaymentToBackend(pending);
+            try {
+              await notifyPendingPayment({
+                payment_method: paymentMethod,
+                payment_collection_id: pending.payment_collection_id,
+                company_id: address?.metadata?.company_id || null,
+                details: pending.details,
+              });
+            } catch (err: any) {
+              if (DEBUG) console.debug("[cart] notifyPendingPayment:error", err?.message || err);
+            }
+            return { status: "pending", pendingDetails: details, pendingPayment: pending };
+          }
+        } else {
+          const billingDetails = buildBillingDetails();
+          const hasAddress =
+            Boolean(billingDetails?.address?.line1) &&
+            Boolean(billingDetails?.address?.city) &&
+            Boolean(billingDetails?.address?.state) &&
+            Boolean(billingDetails?.address?.postalCode);
+          const billingDetailsCollectionConfiguration = {
+            name: billingDetails?.name ? "never" : "automatic",
+            email: billingDetails?.email ? "never" : "automatic",
+            phone: billingDetails?.phone ? "never" : "automatic",
+            address: hasAddress ? "never" : "automatic",
+          } as const;
+
+          const allowsDelayed = paymentMethod !== "credit";
+          const initResult = await initPaymentSheet({
+            paymentIntentClientSecret: clientSecret,
+            merchantDisplayName: "Chroma",
+            allowsDelayedPaymentMethods: allowsDelayed,
+            defaultBillingDetails: billingDetails
+              ? {
+                  name: billingDetails.name,
+                  email: billingDetails.email,
+                  phone: billingDetails.phone,
+                  address: billingDetails.address,
+                }
+              : undefined,
+            billingDetailsCollectionConfiguration,
+          });
+          if (initResult.error) {
+            throw new Error(initResult.error.message || "Falha ao iniciar pagamento.");
+          }
+
+          const presentResult = await presentPaymentSheet();
+          if (presentResult.error) {
+            throw new Error(presentResult.error.message || "Pagamento não concluído.");
+          }
+
+          const intentResult = await retrievePaymentIntent(clientSecret);
+          const status = intentResult?.paymentIntent?.status;
+          if (status !== "succeeded") {
+            if (DEBUG) console.debug("[cart] completeBackendCheckout:stripe-pending", { status });
+            const details = {
+              ...extractStripeDetailsFromIntent(intentResult?.paymentIntent || null),
+              client_secret: clientSecret,
+            };
+            const pending: PendingPayment = {
+              cart_id: cartSnapshot.id,
+              payment_collection_id: paymentCollection?.id || "",
+              method: paymentMethod,
+              created_at: new Date().toISOString(),
+              details: { ...details, method: paymentMethod },
+            };
+            await setPendingPayment(pending);
+            await syncPendingPaymentToBackend(pending);
+            return { status: "pending", pendingDetails: details, pendingPayment: pending };
+          }
+        }
+      }
+
       setCheckoutLocked(true);
       const orderId = await completeCart(cartSnapshot.id);
       if (DEBUG) console.debug("[cart] completeBackendCheckout:success", { orderId });
       await refreshCart();
-      await applyPoints(orderId);
-      return orderId;
+      await applyPoints(orderId, cartSnapshot);
+      await removePendingPayment({ cart_id: cartSnapshot.id });
+      await removePendingPaymentFromBackend({ cart_id: cartSnapshot.id });
+      return { status: "completed", orderId };
     } catch (err: any) {
       if (DEBUG) console.debug("[cart] completeBackendCheckout:error", err?.message || err);
       toast({
@@ -286,6 +536,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         clearCart,
         refreshCart,
         completeBackendCheckout,
+        finalizePendingBoleto,
         totalItems,
         totalPrice,
       }}

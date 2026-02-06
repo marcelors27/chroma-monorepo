@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View, Pressable, Image } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import {
   Minus,
   Plus,
@@ -15,6 +16,7 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
 import { useCart } from "@/contexts/CartContext";
 import { useCondo } from "@/contexts/CondoContext";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
   createRecurrence,
   fetchSavedPaymentMethodsFromBackend,
@@ -30,6 +32,7 @@ type RecurrenceOption = "unica" | "semanal" | "quinzenal" | "mensal";
 
 export default function Carrinho() {
   const [selectedPayment, setSelectedPayment] = useState<"pix" | "cartao" | "boleto">("pix");
+  const navigation = useNavigation();
   const [shippingOptions, setShippingOptions] = useState<any[]>([]);
   const [shippingOptionId, setShippingOptionId] = useState<string | null>(null);
   const [shippingLoading, setShippingLoading] = useState(false);
@@ -37,7 +40,15 @@ export default function Carrinho() {
   const [recurrenceByItem, setRecurrenceByItem] = useState<Record<string, RecurrenceOption>>({});
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [customerEmail, setCustomerEmail] = useState("");
-  const { items, totalPrice, updateQuantity, removeItem, completeBackendCheckout, clearCart, cartId } = useCart();
+  const {
+    items,
+    totalPrice,
+    updateQuantity,
+    removeItem,
+    completeBackendCheckout,
+    clearCart,
+    cartId,
+  } = useCart();
   const { activeCondo } = useCondo();
 
   const formattedTotal = formatMoney(totalPrice);
@@ -94,6 +105,7 @@ export default function Carrinho() {
     setSelectedPayment(mapped);
   }, [savedPaymentMethods]);
 
+
   useEffect(() => {
     const loadShippingOptions = async () => {
       if (!cartId || !activeCondo) return;
@@ -147,17 +159,20 @@ export default function Carrinho() {
       const shippingAddress = {
         first_name: "Condomínio",
         last_name: "Compras",
-        address_1: activeCondo.name || "Condomínio",
-        city: "São Paulo",
+        address_1: activeCondo.address || activeCondo.name || "Condomínio",
+        address_2: activeCondo.complemento || "",
+        city: activeCondo.city || "São Paulo",
+        province: activeCondo.state || "SP",
         country_code: "br",
-        postal_code: "00000-000",
+        postal_code: activeCondo.zip || "00000-000",
         metadata: {
           condo_id: activeCondo.id,
           company_id: activeCondo.id,
+          cnpj: activeCondo.cnpj || "",
         },
       };
 
-      const orderId = await completeBackendCheckout(shippingAddress, paymentMethod, shippingOptionId);
+      const checkoutResult = await completeBackendCheckout(shippingAddress, paymentMethod, shippingOptionId);
 
       const recurringItems = items.filter((item) => recurrenceByItem[item.id] && recurrenceByItem[item.id] !== "unica");
       for (const item of recurringItems) {
@@ -205,8 +220,13 @@ export default function Carrinho() {
         // Ignore failures to persist payment method
       }
 
-      await clearCart();
-      toast.success(`Pedido realizado com sucesso! ${orderId ? `#${orderId}` : ""}`.trim());
+      if (checkoutResult.status === "completed") {
+        await clearCart();
+        toast.success(`Pedido realizado com sucesso! ${checkoutResult.orderId ? `#${checkoutResult.orderId}` : ""}`.trim());
+      } else {
+        toast.info("Pagamento pendente. Consulte seus pedidos para acompanhar.");
+        navigation.navigate("Pedidos" as never);
+      }
     } catch (err: any) {
       toast.error(err?.message || "Não foi possível finalizar o pedido.");
     }
@@ -282,7 +302,10 @@ export default function Carrinho() {
         <Text style={styles.sectionTitle}>Método de entrega</Text>
         {shippingError && <Text style={styles.errorText}>{shippingError}</Text>}
         {shippingLoading ? (
-          <Text style={styles.helperText}>Carregando opções...</Text>
+          <View style={styles.loadingRow}>
+            <LoadingSpinner size={24} />
+            <Text style={styles.helperText}>Carregando opções...</Text>
+          </View>
         ) : shippingOptions.length === 0 ? (
           <Text style={styles.helperText}>
             Sem opções disponíveis. Cadastre no admin em Configurações → Logística → Opções de envio.
@@ -472,6 +495,12 @@ const styles = StyleSheet.create({
   helperText: {
     color: "#8C98A8",
     fontSize: 12,
+    marginTop: 8,
+  },
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     marginTop: 8,
   },
   sectionTitle: {

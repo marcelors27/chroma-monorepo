@@ -46,6 +46,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import condosBg from "@/assets/condos-bg.jpg";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface Condo {
   id: string;
@@ -1309,7 +1310,10 @@ const Condos = () => {
           <div className="space-y-4">
             {isLoadingCondos && (
               <div className="border-2 border-border p-6 bg-card">
-                <p className="text-muted-foreground">Carregando condomínios...</p>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <LoadingSpinner size={20} />
+                  <span>Carregando condomínios...</span>
+                </div>
               </div>
             )}
 

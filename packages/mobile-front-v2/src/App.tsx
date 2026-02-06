@@ -7,7 +7,7 @@ import { NavigationContainer, useFocusEffect } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { ActivityIndicator, Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import { Home, Package, ClipboardList, ShoppingCart, User } from "lucide-react-native";
 import { TamaguiProvider } from "tamagui";
 import tamaguiConfig from "../tamagui.config";
@@ -34,6 +34,8 @@ import Seguranca from "./pages/Seguranca";
 import Ajuda from "./pages/Ajuda";
 import AccessPending from "./pages/AccessPending";
 import { useCondo } from "@/contexts/CondoContext";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { StripeProvider } from "@stripe/stripe-react-native";
 
 const queryClient = new QueryClient();
 
@@ -44,7 +46,7 @@ const ProductsStack = createNativeStackNavigator();
 function LoadingScreen() {
   return (
     <View style={styles.loading}>
-      <ActivityIndicator size="large" color="#E6E8EA" style={styles.loadingIcon} />
+      <LoadingSpinner size={90} style={styles.loadingIcon} />
       <Text style={styles.loadingText}>Carregando...</Text>
     </View>
   );
@@ -351,25 +353,32 @@ function CondoProviderWithAuth({ children }: { children: React.ReactNode }) {
   return <CondoProvider isAuthenticated={isAuthenticated}>{children}</CondoProvider>;
 }
 
+const stripePublishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
+if (!stripePublishableKey) {
+  console.warn("[stripe] EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY não configurada.");
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ErrorBoundary>
-      <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
-        <SafeAreaProvider>
-          <NotificationProvider>
-            <AuthProvider>
-              <CondoProviderWithAuth>
-                <CartProvider>
-                  <NavigationContainer>
-                    <RootNavigator />
-                  </NavigationContainer>
-                </CartProvider>
-              </CondoProviderWithAuth>
-            </AuthProvider>
-          </NotificationProvider>
-        </SafeAreaProvider>
-      </TamaguiProvider>
-    </ErrorBoundary>
+    <StripeProvider publishableKey={stripePublishableKey}>
+      <ErrorBoundary>
+        <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
+          <SafeAreaProvider>
+            <NotificationProvider>
+              <AuthProvider>
+                <CondoProviderWithAuth>
+                  <CartProvider>
+                    <NavigationContainer>
+                      <RootNavigator />
+                    </NavigationContainer>
+                  </CartProvider>
+                </CondoProviderWithAuth>
+              </AuthProvider>
+            </NotificationProvider>
+          </SafeAreaProvider>
+        </TamaguiProvider>
+      </ErrorBoundary>
+    </StripeProvider>
   </QueryClientProvider>
 );
 

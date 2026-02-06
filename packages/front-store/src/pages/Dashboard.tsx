@@ -16,6 +16,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import dashboardBg from "@/assets/dashboard-bg.jpg";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   getProductCategory,
   getProductImage,
@@ -210,7 +211,14 @@ const Dashboard = () => {
             <p className="text-muted-foreground">
               Comprando para:{" "}
               <span className="font-medium text-primary">
-                {selectedCondo?.name || "Carregando empresa..."}
+                {selectedCondo?.name ? (
+                  selectedCondo.name
+                ) : (
+                  <span className="inline-flex items-center gap-2">
+                    <LoadingSpinner size={16} />
+                    Carregando empresa...
+                  </span>
+                )}
               </span>
             </p>
           </div>
@@ -326,9 +334,19 @@ const Dashboard = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <p className="text-sm text-muted-foreground">
             {!selectedCondo
-              ? "Aguardando empresa aprovada..."
+              ? (
+                <span className="inline-flex items-center gap-2">
+                  <LoadingSpinner size={16} />
+                  Aguardando empresa aprovada...
+                </span>
+              )
               : isLoading
-                ? "Carregando produtos..."
+                ? (
+                  <span className="inline-flex items-center gap-2">
+                    <LoadingSpinner size={16} />
+                    Carregando produtos...
+                  </span>
+                )
                 : `${filteredAndSortedProducts.length} produto${
                     filteredAndSortedProducts.length !== 1 ? "s" : ""
                   } encontrado${filteredAndSortedProducts.length !== 1 ? "s" : ""}${
@@ -354,9 +372,10 @@ const Dashboard = () => {
 
         {!selectedCondo && (
           <div className="border-2 border-border bg-card p-6 text-center">
-            <p className="text-muted-foreground mb-4">
-              Carregando empresa aprovada ou verifique se há um CNPJ liberado.
-            </p>
+            <div className="flex items-center justify-center gap-2 text-muted-foreground mb-4">
+              <LoadingSpinner size={20} />
+              <span>Carregando empresa aprovada ou verifique se há um CNPJ liberado.</span>
+            </div>
             <Button asChild>
               <Link to="/company-link">Cadastrar empresa</Link>
             </Button>
@@ -387,7 +406,10 @@ const Dashboard = () => {
         {/* Infinite scroll loader */}
         {hasMore && (
           <div ref={loaderRef} className="flex justify-center py-8">
-            <div className="text-muted-foreground text-sm">Carregando mais produtos...</div>
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <LoadingSpinner size={18} />
+              <span>Carregando mais produtos...</span>
+            </div>
           </div>
         )}
 

@@ -25,6 +25,8 @@ const GET = async (req, res) => {
       "image_mobile_url",
       "animation_url",
       "animation_mobile_url",
+      "fallback_image_url",
+      "fallback_image_mobile_url",
       "link_type",
       "link_value",
       "sort_order",

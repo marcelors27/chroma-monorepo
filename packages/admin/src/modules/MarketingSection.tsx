@@ -28,6 +28,14 @@ const areaOptions = [
   { value: "settings", label: "Configurações" },
 ]
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+const MAX_VIDEO_BYTES = 12 * 1024 * 1024
+
+const formatBytes = (bytes: number) => {
+  const mb = bytes / (1024 * 1024)
+  return `${mb.toFixed(0)}MB`
+}
+
 const initialForm = {
   title: "",
   subtitle: "",
@@ -35,6 +43,8 @@ const initialForm = {
   image_mobile_url: "",
   animation_url: "",
   animation_mobile_url: "",
+  fallback_image_url: "",
+  fallback_image_mobile_url: "",
   link_type: "",
   link_value: "",
   sort_order: "0",
@@ -103,6 +113,8 @@ export default function MarketingSection({
       image_mobile_url: banner.image_mobile_url || "",
       animation_url: banner.animation_url || "",
       animation_mobile_url: banner.animation_mobile_url || "",
+      fallback_image_url: banner.fallback_image_url || "",
+      fallback_image_mobile_url: banner.fallback_image_mobile_url || "",
       link_type: banner.link_type || "",
       link_value: banner.link_value || "",
       sort_order: banner.sort_order ? String(banner.sort_order) : "0",
@@ -123,6 +135,12 @@ export default function MarketingSection({
     const file = files[0]
     if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
       setBannersError("Envie apenas imagens ou vídeos.")
+      return
+    }
+    const isVideoFile = file.type.startsWith("video/")
+    const maxBytes = isVideoFile ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES
+    if (file.size > maxBytes) {
+      setBannersError(`Arquivo muito grande. Máximo ${formatBytes(maxBytes)}.`)
       return
     }
 
@@ -184,6 +202,8 @@ export default function MarketingSection({
         image_mobile_url: form.image_mobile_url || null,
         animation_url: form.animation_url || null,
         animation_mobile_url: form.animation_mobile_url || null,
+        fallback_image_url: form.fallback_image_url || null,
+        fallback_image_mobile_url: form.fallback_image_mobile_url || null,
         link_type: form.link_type || null,
         link_value: form.link_value || null,
         sort_order: form.sort_order ? Number(form.sort_order) : 0,
@@ -301,7 +321,7 @@ export default function MarketingSection({
             <div className="grid" style={{ gap: "0.4rem" }}>
               <strong>Imagens</strong>
               <span className="muted">
-                Desktop recomendado: 1440 x 360px. Mobile recomendado: 1440 x 360px.
+                Desktop recomendado: 1440 x 360px. Mobile recomendado: 1440 x 360px. Limite: imagens até {formatBytes(MAX_IMAGE_BYTES)}.
               </span>
             </div>
             <div className="grid" style={{ gap: "0.6rem" }}>
@@ -341,7 +361,7 @@ export default function MarketingSection({
               <strong>Animações</strong>
               <span className="muted">
                 Aceita GIF ou vídeo (MP4/WebM). Use o mesmo tamanho das imagens para manter o
-                layout consistente.
+                layout consistente. Limite: vídeos até {formatBytes(MAX_VIDEO_BYTES)}.
               </span>
             </div>
             <div className="grid" style={{ gap: "0.6rem" }}>
@@ -372,6 +392,45 @@ export default function MarketingSection({
                 type="file"
                 accept="image/*,video/*"
                 onChange={(e) => uploadAsset(e.target.files, "animation_mobile_url")}
+              />
+            </div>
+          </div>
+
+          <div className="grid" style={{ gap: "0.8rem" }}>
+            <div className="grid" style={{ gap: "0.4rem" }}>
+              <strong>Fallback (conexões ruins)</strong>
+              <span className="muted">
+                Imagem leve usada quando o vídeo não carregar. Limite: imagens até {formatBytes(MAX_IMAGE_BYTES)}.
+              </span>
+            </div>
+            <div className="grid" style={{ gap: "0.6rem" }}>
+              <label className="grid" style={{ gap: "0.35rem" }}>
+                <span className="muted">Fallback desktop</span>
+                <input
+                  value={form.fallback_image_url}
+                  onChange={(e) => handleChange("fallback_image_url", e.target.value)}
+                  className="field-input"
+                  placeholder="https://..."
+                />
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => uploadAsset(e.target.files, "fallback_image_url")}
+              />
+              <label className="grid" style={{ gap: "0.35rem" }}>
+                <span className="muted">Fallback mobile</span>
+                <input
+                  value={form.fallback_image_mobile_url}
+                  onChange={(e) => handleChange("fallback_image_mobile_url", e.target.value)}
+                  className="field-input"
+                  placeholder="https://..."
+                />
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => uploadAsset(e.target.files, "fallback_image_mobile_url")}
               />
             </div>
           </div>
@@ -581,6 +640,31 @@ export default function MarketingSection({
                         />
                       )}
                     </div>
+                    {(banner.fallback_image_url || banner.fallback_image_mobile_url) && (
+                      <div className="grid" style={{ gap: "0.35rem" }}>
+                        <span className="muted">
+                          <FontAwesomeIcon icon={faImage} /> Fallback
+                        </span>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                            gap: "0.8rem",
+                          }}
+                        >
+                          <img
+                            src={banner.fallback_image_url || ""}
+                            alt={`${banner.title} fallback desktop`}
+                            style={{ width: "100%", borderRadius: "12px" }}
+                          />
+                          <img
+                            src={banner.fallback_image_mobile_url || ""}
+                            alt={`${banner.title} fallback mobile`}
+                            style={{ width: "100%", borderRadius: "12px" }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {banner.link_type && (

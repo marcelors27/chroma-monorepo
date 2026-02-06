@@ -15,6 +15,7 @@ interface ProductCardProps {
   image: string;
   category: string;
   onAddToCart?: () => void;
+  onPress?: () => void;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -27,14 +28,16 @@ export function ProductCard({
   image,
   category,
   onAddToCart,
+  onPress,
   style,
 }: ProductCardProps) {
   const navigation = useNavigation();
   const discount = originalPrice ? Math.round((1 - price / originalPrice) * 100) : 0;
+  const handlePress = onPress ?? (() => navigation.navigate("ProductDetails" as never, { id } as never));
 
   return (
     <Pressable
-      onPress={() => navigation.navigate("ProductDetails" as never, { id } as never)}
+      onPress={handlePress}
       style={[styles.card, style]}
     >
       <View style={styles.media}>
@@ -66,7 +69,10 @@ export function ProductCard({
           </View>
 
           <Pressable
-            onPress={() => onAddToCart?.()}
+            onPress={(event) => {
+              event.stopPropagation();
+              onAddToCart?.();
+            }}
             style={styles.addButton}
           >
             <Plus color="#FFFFFF" size={18} />

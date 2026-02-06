@@ -37,6 +37,7 @@ import {
 } from "@/lib/medusa";
 import { toast } from "@/hooks/use-toast";
 import condosBg from "@/assets/condos-bg.jpg";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 type PaymentMethod = "credit" | "pix" | "boleto";
 
@@ -86,28 +87,11 @@ const Checkout = () => {
     const pendingId = searchParams.get("pending");
     if (!pendingId || orderStatus) return;
 
-    let active = true;
-    const loadPending = async () => {
-      const local = getPendingPayments();
-      const remote = await fetchPendingPaymentsFromBackend();
-      const merged = mergePendingPayments(local, remote);
-      const pending = merged.find(
-        (item) => item.payment_collection_id === pendingId
-      );
-      if (!pending || !active) return;
-      setOrderStatus("pending");
-      setPaymentCollectionId(pending.payment_collection_id || "");
-      setPendingCartId(pending.cart_id || "");
-      if (pending.method && !paymentMethod) {
-        setPaymentMethod(pending.method as PaymentMethod);
-      }
-      setPendingDetails(pending.details || null);
-    };
-
-    loadPending();
-    return () => {
-      active = false;
-    };
+    toast({
+      title: "Pagamento pendente",
+      description: "Confira as instruções na tela de pedidos.",
+    });
+    navigate("/orders");
   }, [orderStatus, paymentMethod, searchParams]);
 
   useEffect(() => {
@@ -418,23 +402,19 @@ const Checkout = () => {
       } catch {
         // Ignore failures to persist payment method
       }
-      setOrderId(result.orderId || "");
-      setPaymentCollectionId(result.paymentCollectionId || "");
-      setPendingCartId(result.cartId || "");
-      setOrderStatus(result.status);
       if (result.status === "completed") {
+        setOrderId(result.orderId || "");
+        setPaymentCollectionId(result.paymentCollectionId || "");
+        setPendingCartId(result.cartId || "");
+        setOrderStatus(result.status);
         await clearCart();
       } else {
-        if (result.paymentCollectionId) {
-          const pending = getPendingPayments().find(
-            (item) => item.payment_collection_id === result.paymentCollectionId
-          );
-          setPendingDetails(pending?.details || null);
-        }
         toast({
           title: "Pagamento pendente",
-          description: "Seu carrinho foi reiniciado. Aguardando confirmação do pagamento.",
+          description: "Confira as instruções na tela de pedidos.",
         });
+        navigate("/orders");
+        return;
       }
     } catch (err: any) {
       toast({
@@ -753,7 +733,10 @@ const Checkout = () => {
                     <p className="text-sm text-destructive mb-3">{shippingError}</p>
                   )}
                   {shippingLoading ? (
-                    <p className="text-sm text-muted-foreground">Carregando opções...</p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <LoadingSpinner size={18} />
+                      <span>Carregando opções...</span>
+                    </div>
                   ) : shippingOptions.length === 0 ? (
                     <div className="text-sm text-muted-foreground space-y-2">
                       <p>Sem opções de entrega disponíveis para este carrinho.</p>

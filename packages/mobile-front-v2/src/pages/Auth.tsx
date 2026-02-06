@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Image,
   ImageBackground,
   Platform,
@@ -16,6 +15,7 @@ import { Apple, ArrowLeft, Chrome, Eye, EyeOff, Facebook, Lock, Mail, User } fro
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/lib/toast";
 import logo from "@/assets/logo.png";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 const AUTH_BG = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&auto=format&fit=crop&q=80";
 
@@ -237,7 +237,7 @@ export default function Auth() {
 
       {isLoading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#E6E8EA" style={styles.loadingIcon} />
+          <LoadingSpinner size={84} style={styles.loadingIcon} />
         </View>
       )}
 

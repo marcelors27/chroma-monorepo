@@ -7,6 +7,7 @@ import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import homeBg from "@/assets/home-bg.jpg";
 import { getNews, listNews, MedusaNews } from "@/lib/medusa";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const NewsDetails = () => {
   const { id } = useParams();
@@ -41,6 +42,7 @@ const NewsDetails = () => {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
+        <LoadingSpinner className="text-primary" />
         <h1 className="text-2xl font-bold">Carregando notícia...</h1>
       </div>
     );

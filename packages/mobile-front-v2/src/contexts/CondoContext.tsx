@@ -8,6 +8,16 @@ export interface Condo {
   id: string;
   name: string;
   address: string;
+  cnpj?: string;
+  razaoSocial?: string;
+  number?: string;
+  complemento?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  phone?: string;
+  email?: string;
   units: number;
   role: string;
   approved?: boolean;
@@ -65,7 +75,17 @@ export function CondoProvider({
         .map((company: any) => ({
           id: company.id,
           name: company.fantasy_name || company.trade_name || company.name || "Condomínio",
+          cnpj: company.cnpj || company.metadata?.cnpj || "",
+          razaoSocial: company.trade_name || company.metadata?.razaoSocial || "",
           address: company.metadata?.address || company.metadata?.city || "",
+          number: company.metadata?.numero || "",
+          complemento: company.metadata?.complemento || "",
+          neighborhood: company.metadata?.neighborhood || company.metadata?.bairro || "",
+          city: company.metadata?.city || "",
+          state: company.metadata?.state || "",
+          zip: company.metadata?.zip || company.metadata?.cep || "",
+          phone: company.metadata?.phone || "",
+          email: company.metadata?.email || "",
           units: Number(company.metadata?.units) || 0,
           role: company.metadata?.role || "Síndico",
           approved: true,

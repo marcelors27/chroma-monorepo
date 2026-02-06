@@ -344,11 +344,6 @@ const Orders = () => {
                           )}
                         </div>
                       </div>
-                      <Button variant="outline" className="gap-2 border-2" asChild>
-                        <Link to={`/checkout?pending=${encodeURIComponent(pending.payment_collection_id)}`}>
-                          Ver instruções
-                        </Link>
-                      </Button>
                     </div>
                   </div>
                 ))}

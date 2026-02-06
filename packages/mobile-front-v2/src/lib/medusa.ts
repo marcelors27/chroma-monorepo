@@ -20,6 +20,7 @@ const MEDUSA_ORIGIN = (() => {
 
 const AUTH_TOKEN_KEY = "chroma_mobile_store_token";
 const CART_ID_KEY = "chroma_mobile_store_cart_id";
+const PENDING_PAYMENT_KEY = "chroma_mobile_store_pending_payments";
 
 let accessPendingHandler: (() => void) | null = null;
 
@@ -115,6 +116,25 @@ export type MedusaPaymentCollection = {
   payment_sessions?: MedusaPaymentSession[];
 };
 
+export type PendingPaymentDetails = {
+  method?: string;
+  boleto_line?: string;
+  boleto_url?: string;
+  boleto_expires_at?: number;
+  pix_code?: string;
+  pix_qr?: string;
+  boleto_qr?: string;
+  client_secret?: string;
+};
+
+export type PendingPayment = {
+  cart_id: string;
+  payment_collection_id: string;
+  method?: string;
+  created_at?: string;
+  details?: PendingPaymentDetails;
+};
+
 export type MedusaOrder = {
   id: string;
   display_id?: string;
@@ -122,6 +142,8 @@ export type MedusaOrder = {
   status?: string;
   fulfillment_status?: string;
   payment_status?: string;
+  payment_collection_id?: string;
+  cart_id?: string;
   total?: number;
   items?: MedusaLineItem[];
   shipping_address?: Record<string, any>;
@@ -173,6 +195,8 @@ export type MedusaMarketingBanner = {
   image_mobile_url?: string | null;
   animation_url?: string | null;
   animation_mobile_url?: string | null;
+  fallback_image_url?: string | null;
+  fallback_image_mobile_url?: string | null;
   link_type?: string | null;
   link_value?: string | null;
   sort_order?: number | null;
@@ -231,6 +255,141 @@ const setCartId = async (cartId: string | null) => {
     return;
   }
   await AsyncStorage.setItem(CART_ID_KEY, cartId);
+};
+
+const readPendingPayments = async (): Promise<PendingPayment[]> => {
+  const raw = await AsyncStorage.getItem(PENDING_PAYMENT_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+    return parsed ? [parsed] : [];
+  } catch {
+    return [];
+  }
+};
+
+const writePendingPayments = async (pending: PendingPayment[]) => {
+  await AsyncStorage.setItem(PENDING_PAYMENT_KEY, JSON.stringify(pending));
+};
+
+const normalizePendingPayments = (value: unknown): PendingPayment[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item) => item && item.payment_collection_id);
+};
+
+export const getPendingPayments = async (): Promise<PendingPayment[]> => {
+  return readPendingPayments();
+};
+
+export const setPendingPayment = async (pending: PendingPayment | null) => {
+  if (!pending) return;
+  const current = await getPendingPayments();
+  const next = current.filter((item) => item.payment_collection_id !== pending.payment_collection_id);
+  next.push(pending);
+  await writePendingPayments(next);
+};
+
+export const removePendingPayment = async (criteria: {
+  cart_id?: string;
+  payment_collection_id?: string;
+}) => {
+  const current = await getPendingPayments();
+  if (!current.length) return;
+  const next = current.filter((item) => {
+    if (criteria.payment_collection_id) {
+      return item.payment_collection_id !== criteria.payment_collection_id;
+    }
+    if (criteria.cart_id) {
+      return item.cart_id !== criteria.cart_id;
+    }
+    return true;
+  });
+  await writePendingPayments(next);
+};
+
+export const clearPendingPayments = async () => {
+  await AsyncStorage.removeItem(PENDING_PAYMENT_KEY);
+};
+
+export const mergePendingPayments = (local: PendingPayment[], remote: PendingPayment[]) => {
+  const map = new Map<string, PendingPayment>();
+  for (const item of local) {
+    if (!item?.payment_collection_id) continue;
+    map.set(item.payment_collection_id, item);
+  }
+  for (const item of remote) {
+    if (!item?.payment_collection_id) continue;
+    const existing = map.get(item.payment_collection_id);
+    map.set(item.payment_collection_id, {
+      ...existing,
+      ...item,
+      details: { ...existing?.details, ...item?.details },
+    });
+  }
+  return Array.from(map.values());
+};
+
+export const fetchPendingPaymentsFromBackend = async (): Promise<PendingPayment[]> => {
+  try {
+    const customer = await getCustomerMe();
+    return normalizePendingPayments(customer?.customer?.metadata?.pending_payments);
+  } catch {
+    return [];
+  }
+};
+
+const buildPendingPaymentsMetadata = (metadata: Record<string, any>, pending: PendingPayment[]) => {
+  return { ...metadata, pending_payments: pending };
+};
+
+export const syncPendingPaymentToBackend = async (pending: PendingPayment) => {
+  try {
+    const customer = await getCustomerMe();
+    const metadata = customer?.customer?.metadata || {};
+    const current = normalizePendingPayments(metadata.pending_payments);
+    const next = mergePendingPayments(current, [pending]);
+    await updateCustomerMe({ metadata: buildPendingPaymentsMetadata(metadata, next) });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+export const removePendingPaymentFromBackend = async (criteria: {
+  cart_id?: string;
+  payment_collection_id?: string;
+}) => {
+  try {
+    const customer = await getCustomerMe();
+    const metadata = customer?.customer?.metadata || {};
+    const current = normalizePendingPayments(metadata.pending_payments);
+    const next = current.filter((item) => {
+      if (criteria.payment_collection_id) {
+        return item.payment_collection_id !== criteria.payment_collection_id;
+      }
+      if (criteria.cart_id) {
+        return item.cart_id !== criteria.cart_id;
+      }
+      return true;
+    });
+    await updateCustomerMe({ metadata: buildPendingPaymentsMetadata(metadata, next) });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+export const notifyPendingPayment = async (payload: {
+  payment_method: string;
+  payment_collection_id: string;
+  company_id?: string | null;
+  details?: PendingPaymentDetails;
+}) => {
+  return apiFetch("/store/notifications/pending-payment", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 };
 
 const buildHeaders = async (init?: FetchInit) => {

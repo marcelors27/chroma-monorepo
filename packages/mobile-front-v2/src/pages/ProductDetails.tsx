@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import {
   ArrowLeft,
@@ -17,6 +17,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import fallbackImage from "@/assets/condo-background.jpg";
 import { FullscreenGallery } from "@/components/ui/FullscreenGallery";
 import { toast } from "@/lib/toast";
@@ -169,7 +170,7 @@ export default function ProductDetails() {
     return (
       <AuthenticatedLayout>
         <View style={styles.emptyState}>
-          <ActivityIndicator color="#5DA2E6" />
+          <LoadingSpinner size={72} />
           <Text style={styles.emptyText}>Carregando produto...</Text>
         </View>
       </AuthenticatedLayout>
