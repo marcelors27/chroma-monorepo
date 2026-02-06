@@ -128,7 +128,9 @@ const AppLayout = () => {
           <div className="p-6 border-b border-border/70">
             <Link to="/dashboard" className="flex items-center gap-2">
               <img src={logo} alt="Chroma" className="h-8 w-8" />
-              <span className="text-xl font-bold text-primary">Chroma</span>
+              <span className="text-xl font-bold text-primary">
+                Chroma <span className="text-white">Store</span>
+              </span>
             </Link>
           </div>
 
@@ -203,7 +205,9 @@ const AppLayout = () => {
             <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-2">
                 <img src={logo} alt="Chroma" className="h-6 w-6" />
-                <span className="font-bold text-primary">Chroma</span>
+                <span className="font-bold text-primary">
+                  Chroma <span className="text-white">Store</span>
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <CartDrawer />
@@ -217,7 +221,9 @@ const AppLayout = () => {
                     <div className="p-6 border-b border-border/70">
                       <div className="flex items-center gap-2">
                         <img src={logo} alt="Chroma" className="h-8 w-8" />
-                        <span className="text-xl font-bold text-primary">Chroma</span>
+                        <span className="text-xl font-bold text-primary">
+                          Chroma <span className="text-white">Store</span>
+                        </span>
                       </div>
                     </div>
                     <div className="p-4 border-b border-border/70">
@@ -316,10 +322,12 @@ const AppLayout = () => {
         >
           {isFirstAccessCondos && (
             <div className="flex items-center justify-between mb-6 border-b border-border/70 pb-4">
-              <div className="flex items-center gap-2">
-                <img src={logo} alt="Chroma" className="h-7 w-7" />
-                <span className="text-lg font-bold text-primary">Chroma</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <img src={logo} alt="Chroma" className="h-7 w-7" />
+              <span className="text-lg font-bold text-primary">
+                Chroma <span className="text-white">Store</span>
+              </span>
+            </div>
               <Button variant="outline" className="border border-border/60" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sair

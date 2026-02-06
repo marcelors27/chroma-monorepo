@@ -56,7 +56,7 @@ const Auth = () => {
       title: "Login realizado!",
       description: "Redirecionando para o catálogo.",
     });
-    navigate("/dashboard");
+    navigate("/home");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

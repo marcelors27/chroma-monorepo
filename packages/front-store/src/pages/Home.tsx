@@ -126,7 +126,7 @@ const Home = () => {
     .filter(Boolean)
     .join(" ")
     .trim() || ((customer?.metadata as any)?.nome ?? (customer?.metadata as any)?.name ?? "");
-  const greeting = `Olá, ${greetingName}`.trim();
+  const hasGreetingName = Boolean(greetingName?.trim());
 
   const newsItems = (newsData?.news || []) as MedusaNews[];
   const banners = (bannerData?.banners || []) as MedusaMarketingBanner[];
@@ -320,7 +320,15 @@ const Home = () => {
       <div className="max-w-6xl mx-auto relative z-10 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">{greeting}</h1>
+        <h1 className="text-3xl font-bold text-foreground">
+          <span>Olá</span>
+          {hasGreetingName && (
+            <>
+              <span>, </span>
+              <span className="text-blue-500">{greetingName}</span>
+            </>
+          )}
+        </h1>
         <p className="text-muted-foreground mt-1">
           Confira as melhores ofertas e novidades para seu condomínio
         </p>
