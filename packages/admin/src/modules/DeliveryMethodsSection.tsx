@@ -161,6 +161,119 @@ export default function DeliveryMethodsSection({
     }
   }
 
+  const loadStockLocationsWithSets = async () => {
+    const res = await fetch(
+      `${medusaUrl}/admin/stock-locations?limit=200&fields=${encodeURIComponent(
+        "+name,+fulfillment_sets,+fulfillment_sets.name,+fulfillment_sets.type"
+      )}`,
+      { headers }
+    )
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(body || "Não foi possível carregar locais de estoque.")
+    }
+    const json = await res.json().catch(() => null)
+    return (json?.stock_locations || []) as StockLocationWithSets[]
+  }
+
+  const createFulfillmentSet = async (
+    locationId: string,
+    locationName: string | undefined,
+    type: "shipping" | "pickup"
+  ) => {
+    const name = `${locationName || "Local"} ${type}`
+    const res = await fetch(
+      `${medusaUrl}/admin/stock-locations/${locationId}/fulfillment-sets`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ name, type }),
+      }
+    )
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(body || "Não foi possível criar o conjunto de fulfillment.")
+    }
+    const json = await res.json().catch(() => null)
+    return json?.fulfillment_set?.id as string | undefined
+  }
+
+  const createServiceZone = async (fulfillmentSetId: string) => {
+    const payload = {
+      name: "Zona principal",
+      fulfillment_set_id: fulfillmentSetId,
+      geo_zones: [{ type: "country", country_code: "br" }],
+    }
+    const res = await fetch(`${medusaUrl}/admin/service-zones`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(body || "Não foi possível criar a zona de serviço.")
+    }
+  }
+
+  const ensureServiceZone = async () => {
+    if (form.serviceZoneId) return form.serviceZoneId
+
+    const zonesRes = await fetch(
+      `${medusaUrl}/admin/service-zones?limit=200&fields=${encodeURIComponent(
+        "+name,+region,+fulfillment_set,+fulfillment_set.location"
+      )}`,
+      { headers }
+    )
+    if (zonesRes.ok) {
+      const json = await zonesRes.json().catch(() => null)
+      const list = json?.service_zones || []
+      if (list.length) {
+        const id = list[0].id as string
+        setFormField("serviceZoneId", id)
+        setServiceZones(list)
+        return id
+      }
+    }
+
+    const locations = await loadStockLocationsWithSets()
+    if (!locations.length) {
+      throw new Error("Nenhum local de estoque encontrado. Cadastre um local primeiro.")
+    }
+    const location = locations[0]
+    const existingSet =
+      location.fulfillment_sets?.find((set) => set.type === "shipping") ||
+      location.fulfillment_sets?.[0]
+    let setId = existingSet?.id
+    if (!setId) {
+      setId = await createFulfillmentSet(location.id, location.name, "shipping")
+    }
+    if (!setId) {
+      throw new Error("Não foi possível identificar o conjunto de fulfillment criado.")
+    }
+
+    await createServiceZone(setId)
+    await Promise.all([loadServiceZones(), loadFulfillmentSetLocations()])
+
+    const updatedZonesRes = await fetch(
+      `${medusaUrl}/admin/service-zones?limit=200&fields=${encodeURIComponent(
+        "+name,+region,+fulfillment_set,+fulfillment_set.location"
+      )}`,
+      { headers }
+    )
+    if (!updatedZonesRes.ok) {
+      throw new Error("Não foi possível recarregar zonas de serviço.")
+    }
+    const updated = await updatedZonesRes.json().catch(() => null)
+    const createdList = updated?.service_zones || []
+    if (!createdList.length) {
+      throw new Error("Nenhuma zona de serviço encontrada após a criação automática.")
+    }
+    const createdId = createdList[0].id as string
+    setFormField("serviceZoneId", createdId)
+    setServiceZones(createdList)
+    return createdId
+  }
+
   const ensureProviderEnabled = async (locationId: string, providerId: string) => {
     const res = await fetch(
       `${medusaUrl}/admin/stock-locations/${locationId}/fulfillment-providers`,
@@ -233,14 +346,12 @@ export default function DeliveryMethodsSection({
       if (!form.name.trim()) {
         throw new Error("Informe o nome da forma de entrega.")
       }
-      if (!form.serviceZoneId) {
-        throw new Error("Selecione a zona de serviço.")
-      }
+      const resolvedServiceZoneId = await ensureServiceZone()
       if (!form.profileId) {
         throw new Error("Selecione o shipping profile.")
       }
       const zoneCurrency =
-        serviceZoneById.get(form.serviceZoneId)?.region?.currency_code || null
+        serviceZoneById.get(resolvedServiceZoneId)?.region?.currency_code || null
       const currency =
         zoneCurrency || form.currencyCode || regions[0]?.currency_code || "brl"
       const amountValue = Number(form.price.replace(",", "."))
@@ -249,7 +360,7 @@ export default function DeliveryMethodsSection({
       }
       const payload = {
         name: form.name.trim(),
-        service_zone_id: form.serviceZoneId,
+        service_zone_id: resolvedServiceZoneId,
         shipping_profile_id: form.profileId,
         provider_id: fulfillmentProviders[0]?.id || DEFAULT_PROVIDER,
         price_type: "flat",
@@ -264,7 +375,7 @@ export default function DeliveryMethodsSection({
           },
         ],
       }
-      const zone = serviceZoneById.get(form.serviceZoneId)
+      const zone = serviceZoneById.get(resolvedServiceZoneId)
       const setId = zone?.fulfillment_set?.id
       const locationInfo = setId ? fulfillmentSetLocations.get(setId) : null
       if (locationInfo?.locationId) {
