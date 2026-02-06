@@ -151,6 +151,52 @@ const sanitizePayload = (value, depth = 0) => {
   return output
 }
 
+const logPaymentSessionRequest = () => {
+  return async (req, _res, next) => {
+    if (process.env.LOG_PAYMENT_SESSIONS !== "true") return next()
+    const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
+    try {
+      const path = String(req.path || "")
+      const match = path.match(/\/payment-collections\/([^/]+)\/payment-sessions/)
+      const paymentCollectionId = match?.[1]
+      let payment_collection = null
+      if (paymentCollectionId) {
+        try {
+          const remoteQuery = req.scope.resolve(ContainerRegistrationKeys.REMOTE_QUERY)
+          const query = remoteQueryObjectFromString({
+            entryPoint: "payment_collection",
+            variables: { id: paymentCollectionId },
+            fields: ["id", "amount", "currency_code"],
+          })
+          const result = await remoteQuery(query)
+          payment_collection = Array.isArray(result)
+            ? result?.[0]
+            : Array.isArray(result?.data)
+              ? result?.data?.[0]
+              : result
+        } catch (err) {
+          safeLog(logger, {
+            msg: "paymentSession:collectionLookupFailed",
+            payment_collection_id: paymentCollectionId,
+            error: err?.message,
+          })
+        }
+      }
+
+      safeLog(logger, {
+        msg: "paymentSession:init",
+        method: req.method,
+        path,
+        payment_collection,
+        body: sanitizePayload(req.body),
+      })
+    } catch (err) {
+      safeLog(logger, { msg: "paymentSession:logFailed", error: err?.message })
+    }
+    next()
+  }
+}
+
 const getAuthServices = (scope) => {
   const services = {}
   try {
@@ -470,6 +516,11 @@ const middlewares = defineMiddlewares([
     method: ["POST", "PUT", "PATCH"],
     matcher: ["/store/*", "/admin/*", "/auth/*"],
     middlewares: [logRequestPayload()],
+  },
+  {
+    method: ["POST"],
+    matcher: ["/store/payment-collections/*/payment-sessions"],
+    middlewares: [logPaymentSessionRequest()],
   },
   {
     method: ["ALL"],

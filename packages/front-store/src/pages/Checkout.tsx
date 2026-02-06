@@ -42,7 +42,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 type PaymentMethod = "credit" | "pix" | "boleto";
 
 const Checkout = () => {
-  const { items, totalPrice, clearCart, completeBackendCheckout, cartId } = useCart();
+  const { items, totalPrice, clearCart, completeBackendCheckout, cartId, isCartLoading } = useCart();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
@@ -670,7 +670,14 @@ const Checkout = () => {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Finalizar Pedido</h1>
 
-        {items.length === 0 ? (
+        {isCartLoading ? (
+          <div className="border-2 border-border p-12 bg-card text-center" data-testid="checkout-loading">
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <LoadingSpinner size={18} />
+              <span>Carregando carrinho...</span>
+            </div>
+          </div>
+        ) : items.length === 0 ? (
           <div className="border-2 border-border p-12 bg-card text-center" data-testid="checkout-empty">
             <h3 className="font-bold text-lg mb-2">Carrinho vazio</h3>
             <p className="text-muted-foreground mb-4">

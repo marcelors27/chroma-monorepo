@@ -11,9 +11,10 @@ import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { formatMoney } from "@/lib/medusa";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const CartDrawer = () => {
-  const { items, totalItems, totalPrice, removeItem, updateQuantity, clearCart } = useCart();
+  const { items, totalItems, totalPrice, removeItem, updateQuantity, clearCart, isCartLoading } = useCart();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
@@ -48,7 +49,14 @@ const CartDrawer = () => {
         </SheetHeader>
 
         <div className="flex flex-col h-[calc(100vh-8rem)]">
-          {items.length === 0 ? (
+          {isCartLoading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <LoadingSpinner size={18} />
+                <span>Carregando carrinho...</span>
+              </div>
+            </div>
+          ) : items.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
               <p className="text-muted-foreground">Seu carrinho está vazio</p>
             </div>

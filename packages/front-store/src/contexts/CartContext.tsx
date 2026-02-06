@@ -55,6 +55,7 @@ export interface AddItemInput {
 interface CartContextType {
   cartId: string | null;
   items: CartItem[];
+  isCartLoading: boolean;
   addItem: (product: AddItemInput) => Promise<void>;
   removeItem: (id: string) => Promise<void>;
   updateQuantity: (id: string, quantity: number) => Promise<void>;
@@ -79,6 +80,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [cartId, setCartId] = useState<string | null>(null);
+  const [isCartLoading, setIsCartLoading] = useState(true);
   const [checkoutLocked, setCheckoutLocked] = useState(false);
 
   useEffect(() => {
@@ -87,6 +89,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshCart = async () => {
     if (DEBUG) console.debug("[cart] refreshCart:start");
+    setIsCartLoading(true);
     try {
       const cart = await ensureCart();
       if (DEBUG) console.debug("[cart] refreshCart:loaded", { cartId: cart.id, items: cart.items?.length });
@@ -96,6 +99,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       if (DEBUG) console.debug("[cart] refreshCart:error", err?.message || err);
       setCartId(null);
       setItems([]);
+    } finally {
+      setIsCartLoading(false);
     }
   };
 
@@ -185,6 +190,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const resetCartState = async (keepPending: boolean) => {
+    setIsCartLoading(true);
     setCartId(null);
     setItems([]);
     if (!keepPending) {
@@ -192,6 +198,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       await removePendingPaymentFromBackend({ cart_id: cartId || "" });
     }
     await createCart();
+    await refreshCart();
   };
 
   const clearCart = async () => {
@@ -559,6 +566,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       value={{
         cartId,
         items,
+        isCartLoading,
         addItem,
         removeItem,
         updateQuantity,

@@ -55,6 +55,7 @@ export default function DeliveryMethodsSection({
     Map<string, { locationId: string; locationName?: string }>
   >(new Map())
   const [fulfillmentProviders, setFulfillmentProviders] = useState<{ id: string }[]>([])
+  const [salesChannels, setSalesChannels] = useState<{ id: string }[]>([])
 
   const serviceZoneById = useMemo(() => {
     const map = new Map<string, ServiceZone>()
@@ -156,6 +157,20 @@ export default function DeliveryMethodsSection({
         })
       })
       setFulfillmentSetLocations(map)
+    } catch {
+      // Ignore; handled in UI
+    }
+  }
+
+  const loadSalesChannels = async () => {
+    try {
+      const res = await fetch(
+        `${medusaUrl}/admin/sales-channels?limit=200&fields=${encodeURIComponent("+id")}`,
+        { headers }
+      )
+      if (!res.ok) return
+      const json = await res.json()
+      setSalesChannels(json?.sales_channels || [])
     } catch {
       // Ignore; handled in UI
     }
@@ -303,12 +318,42 @@ export default function DeliveryMethodsSection({
     }
   }
 
+  const ensureSalesChannelEnabled = async (locationId: string, salesChannelId: string) => {
+    const res = await fetch(
+      `${medusaUrl}/admin/stock-locations/${locationId}/sales-channels`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ add: [salesChannelId] }),
+      }
+    )
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(body || "Não foi possível vincular o sales channel ao local.")
+    }
+  }
+
+  const ensureSalesChannelEnabledForAll = async (salesChannelId: string) => {
+    const res = await fetch(
+      `${medusaUrl}/admin/stock-locations?limit=200&fields=${encodeURIComponent("+id")}`,
+      { headers }
+    )
+    if (!res.ok) return
+    const json = await res.json()
+    const locations: { id: string }[] = json?.stock_locations || []
+    for (const location of locations) {
+      if (!location?.id) continue
+      await ensureSalesChannelEnabled(location.id, salesChannelId)
+    }
+  }
+
   useEffect(() => {
     loadOptions()
     loadProfiles()
     loadServiceZones()
     loadFulfillmentSetLocations()
     loadFulfillmentProviders()
+    loadSalesChannels()
   }, [])
 
   useEffect(() => {
@@ -378,10 +423,17 @@ export default function DeliveryMethodsSection({
       const zone = serviceZoneById.get(resolvedServiceZoneId)
       const setId = zone?.fulfillment_set?.id
       const locationInfo = setId ? fulfillmentSetLocations.get(setId) : null
+      const salesChannelId = salesChannels[0]?.id
       if (locationInfo?.locationId) {
         await ensureProviderEnabled(locationInfo.locationId, payload.provider_id)
+        if (salesChannelId) {
+          await ensureSalesChannelEnabled(locationInfo.locationId, salesChannelId)
+        }
       } else {
         await ensureProviderEnabledForAll(payload.provider_id)
+        if (salesChannelId) {
+          await ensureSalesChannelEnabledForAll(salesChannelId)
+        }
       }
       const res = await fetch(`${medusaUrl}/admin/shipping-options`, {
         method: "POST",
