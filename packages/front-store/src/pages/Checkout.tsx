@@ -41,6 +41,8 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 type PaymentMethod = "credit" | "pix" | "boleto";
 type RecurrenceOption = "unica" | "semanal" | "quinzenal" | "mensal";
 
+const ENABLE_PIX = import.meta.env.VITE_ENABLE_PIX === "true";
+
 const Checkout = () => {
   const { items, totalPrice, clearCart, completeBackendCheckout, cartId, isCartLoading } = useCart();
   const navigate = useNavigate();
@@ -67,6 +69,10 @@ const Checkout = () => {
   const [shippingOptionId, setShippingOptionId] = useState("");
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
+  const [boletoExpiresAfterDays, setBoletoExpiresAfterDays] = useState(3);
+  const availableSavedMethods = savedPaymentMethods.filter(
+    (method) => ENABLE_PIX || method.type !== "pix"
+  );
 
   useEffect(() => {
     if (orderStatus && paymentMethod === "pix" && pixExpirationTime > 0) {
@@ -91,7 +97,11 @@ const Checkout = () => {
   useEffect(() => {
     if (paymentMethod) return;
     const method = searchParams.get("method");
-    if (method === "credit" || method === "pix" || method === "boleto") {
+    if (
+      method === "credit" ||
+      (method === "pix" && ENABLE_PIX) ||
+      method === "boleto"
+    ) {
       setPaymentMethod(method);
     }
   }, [paymentMethod, searchParams]);
@@ -117,12 +127,34 @@ const Checkout = () => {
 
   useEffect(() => {
     if (paymentMethod) return;
+    const availableMethods = savedPaymentMethods.filter(
+      (method) => ENABLE_PIX || method.type !== "pix"
+    );
     const savedDefault =
-      savedPaymentMethods.find((method) => method.is_default) || savedPaymentMethods[0];
+      availableMethods.find((method) => method.is_default) || availableMethods[0];
     if (savedDefault) {
       setPaymentMethod(savedDefault.type);
+      if (savedDefault.type === "boleto") {
+        const days = savedDefault.details?.boleto_expires_after_days;
+        if (typeof days === "number") {
+          setBoletoExpiresAfterDays(days);
+        }
+      }
     }
   }, [paymentMethod, savedPaymentMethods]);
+
+  useEffect(() => {
+    if (!ENABLE_PIX && paymentMethod === "pix") {
+      setPaymentMethod("boleto");
+    }
+  }, [paymentMethod]);
+
+  useEffect(() => {
+    if (paymentMethod !== "boleto") return;
+    if (!boletoExpiresAfterDays) {
+      setBoletoExpiresAfterDays(3);
+    }
+  }, [paymentMethod, boletoExpiresAfterDays]);
 
   useEffect(() => {
     if (!cartId) return;
@@ -319,13 +351,18 @@ const Checkout = () => {
           company_id: activeCondo?.id || null,
           company_name: activeCondo?.name || null,
           company_cnpj: activeCondo?.cnpj || null,
+          boleto_expires_after_days:
+            paymentMethod === "boleto" ? boletoExpiresAfterDays : undefined,
         },
       };
 
       const result = await completeBackendCheckout(
         shippingAddress,
         paymentMethod,
-        shippingOptionId || null
+        shippingOptionId || null,
+        paymentMethod === "boleto"
+          ? { boletoExpiresAfterDays }
+          : undefined
       );
       const recurringItems = items.filter(
         (item) => recurrenceByItem[item.id] && recurrenceByItem[item.id] !== "unica"
@@ -386,8 +423,11 @@ const Checkout = () => {
           type: paymentMethod,
           label,
           details:
-            paymentMethod === "boleto" && boletoEmailsResolved
-              ? { email: boletoEmailsResolved }
+            paymentMethod === "boleto"
+              ? {
+                  email: boletoEmailsResolved || undefined,
+                  boleto_expires_after_days: boletoExpiresAfterDays,
+                }
               : undefined,
           setDefault: true,
         });
@@ -788,11 +828,11 @@ const Checkout = () => {
                   {errors.paymentMethod && (
                     <p className="text-sm text-destructive mb-3">{errors.paymentMethod}</p>
                   )}
-                  {savedPaymentMethods.length > 0 && (
+                  {availableSavedMethods.length > 0 && (
                     <div className="mb-4 border-2 border-border p-3 bg-background/40">
                       <p className="text-xs text-muted-foreground mb-2">Métodos salvos</p>
                       <div className="space-y-2">
-                        {savedPaymentMethods.map((method) => (
+                        {availableSavedMethods.map((method) => (
                           <button
                             key={method.id}
                             type="button"
@@ -809,6 +849,15 @@ const Checkout = () => {
                                 <span className="text-xs text-muted-foreground">Padrão</span>
                               )}
                             </div>
+                            {method.type === "boleto" &&
+                              method.details?.boleto_expires_after_days && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Vencimento: {method.details.boleto_expires_after_days}{" "}
+                                  {method.details.boleto_expires_after_days === 1
+                                    ? "dia"
+                                    : "dias"}
+                                </p>
+                              )}
                           </button>
                         ))}
                       </div>
@@ -839,19 +888,21 @@ const Checkout = () => {
                         </p>
                       </div>
                     </label>
-                    <label 
-                      className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-colors ${
-                        paymentMethod === "pix" ? "border-primary bg-primary/5" : errors.paymentMethod ? "border-destructive" : "border-border hover:border-primary/50"
-                      }`}
-                      data-testid="checkout-payment-pix"
-                    >
-                      <RadioGroupItem value="pix" id="pix" />
-                      <QrCode className="h-5 w-5" />
-                      <div className="flex-1">
-                        <p className="font-medium">PIX</p>
-                        <p className="text-sm text-muted-foreground">Aprovação instantânea</p>
-                      </div>
-                    </label>
+                    {ENABLE_PIX && (
+                      <label 
+                        className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-colors ${
+                          paymentMethod === "pix" ? "border-primary bg-primary/5" : errors.paymentMethod ? "border-destructive" : "border-border hover:border-primary/50"
+                        }`}
+                        data-testid="checkout-payment-pix"
+                      >
+                        <RadioGroupItem value="pix" id="pix" />
+                        <QrCode className="h-5 w-5" />
+                        <div className="flex-1">
+                          <p className="font-medium">PIX</p>
+                          <p className="text-sm text-muted-foreground">Aprovação instantânea</p>
+                        </div>
+                      </label>
+                    )}
                     <label 
                       className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-colors ${
                         paymentMethod === "boleto" ? "border-primary bg-primary/5" : errors.paymentMethod ? "border-destructive" : "border-border hover:border-primary/50"
@@ -861,11 +912,29 @@ const Checkout = () => {
                       <Barcode className="h-5 w-5" />
                       <div className="flex-1">
                         <p className="font-medium">Boleto</p>
-                        <p className="text-sm text-muted-foreground">Compensação em até 2 dias úteis</p>
+                        <p className="text-sm text-muted-foreground">
+                          Vencimento em {boletoExpiresAfterDays} dias
+                        </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Enviaremos o boleto para:{" "}
                           <span className="font-semibold text-foreground">{boletoEmailText}</span>
                         </p>
+                        {paymentMethod === "boleto" && (
+                          <div className="mt-3">
+                            <Label className="text-xs">Prazo de vencimento</Label>
+                            <select
+                              className="mt-1 h-10 border-2 rounded-md bg-background px-3 w-full text-sm"
+                              value={boletoExpiresAfterDays}
+                              onChange={(e) => setBoletoExpiresAfterDays(Number(e.target.value))}
+                            >
+                              {[1, 3, 15, 30].map((days) => (
+                                <option key={days} value={days}>
+                                  {days} {days === 1 ? "dia" : "dias"}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                     </label>
                   </RadioGroup>

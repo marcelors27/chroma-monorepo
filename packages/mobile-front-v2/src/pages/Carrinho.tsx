@@ -31,7 +31,11 @@ import {
 type RecurrenceOption = "unica" | "semanal" | "quinzenal" | "mensal";
 
 export default function Carrinho() {
-  const [selectedPayment, setSelectedPayment] = useState<"pix" | "cartao" | "boleto">("pix");
+  const ENABLE_PIX = process.env.EXPO_PUBLIC_ENABLE_PIX === "true";
+  const [selectedPayment, setSelectedPayment] = useState<"pix" | "cartao" | "boleto">(
+    ENABLE_PIX ? "pix" : "boleto"
+  );
+  const [boletoExpiresAfterDays, setBoletoExpiresAfterDays] = useState(3);
   const navigation = useNavigation();
   const [shippingOptions, setShippingOptions] = useState<any[]>([]);
   const [shippingOptionId, setShippingOptionId] = useState<string | null>(null);
@@ -50,6 +54,21 @@ export default function Carrinho() {
     cartId,
   } = useCart();
   const { activeCondo } = useCondo();
+  const availableSavedMethods = savedPaymentMethods.filter(
+    (method) => ENABLE_PIX || method.type !== "pix"
+  );
+  const paymentOptions = [
+    ...(ENABLE_PIX
+      ? [{ id: "pix" as const, title: "Pix", subtitle: "Pagamento instantâneo", icon: QrCode }]
+      : []),
+    { id: "cartao" as const, title: "Cartão", subtitle: "Crédito ou débito", icon: CreditCard },
+    {
+      id: "boleto" as const,
+      title: "Boleto",
+      subtitle: `Vencimento em ${boletoExpiresAfterDays} dias`,
+      icon: Receipt,
+    },
+  ];
 
   const formattedTotal = formatMoney(totalPrice);
   const boletoEmails = activeCondo?.billingEmails?.length
@@ -98,12 +117,34 @@ export default function Carrinho() {
 
   useEffect(() => {
     if (!savedPaymentMethods.length) return;
+    const availableMethods = savedPaymentMethods.filter(
+      (method) => ENABLE_PIX || method.type !== "pix"
+    );
     const defaultMethod =
-      savedPaymentMethods.find((method) => method.is_default) || savedPaymentMethods[0];
+      availableMethods.find((method) => method.is_default) || availableMethods[0];
     if (!defaultMethod) return;
     const mapped = defaultMethod.type === "credit" ? "cartao" : defaultMethod.type;
     setSelectedPayment(mapped);
+    if (defaultMethod.type === "boleto") {
+      const days = defaultMethod.details?.boleto_expires_after_days;
+      if (typeof days === "number") {
+        setBoletoExpiresAfterDays(days);
+      }
+    }
   }, [savedPaymentMethods]);
+
+  useEffect(() => {
+    if (!ENABLE_PIX && selectedPayment === "pix") {
+      setSelectedPayment("boleto");
+    }
+  }, [selectedPayment]);
+
+  useEffect(() => {
+    if (selectedPayment !== "boleto") return;
+    if (!boletoExpiresAfterDays) {
+      setBoletoExpiresAfterDays(3);
+    }
+  }, [selectedPayment, boletoExpiresAfterDays]);
 
 
   useEffect(() => {
@@ -169,10 +210,19 @@ export default function Carrinho() {
           condo_id: activeCondo.id,
           company_id: activeCondo.id,
           cnpj: activeCondo.cnpj || "",
+          boleto_expires_after_days:
+            paymentMethod === "boleto" ? boletoExpiresAfterDays : undefined,
         },
       };
 
-      const checkoutResult = await completeBackendCheckout(shippingAddress, paymentMethod, shippingOptionId);
+      const checkoutResult = await completeBackendCheckout(
+        shippingAddress,
+        paymentMethod,
+        shippingOptionId,
+        paymentMethod === "boleto"
+          ? { boletoExpiresAfterDays }
+          : undefined
+      );
 
       const recurringItems = items.filter((item) => recurrenceByItem[item.id] && recurrenceByItem[item.id] !== "unica");
       for (const item of recurringItems) {
@@ -213,7 +263,13 @@ export default function Carrinho() {
         await upsertSavedPaymentMethod({
           type: paymentMethod,
           label,
-          details: paymentMethod === "boleto" && boletoEmails.length ? { email: boletoEmails.join(", ") } : undefined,
+          details:
+            paymentMethod === "boleto"
+              ? {
+                  email: boletoEmails.length ? boletoEmails.join(", ") : undefined,
+                  boleto_expires_after_days: boletoExpiresAfterDays,
+                }
+              : undefined,
           setDefault: true,
         });
       } catch {
@@ -339,10 +395,10 @@ export default function Carrinho() {
         )}
 
         <Text style={styles.sectionTitle}>Forma de pagamento</Text>
-        {savedPaymentMethods.length > 0 && (
+        {availableSavedMethods.length > 0 && (
           <View style={styles.savedPayments}>
             <Text style={styles.savedPaymentsTitle}>Métodos salvos</Text>
-            {savedPaymentMethods.map((method) => {
+            {availableSavedMethods.map((method) => {
               const mapped = method.type === "credit" ? "cartao" : method.type;
               const active = selectedPayment === mapped;
               return (
@@ -359,11 +415,7 @@ export default function Carrinho() {
           </View>
         )}
         <View style={styles.sectionList}>
-          {[
-            { id: "pix", title: "Pix", subtitle: "Pagamento instantâneo", icon: QrCode },
-            { id: "cartao", title: "Cartão", subtitle: "Crédito ou débito", icon: CreditCard },
-            { id: "boleto", title: "Boleto", subtitle: "Vencimento em 3 dias", icon: Receipt },
-          ].map((option) => {
+          {paymentOptions.map((option) => {
             const Icon = option.icon;
             const active = selectedPayment === option.id;
             return (
@@ -390,6 +442,23 @@ export default function Carrinho() {
           <View style={styles.boletoInfo}>
             <Text style={styles.boletoInfoText}>Boleto será enviado para:</Text>
             <Text style={styles.boletoInfoValue}>{boletoEmailText}</Text>
+            <Text style={[styles.boletoInfoText, { marginTop: 12 }]}>Prazo de vencimento</Text>
+            <View style={styles.boletoDaysRow}>
+              {[1, 3, 15, 30].map((days) => {
+                const active = boletoExpiresAfterDays === days;
+                return (
+                  <Pressable
+                    key={days}
+                    onPress={() => setBoletoExpiresAfterDays(days)}
+                    style={[styles.boletoDaysChip, active ? styles.boletoDaysChipActive : styles.boletoDaysChipIdle]}
+                  >
+                    <Text style={[styles.boletoDaysChipText, active ? styles.boletoDaysChipTextActive : null]}>
+                      {days} {days === 1 ? "dia" : "dias"}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
         )}
 
@@ -618,6 +687,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     marginTop: 4,
+  },
+  boletoDaysRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
+  },
+  boletoDaysChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  boletoDaysChipActive: {
+    backgroundColor: "rgba(93, 162, 230, 0.2)",
+    borderColor: "rgba(93, 162, 230, 0.7)",
+  },
+  boletoDaysChipIdle: {
+    backgroundColor: "rgba(34, 38, 46, 0.8)",
+    borderColor: "rgba(46, 54, 68, 0.6)",
+  },
+  boletoDaysChipText: {
+    color: "#8C98A8",
+    fontSize: 12,
+  },
+  boletoDaysChipTextActive: {
+    color: "#E6E8EA",
+    fontWeight: "600",
   },
   recurrenceInline: {
     marginTop: 12,

@@ -418,20 +418,32 @@ export default function CondominioDetalhes() {
               <Button
                 onPress={handleSave}
                 disabled={!canSaveNew}
-                backgroundColor={!canSaveNew ? "#5DA2E6" : undefined}
-                opacity={!canSaveNew ? 0.6 : 1}
+                backgroundColor={canSaveNew ? "#5DA2E6" : "rgba(93, 162, 230, 0.35)"}
+                opacity={1}
                 width="100%"
+                textProps={{ color: "#FFFFFF" }}
               >
                 Salvar
               </Button>
             </View>
           ) : (
             <View style={styles.actionRow}>
-              <Button variant={isEditing ? "secondary" : "default"} onPress={() => setIsEditing((prev) => !prev)} flex={1}>
+              <Button
+                variant="outline"
+                onPress={() => setIsEditing((prev) => !prev)}
+                flex={1}
+                borderColor="rgba(93, 162, 230, 0.5)"
+                textProps={{ color: "#5DA2E6" }}
+              >
                 {isEditing ? "Cancelar" : "Editar"}
               </Button>
               {isEditing && (
-                <Button onPress={handleSave} flex={1}>
+                <Button
+                  onPress={handleSave}
+                  flex={1}
+                  backgroundColor="#5DA2E6"
+                  textProps={{ color: "#FFFFFF" }}
+                >
                   Salvar
                 </Button>
               )}
@@ -457,7 +469,7 @@ export default function CondominioDetalhes() {
               <Label marginTop={12}>Data de término (opcional)</Label>
               <CalendarComponent selected={endDate} onSelect={setEndDate} />
               <DialogFooter>
-                <Button onPress={handleTransfer}>
+                <Button onPress={handleTransfer} backgroundColor="#5DA2E6" textProps={{ color: "#FFFFFF" }}>
                   <View style={styles.dialogButtonRow}>
                     <Send color="white" size={16} />
                     <Text style={styles.dialogButtonText}>Enviar convite</Text>

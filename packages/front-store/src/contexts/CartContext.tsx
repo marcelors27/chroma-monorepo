@@ -27,6 +27,7 @@ import { toast } from "@/hooks/use-toast";
 import { loadStripe } from "@stripe/stripe-js";
 const DEBUG = import.meta.env.VITE_DEBUG_FRONT === "true";
 const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+const ENABLE_PIX = import.meta.env.VITE_ENABLE_PIX === "true";
 const stripePromise = STRIPE_PUBLISHABLE_KEY
   ? loadStripe(STRIPE_PUBLISHABLE_KEY)
   : null;
@@ -64,7 +65,8 @@ interface CartContextType {
   completeBackendCheckout: (
     address: Record<string, any>,
     paymentMethod: string,
-    shippingOptionId?: string | null
+    shippingOptionId?: string | null,
+    options?: { boletoExpiresAfterDays?: number }
   ) => Promise<{
     status: "completed" | "pending";
     orderId?: string | null;
@@ -214,7 +216,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     await resetCartState(false);
   };
 
-  const resolvePaymentProvider = (paymentMethod: string) => {
+  const resolvePaymentProvider = (
+    paymentMethod: string,
+    options?: { boletoExpiresAfterDays?: number }
+  ) => {
     switch (paymentMethod) {
       case "credit":
         return {
@@ -224,9 +229,18 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       case "boleto":
         return {
           providerId: "pp_stripe_stripe",
-          data: { payment_method_types: ["boleto"], capture_method: "automatic" },
+          data: {
+            payment_method_types: ["boleto"],
+            capture_method: "automatic",
+            payment_method_options: options?.boletoExpiresAfterDays
+              ? { boleto: { expires_after_days: options.boletoExpiresAfterDays } }
+              : undefined,
+          },
         };
       case "pix":
+        if (!ENABLE_PIX) {
+          throw new Error("PIX não habilitado.");
+        }
         return {
           providerId: "pp_stripe_stripe",
           data: { payment_method_types: ["pix"], capture_method: "automatic" },
@@ -282,7 +296,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     collection: MedusaPaymentCollection | null,
     providerId: string,
     stripeDetails?: PendingPaymentDetails,
-    address?: Record<string, any>
+    address?: Record<string, any>,
+    amount?: number,
+    options?: { boletoExpiresAfterDays?: number }
   ): PendingPaymentDetails => {
     const details = { ...stripeDetails };
     const companyId = address?.metadata?.company_id || null;
@@ -293,6 +309,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
     if (companyName) {
       details.company_name = companyName;
+    }
+    if (typeof amount === "number") {
+      details.amount = amount;
+    }
+    if (method === "boleto" && options?.boletoExpiresAfterDays) {
+      details.boleto_expires_after_days = options.boletoExpiresAfterDays;
     }
     if (method === "boleto" || method === "pix") {
       const session = findStripeSession(collection, providerId);
@@ -400,7 +422,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const completeBackendCheckout = async (
     address: Record<string, any>,
     paymentMethod: string,
-    shippingOptionId?: string | null
+    shippingOptionId?: string | null,
+    options?: { boletoExpiresAfterDays?: number }
   ) => {
     if (DEBUG) console.debug("[cart] completeBackendCheckout:start", { cartId, address, paymentMethod });
     if (!cartId) throw new Error("Carrinho não encontrado");
@@ -416,9 +439,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       }
     };
     try {
-      const { providerId, data } = resolvePaymentProvider(paymentMethod);
+      const { providerId, data } = resolvePaymentProvider(paymentMethod, options);
       let cartSnapshot = await retrieveCart(cartId);
       let paymentCollection = await createPaymentSessions(cartSnapshot.id);
+
+      if (
+        paymentMethod === "boleto" &&
+        options?.boletoExpiresAfterDays &&
+        cartSnapshot?.shipping_address?.address_1 &&
+        cartSnapshot?.shipping_address?.metadata?.boleto_expires_after_days !==
+          options.boletoExpiresAfterDays
+      ) {
+        cartSnapshot = await setCartShippingAddress(cartSnapshot.id, address);
+      }
 
       if (providerId.startsWith("pp_stripe")) {
         const existingSession = findStripeSession(paymentCollection, providerId);
@@ -489,10 +522,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
               paymentMethod,
               paymentCollection,
               providerId,
-              stripeDetails || undefined,
-              address
-            ),
-          };
+            stripeDetails || undefined,
+            address,
+            cartSnapshot?.total,
+            options
+          ),
+        };
           setPendingPayment(pending);
           await syncPendingPaymentToBackend(pending);
           if (paymentMethod === "boleto" || paymentMethod === "pix") {
@@ -523,7 +558,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           payment_collection_id: paymentCollection?.id || "",
           method: paymentMethod,
           created_at: new Date().toISOString(),
-          details: buildPendingDetails(paymentMethod, paymentCollection, providerId, undefined, address),
+          details: buildPendingDetails(
+            paymentMethod,
+            paymentCollection,
+            providerId,
+            undefined,
+            address,
+            cartSnapshot?.total,
+            options
+          ),
         };
         setPendingPayment(pending);
         await syncPendingPaymentToBackend(pending);

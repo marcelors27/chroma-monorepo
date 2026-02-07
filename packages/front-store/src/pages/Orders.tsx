@@ -72,6 +72,8 @@ const resolveStatus = (order: MedusaOrder): OrderStatus => {
   return "processing";
 };
 
+const ENABLE_PIX = import.meta.env.VITE_ENABLE_PIX === "true";
+
 const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState<MedusaOrder | null>(null);
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
@@ -81,7 +83,9 @@ const Orders = () => {
     useState<"weekly" | "biweekly" | "monthly">("monthly");
   const [recurrenceDayOfWeek, setRecurrenceDayOfWeek] = useState("1");
   const [recurrenceDayOfMonth, setRecurrenceDayOfMonth] = useState("5");
-  const [recurrencePayment, setRecurrencePayment] = useState<"credit" | "pix" | "boleto">("pix");
+  const [recurrencePayment, setRecurrencePayment] = useState<"credit" | "pix" | "boleto">(
+    ENABLE_PIX ? "pix" : "boleto"
+  );
   const [recurrenceItemId, setRecurrenceItemId] = useState("");
   const [recurrenceSaving, setRecurrenceSaving] = useState(false);
   const { data, isLoading, isError } = useQuery({ queryKey: ["orders"], queryFn: listOrders });
@@ -107,7 +111,7 @@ const Orders = () => {
     setRecurrenceFrequency("monthly");
     setRecurrenceDayOfWeek("1");
     setRecurrenceDayOfMonth("5");
-    setRecurrencePayment("pix");
+    setRecurrencePayment(ENABLE_PIX ? "pix" : "boleto");
   };
 
   const openRecurrenceDialog = (order: MedusaOrder) => {
@@ -338,6 +342,12 @@ const Orders = () => {
                                   Vencimento: {formatUnixDate(pending.details.boleto_expires_at)}
                                 </p>
                               )}
+                              {pending.details?.boleto_expires_after_days && (
+                                <p className="mt-1">
+                                  Prazo selecionado: {pending.details.boleto_expires_after_days}{" "}
+                                  {pending.details.boleto_expires_after_days === 1 ? "dia" : "dias"}
+                                </p>
+                              )}
                             </div>
                           )}
                           {pending.details?.pix_code && (
@@ -469,6 +479,14 @@ const Orders = () => {
                 <p className="text-lg font-bold text-primary">
                   Total: {formatMoney(selectedOrder.total || 0)}
                 </p>
+                {selectedOrder.shipping_address?.metadata?.boleto_expires_after_days && (
+                  <p className="text-sm text-muted-foreground">
+                    Boleto: {selectedOrder.shipping_address.metadata.boleto_expires_after_days}{" "}
+                    {selectedOrder.shipping_address.metadata.boleto_expires_after_days === 1
+                      ? "dia"
+                      : "dias"} para vencimento
+                  </p>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -607,7 +625,7 @@ const Orders = () => {
                 onChange={(e) => setRecurrencePayment(e.target.value as "credit" | "pix" | "boleto")}
               >
                 <option value="credit">Cartão</option>
-                <option value="pix">PIX</option>
+                {ENABLE_PIX && <option value="pix">PIX</option>}
                 <option value="boleto">Boleto</option>
               </select>
             </div>

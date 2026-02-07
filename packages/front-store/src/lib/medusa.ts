@@ -113,10 +113,13 @@ export type PendingPaymentDetails = {
   boleto_line?: string
   boleto_url?: string
   boleto_expires_at?: number
+  boleto_expires_after_days?: number
   pix_code?: string
   pix_qr?: string
   company_id?: string
   company_name?: string
+  amount?: number
+  currency_code?: string
 }
 
 export type SavedPaymentMethod = {
@@ -125,6 +128,7 @@ export type SavedPaymentMethod = {
   label: string
   details?: {
     email?: string
+    boleto_expires_after_days?: number
   }
   is_default?: boolean
   created_at?: string
@@ -858,10 +862,52 @@ export const updateCompany = async (
     metadata?: Record<string, any>
   }
 ) => {
-  return apiFetch<{ company: any }>(`/store/companies/${companyId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  })
+  const doRequest = async (method: "PATCH" | "PUT") => {
+    if (DEBUG) {
+      console.debug("[medusa] request", {
+        path: `/store/companies/${companyId}`,
+        method,
+        body: JSON.stringify(payload),
+      })
+    }
+    const res = await fetch(`${MEDUSA_URL}/store/companies/${companyId}`, {
+      method,
+      headers: buildHeaders({}),
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      if (DEBUG) {
+        console.debug("[medusa] response error", {
+          path: `/store/companies/${companyId}`,
+          status: res.status,
+          statusText: res.statusText,
+        })
+      }
+      if (res.status === 403) {
+        handleAccessPending()
+      }
+      const message = await parseError(res)
+      const error: any = new Error(message)
+      error.status = res.status
+      throw error
+    }
+    if (DEBUG) {
+      console.debug("[medusa] response ok", {
+        path: `/store/companies/${companyId}`,
+        status: res.status,
+      })
+    }
+    return (await res.json()) as { company: any }
+  }
+
+  try {
+    return await doRequest("PATCH")
+  } catch (err: any) {
+    if (err?.status === 404 || err?.status === 405) {
+      return await doRequest("PUT")
+    }
+    throw err
+  }
 }
 
 export const earnCompanyPoints = async (companyId: string, orderId: string) => {

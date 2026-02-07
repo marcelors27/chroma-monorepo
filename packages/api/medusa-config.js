@@ -162,7 +162,7 @@ module.exports = {
       options: {
         providers: [
           {
-            resolve: "@medusajs/payment-stripe",
+            resolve: "./src/modules/payment-stripe-smallest",
             id: "stripe",
             options: {
               apiKey: process.env.STRIPE_API_KEY,

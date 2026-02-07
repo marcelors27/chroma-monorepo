@@ -10,16 +10,21 @@ import {
 } from "@/lib/medusa";
 
 export default function Pagamentos() {
+  const ENABLE_PIX = process.env.EXPO_PUBLIC_ENABLE_PIX === "true";
   const { data, refetch } = useQuery({
     queryKey: ["payment-methods"],
     queryFn: fetchSavedPaymentMethodsFromBackend,
   });
-  const payments = data || [];
+  const payments = (data || []).filter((payment) => ENABLE_PIX || payment.type !== "pix");
   const formatType = (value: string) => {
     if (value === "credit") return "Cartão";
     if (value === "pix") return "PIX";
     if (value === "boleto") return "Boleto";
     return value;
+  };
+  const formatBoletoDays = (days?: number) => {
+    if (!days) return null;
+    return `${days} ${days === 1 ? "dia" : "dias"}`;
   };
 
   const handleSetDefault = async (id: string) => {
@@ -51,6 +56,11 @@ export default function Pagamentos() {
           <View key={payment.id} style={styles.card}>
             <Text style={styles.cardTitle}>{payment.label}</Text>
             <Text style={styles.cardSubtitle}>{formatType(payment.type)}</Text>
+            {payment.type === "boleto" && payment.details?.boleto_expires_after_days ? (
+              <Text style={styles.cardSubtitle}>
+                Vencimento: {formatBoletoDays(payment.details.boleto_expires_after_days)}
+              </Text>
+            ) : null}
             <View style={styles.actionsRow}>
               {!payment.is_default && (
                 <Pressable onPress={() => handleSetDefault(payment.id)} style={styles.secondaryButton}>

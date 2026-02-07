@@ -15,6 +15,7 @@ import {
   retrieveCart,
   removePendingPayment,
   removePendingPaymentFromBackend,
+  confirmStripePaymentServerSide,
   setCartShippingAddress,
   setPaymentSession,
   setPendingPayment,
@@ -25,6 +26,7 @@ import { toast } from "@/lib/toast";
 import { useCondo } from "@/contexts/CondoContext";
 
 const DEBUG = process.env.EXPO_PUBLIC_DEBUG_FRONT === "true";
+const ENABLE_PIX = process.env.EXPO_PUBLIC_ENABLE_PIX === "true";
 
 export interface CartItem {
   productId: string;
@@ -61,7 +63,8 @@ interface CartContextType {
   completeBackendCheckout: (
     address: Record<string, any>,
     paymentMethod: string,
-    shippingOptionId?: string | null
+    shippingOptionId?: string | null,
+    options?: { boletoExpiresAfterDays?: number }
   ) => Promise<{
     status: "completed" | "pending";
     orderId?: string | null;
@@ -136,6 +139,34 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setLastAddQty(product.quantity || 1);
       setLastAddId((prev) => prev + 1);
     } catch (err: any) {
+      const message = err?.message || "";
+      if (message.includes("payment sessions")) {
+        const nextItems = (() => {
+          const existing = items.find((item) => item.variantId === product.variantId);
+          if (existing) {
+            return items.map((item) =>
+              item.variantId === product.variantId
+                ? { ...item, quantity: item.quantity + (product.quantity || 1) }
+                : item
+            );
+          }
+          return [
+            ...items,
+            {
+              id: "",
+              productId: product.productId,
+              variantId: product.variantId,
+              name: product.name,
+              price: product.price,
+              category: product.category || "",
+              image: product.image || "",
+              quantity: product.quantity || 1,
+            },
+          ];
+        })();
+        await rebuildCartWithItems(nextItems);
+        return;
+      }
       if (DEBUG) console.debug("[cart] addItem:error", err?.message || err);
       toast({
         title: "Não foi possível adicionar",
@@ -159,6 +190,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const updatedCart = await deleteLineItem(cartId, id);
       setItems(mapCartToItems(updatedCart));
     } catch (err: any) {
+      const message = err?.message || "";
+      if (message.includes("payment sessions")) {
+        const nextItems = items.filter((item) => item.id !== id);
+        await rebuildCartWithItems(nextItems);
+        return;
+      }
       if (DEBUG) console.debug("[cart] removeItem:error", err?.message || err);
       toast({
         title: "Erro ao remover",
@@ -183,6 +220,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const updatedCart = await updateLineItem(cartId, id, quantity);
       setItems(mapCartToItems(updatedCart));
     } catch (err: any) {
+      const message = err?.message || "";
+      if (message.includes("payment sessions")) {
+        const nextItems =
+          quantity <= 0
+            ? items.filter((item) => item.id !== id)
+            : items.map((item) =>
+                item.id === id ? { ...item, quantity } : item
+              );
+        await rebuildCartWithItems(nextItems);
+        return;
+      }
       if (DEBUG) console.debug("[cart] updateQuantity:error", err?.message || err);
       toast({
         title: "Não foi possível atualizar",
@@ -190,6 +238,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
         variant: "destructive",
       });
     }
+  };
+
+  const rebuildCartWithItems = async (nextItems: CartItem[]) => {
+    const newCart = await createCart();
+    if (!newCart?.id) return;
+    for (const item of nextItems) {
+      try {
+        await addLineItem(newCart.id, item.variantId, item.quantity, {
+          display_name: item.name,
+          category: item.category,
+        });
+      } catch (err: any) {
+        if (DEBUG) console.debug("[cart] rebuild:addLineItem:error", err?.message || err);
+      }
+    }
+    const refreshed = await retrieveCart(newCart.id);
+    setCartId(newCart.id);
+    setItems(mapCartToItems(refreshed));
   };
 
   const clearCart = async () => {
@@ -206,7 +272,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     await createCart();
   };
 
-  const resolvePaymentProvider = (paymentMethod: string) => {
+  const resetCartAfterPending = async () => {
+    setCartId(null);
+    setItems([]);
+    await createCart();
+    await refreshCart();
+  };
+
+  const resolvePaymentProvider = (
+    paymentMethod: string,
+    options?: { boletoExpiresAfterDays?: number }
+  ) => {
     switch (paymentMethod) {
       case "credit":
         return {
@@ -216,9 +292,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
       case "boleto":
         return {
           providerId: "pp_stripe_stripe",
-          data: { payment_method_types: ["boleto"], capture_method: "automatic" },
+          data: {
+            payment_method_types: ["boleto"],
+            capture_method: "automatic",
+            payment_method_options: options?.boletoExpiresAfterDays
+              ? { boleto: { expires_after_days: options.boletoExpiresAfterDays } }
+              : undefined,
+          },
         };
       case "pix":
+        if (!ENABLE_PIX) {
+          throw new Error("PIX não habilitado.");
+        }
         return {
           providerId: "pp_stripe_stripe",
           data: { payment_method_types: ["pix"], capture_method: "automatic" },
@@ -301,27 +386,40 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (!taxId) {
       throw new Error("CNPJ do condomínio não informado.");
     }
-    const result = await confirmPayment(clientSecret, {
-      paymentMethodType: "Boleto",
-      paymentMethodData: {
-        billingDetails: {
-          name: billingDetails.name,
-          email: billingDetails.email,
-          phone: billingDetails.phone,
-          address: billingDetails.address,
-        },
-        boleto: {
-          taxId,
-        },
+    const response = await confirmStripePaymentServerSide({
+      client_secret: clientSecret,
+      payment_method: "boleto",
+      billing_details: {
+        name: billingDetails.name,
+        email: billingDetails.email,
+        phone: billingDetails.phone,
+        address: billingDetails.address,
       },
-    } as any);
-    if (result.error) {
-      throw new Error(result.error.message || "Falha ao gerar boleto.");
-    }
+      tax_id: taxId,
+    });
     return {
-      paymentIntent: result.paymentIntent,
+      paymentIntent: response?.payment_intent,
       details: {
-        ...extractStripeDetailsFromIntent(result.paymentIntent || null),
+        ...extractStripeDetailsFromIntent(response?.payment_intent || null),
+        client_secret: clientSecret,
+      },
+    };
+  };
+
+  const confirmPixPayment = async (clientSecret: string) => {
+    const billingDetails = buildBillingDetails();
+    const response = await confirmStripePaymentServerSide({
+      client_secret: clientSecret,
+      payment_method: "pix",
+      billing_details: {
+        name: billingDetails?.name,
+        email: billingDetails?.email,
+      },
+    });
+    return {
+      paymentIntent: response?.payment_intent,
+      details: {
+        ...extractStripeDetailsFromIntent(response?.payment_intent || null),
         client_secret: clientSecret,
       },
     };
@@ -367,7 +465,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const completeBackendCheckout = async (
     address: Record<string, any>,
     paymentMethod: string,
-    shippingOptionId?: string | null
+    shippingOptionId?: string | null,
+    options?: { boletoExpiresAfterDays?: number }
   ) => {
     if (DEBUG)
       console.debug("[cart] completeBackendCheckout:start", { cartId, address, paymentMethod, shippingOptionId });
@@ -376,10 +475,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const applyPoints = async (orderId?: string | null, snapshot?: any) => {
         await applyPointsToOrder(orderId, snapshot);
       };
-      const { providerId, data } = resolvePaymentProvider(paymentMethod);
+      const { providerId, data } = resolvePaymentProvider(paymentMethod, options);
       let cartSnapshot = await retrieveCart(cartId);
       if (!cartSnapshot?.id) {
         throw new Error("Carrinho não encontrado");
+      }
+      if (
+        paymentMethod === "boleto" &&
+        options?.boletoExpiresAfterDays &&
+        cartSnapshot?.shipping_address?.address_1 &&
+        cartSnapshot?.shipping_address?.metadata?.boleto_expires_after_days !==
+          options.boletoExpiresAfterDays
+      ) {
+        cartSnapshot = await setCartShippingAddress(cartSnapshot.id, address);
       }
       if (!cartSnapshot?.shipping_address?.address_1) {
         cartSnapshot = await setCartShippingAddress(cartSnapshot.id, address);
@@ -424,6 +532,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 method: paymentMethod,
                 company_id: address?.metadata?.company_id || address?.metadata?.condo_id,
                 company_name: address?.metadata?.company_name || address?.address_1,
+                amount: cartSnapshot?.total,
+                boleto_expires_after_days: options?.boletoExpiresAfterDays,
               },
             };
             await setPendingPayment(pending);
@@ -438,6 +548,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
             } catch (err: any) {
               if (DEBUG) console.debug("[cart] notifyPendingPayment:error", err?.message || err);
             }
+            await resetCartAfterPending();
+            return { status: "pending", pendingDetails: details, pendingPayment: pending };
+          }
+        } else if (paymentMethod === "pix") {
+          const { paymentIntent, details } = await confirmPixPayment(clientSecret);
+          const status = paymentIntent?.status;
+          if (status !== "succeeded") {
+            if (DEBUG) console.debug("[cart] completeBackendCheckout:stripe-pending", { status });
+            const pending: PendingPayment = {
+              cart_id: cartSnapshot.id,
+              payment_collection_id: paymentCollection?.id || "",
+              method: paymentMethod,
+              created_at: new Date().toISOString(),
+              details: {
+                ...details,
+                method: paymentMethod,
+                company_id: address?.metadata?.company_id || address?.metadata?.condo_id,
+                company_name: address?.metadata?.company_name || address?.address_1,
+                amount: cartSnapshot?.total,
+                boleto_expires_after_days: options?.boletoExpiresAfterDays,
+              },
+            };
+            await setPendingPayment(pending);
+            await syncPendingPaymentToBackend(pending);
+            await resetCartAfterPending();
             return { status: "pending", pendingDetails: details, pendingPayment: pending };
           }
         } else {
@@ -500,6 +635,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             };
             await setPendingPayment(pending);
             await syncPendingPaymentToBackend(pending);
+            await resetCartAfterPending();
             return { status: "pending", pendingDetails: details, pendingPayment: pending };
           }
         }

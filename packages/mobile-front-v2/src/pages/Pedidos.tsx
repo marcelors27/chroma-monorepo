@@ -70,6 +70,7 @@ export default function Pedidos() {
         thumbnail: order.items?.[0]?.thumbnail || "",
         rawId: order.id,
         payment_collection_id: order.payment_collection_id,
+        boletoExpiresAfterDays: order.shipping_address?.metadata?.boleto_expires_after_days,
       };
     });
   }, [data]);
@@ -112,7 +113,7 @@ export default function Pedidos() {
       statusTone: "warning" as StatusTone,
       date: pending.created_at ? new Date(pending.created_at).toLocaleDateString("pt-BR") : "",
       condo: pending.details?.company_name || "Condomínio",
-      total: 0,
+      total: pending.details?.amount || 0,
       items: 0,
       thumbnail: pending.details?.pix_qr || pending.details?.boleto_qr || "",
       details: pending.details,
@@ -195,6 +196,12 @@ export default function Pedidos() {
 
               <Text style={styles.cardTitle}>{order.id}</Text>
               <Text style={styles.cardCondo}>{order.condo}</Text>
+              {order.boletoExpiresAfterDays ? (
+                <Text style={styles.cardCondo}>
+                  Boleto: {order.boletoExpiresAfterDays}{" "}
+                  {order.boletoExpiresAfterDays === 1 ? "dia" : "dias"} para vencimento
+                </Text>
+              ) : null}
 
               <View style={styles.cardBottomRow}>
                 <View style={styles.itemsRow}>
@@ -217,6 +224,12 @@ export default function Pedidos() {
                   {order.details?.boleto_expires_at && (
                     <Text style={styles.pendingText}>
                       Vencimento: {new Date(order.details.boleto_expires_at * 1000).toLocaleDateString("pt-BR")}
+                    </Text>
+                  )}
+                  {order.details?.boleto_expires_after_days && (
+                    <Text style={styles.pendingText}>
+                      Prazo selecionado: {order.details.boleto_expires_after_days}{" "}
+                      {order.details.boleto_expires_after_days === 1 ? "dia" : "dias"}
                     </Text>
                   )}
                   {order.details?.boleto_qr && (
@@ -306,6 +319,12 @@ export default function Pedidos() {
                   {order.details?.boleto_expires_at && (
                     <Text style={styles.pendingText}>
                       Vencimento: {new Date(order.details.boleto_expires_at * 1000).toLocaleDateString("pt-BR")}
+                    </Text>
+                  )}
+                  {order.details?.boleto_expires_after_days && (
+                    <Text style={styles.pendingText}>
+                      Prazo selecionado: {order.details.boleto_expires_after_days}{" "}
+                      {order.details.boleto_expires_after_days === 1 ? "dia" : "dias"}
                     </Text>
                   )}
                   {order.details?.boleto_qr && (
