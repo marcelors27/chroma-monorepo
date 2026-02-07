@@ -1,8 +1,10 @@
 import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 import { useRoute } from "@react-navigation/native";
+import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
+import { listOrders } from "@/lib/medusa";
 
 const trackingSteps = [
   { id: "1", title: "Pedido confirmado", date: "08/07" },
@@ -14,6 +16,12 @@ const trackingSteps = [
 export default function Rastreamento() {
   const route = useRoute();
   const id = (route.params as { id?: string } | undefined)?.id ?? "#1297";
+  const { data } = useQuery({ queryKey: ["orders"], queryFn: listOrders });
+  const order = (data?.orders || []).find((item) => item.id === id || item.display_id === id);
+  const condoName =
+    order?.shipping_address?.metadata?.company_name ||
+    order?.shipping_address?.address_1 ||
+    "Condomínio";
 
   return (
     <AuthenticatedLayout>
@@ -23,6 +31,7 @@ export default function Rastreamento() {
         <View style={styles.card}>
           <Text style={styles.cardLabel}>Pedido</Text>
           <Text style={styles.cardTitle}>{id}</Text>
+          <Text style={styles.cardCondo}>Condomínio: {condoName}</Text>
           <Text style={styles.cardSubtitle}>Código de rastreio: BR123456789</Text>
           <Pressable onPress={() => toast.success("Código de rastreio copiado!")} style={styles.copyButton}>
             <Text style={styles.copyButtonText}>Copiar código</Text>
@@ -66,6 +75,11 @@ const styles = StyleSheet.create({
     color: "#8C98A8",
     fontSize: 11,
     marginTop: 4,
+  },
+  cardCondo: {
+    color: "#8C98A8",
+    fontSize: 12,
+    marginTop: 6,
   },
   copyButton: {
     marginTop: 12,

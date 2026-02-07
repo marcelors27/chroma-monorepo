@@ -55,12 +55,16 @@ export default function Pedidos() {
   const orders = useMemo(() => {
     return (data?.orders || []).map((order) => {
       const statusTone = resolveStatusTone(order);
+      const condoName =
+        order.shipping_address?.metadata?.company_name ||
+        order.shipping_address?.address_1 ||
+        "Condomínio";
       return {
         id: order.display_id || order.id,
         status: resolveStatusLabel(order),
         statusTone,
         date: order.created_at ? new Date(order.created_at).toLocaleDateString("pt-BR") : "",
-        condo: order.shipping_address?.address_1 || "Condomínio",
+        condo: condoName,
         total: order.total || 0,
         items: order.items?.length || 0,
         thumbnail: order.items?.[0]?.thumbnail || "",
@@ -107,7 +111,7 @@ export default function Pedidos() {
       status: "Pagamento pendente",
       statusTone: "warning" as StatusTone,
       date: pending.created_at ? new Date(pending.created_at).toLocaleDateString("pt-BR") : "",
-      condo: pending.details?.method === "boleto" ? "Boleto" : pending.details?.method === "pix" ? "PIX" : "Pagamento",
+      condo: pending.details?.company_name || "Condomínio",
       total: 0,
       items: 0,
       thumbnail: pending.details?.pix_qr || pending.details?.boleto_qr || "",

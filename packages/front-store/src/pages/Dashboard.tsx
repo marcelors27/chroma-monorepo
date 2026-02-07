@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Filter, X, ArrowUpDown } from "lucide-react";
+import { Search, Filter, X, ArrowUpDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useOutletContext } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
@@ -224,12 +224,6 @@ const Dashboard = () => {
           </div>
           <div className="flex gap-2">
             <CartDrawer />
-            <Button asChild>
-              <Link to="/condos" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Novo Condomínio
-              </Link>
-            </Button>
           </div>
         </div>
 

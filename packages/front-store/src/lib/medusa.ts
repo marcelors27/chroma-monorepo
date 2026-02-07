@@ -115,6 +115,8 @@ export type PendingPaymentDetails = {
   boleto_expires_at?: number
   pix_code?: string
   pix_qr?: string
+  company_id?: string
+  company_name?: string
 }
 
 export type SavedPaymentMethod = {

@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
 import { 
   CreditCard, 
   QrCode,
@@ -40,6 +39,7 @@ import condosBg from "@/assets/condos-bg.jpg";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 type PaymentMethod = "credit" | "pix" | "boleto";
+type RecurrenceOption = "unica" | "semanal" | "quinzenal" | "mensal";
 
 const Checkout = () => {
   const { items, totalPrice, clearCart, completeBackendCheckout, cartId, isCartLoading } = useCart();
@@ -59,13 +59,7 @@ const Checkout = () => {
     shippingMethod?: string;
   }>({});
   const [pixExpirationTime, setPixExpirationTime] = useState(30 * 60); // 30 minutes in seconds
-  const [saveAsRecurring, setSaveAsRecurring] = useState(false);
-  const [recurrenceSelections, setRecurrenceSelections] = useState<Record<string, boolean>>({});
-  const [recurrenceName, setRecurrenceName] = useState("");
-  const [recurrenceFrequency, setRecurrenceFrequency] =
-    useState<"weekly" | "biweekly" | "monthly">("monthly");
-  const [recurrenceDayOfWeek, setRecurrenceDayOfWeek] = useState("1");
-  const [recurrenceDayOfMonth, setRecurrenceDayOfMonth] = useState("5");
+  const [recurrenceByItem, setRecurrenceByItem] = useState<Record<string, RecurrenceOption>>({});
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [customerEmail, setCustomerEmail] = useState("");
   const [billingEmails, setBillingEmails] = useState<string[]>([]);
@@ -269,18 +263,21 @@ const Checkout = () => {
   };
 
   useEffect(() => {
-    if (!saveAsRecurring) return;
-    setRecurrenceSelections((current) => {
-      if (items.length === 0) return current;
-      const hasAny = Object.values(current).some(Boolean);
-      if (hasAny) return current;
-      const next: Record<string, boolean> = {};
+    setRecurrenceByItem((current) => {
+      const next = { ...current };
       items.forEach((item) => {
-        next[item.id] = true;
+        if (!next[item.id]) {
+          next[item.id] = "unica";
+        }
+      });
+      Object.keys(next).forEach((id) => {
+        if (!items.some((item) => item.id === id)) {
+          delete next[id];
+        }
       });
       return next;
     });
-  }, [items, saveAsRecurring]);
+  }, [items]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -298,16 +295,6 @@ const Checkout = () => {
       toast({
         title: "Campos obrigatórios",
         description: "Preencha todos os campos obrigatórios.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const selectedRecurrenceItems = items.filter((item) => recurrenceSelections[item.id]);
-    if (saveAsRecurring && selectedRecurrenceItems.length === 0) {
-      toast({
-        title: "Selecione produtos",
-        description: "Escolha ao menos um produto para criar a recorrência.",
         variant: "destructive",
       });
       return;
@@ -340,17 +327,22 @@ const Checkout = () => {
         paymentMethod,
         shippingOptionId || null
       );
-      if (saveAsRecurring) {
+      const recurringItems = items.filter(
+        (item) => recurrenceByItem[item.id] && recurrenceByItem[item.id] !== "unica"
+      );
+      if (recurringItems.length) {
         try {
-          const selectedItems = items.filter((item) => recurrenceSelections[item.id]);
-          for (const item of selectedItems) {
+          for (const item of recurringItems) {
+            const selectedRecurrence = recurrenceByItem[item.id];
+            const frequency =
+              selectedRecurrence === "semanal"
+                ? "weekly"
+                : selectedRecurrence === "quinzenal"
+                  ? "biweekly"
+                  : "monthly";
             await createRecurrence({
-              name:
-                recurrenceName.trim() ||
-                `Recorrência ${item.name || activeCondo?.name || ""}`.trim(),
-              frequency: recurrenceFrequency,
-              day_of_week: recurrenceFrequency === "monthly" ? undefined : Number(recurrenceDayOfWeek),
-              day_of_month: recurrenceFrequency === "monthly" ? Number(recurrenceDayOfMonth) : undefined,
+              name: `Recorrência ${item.name || activeCondo?.name || ""}`.trim(),
+              frequency,
               payment_method: paymentMethod,
               items: [
                 {
@@ -367,7 +359,7 @@ const Checkout = () => {
           }
           toast({
             title: "Recorrência criada",
-            description: "Os produtos selecionados foram salvos como recorrentes.",
+            description: "Os produtos recorrentes foram salvos com sucesso.",
           });
         } catch (error: any) {
           toast({
@@ -880,68 +872,6 @@ const Checkout = () => {
 
                 </div>
 
-                {!orderStatus && items.length > 0 && saveAsRecurring && (
-                  <div className="border-2 border-border p-6 bg-card space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="recurrenceName" className="block">Nome da recorrência</Label>
-                      <Input
-                        id="recurrenceName"
-                        className="h-12 border-2"
-                        placeholder="Ex: Reposição de limpeza"
-                        value={recurrenceName}
-                        onChange={(e) => setRecurrenceName(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label className="block">Frequência</Label>
-                        <select
-                          className="h-12 border-2 rounded-md bg-background px-3 w-full"
-                          value={recurrenceFrequency}
-                          onChange={(e) =>
-                            setRecurrenceFrequency(
-                              e.target.value as "weekly" | "biweekly" | "monthly"
-                            )
-                          }
-                        >
-                          <option value="weekly">Semanal</option>
-                          <option value="biweekly">Quinzenal</option>
-                          <option value="monthly">Mensal</option>
-                        </select>
-                      </div>
-                      {recurrenceFrequency === "monthly" ? (
-                        <div className="space-y-2">
-                          <Label className="block">Dia do mês</Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={31}
-                            className="h-12 border-2"
-                            value={recurrenceDayOfMonth}
-                            onChange={(e) => setRecurrenceDayOfMonth(e.target.value)}
-                          />
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Label className="block">Dia da semana</Label>
-                          <select
-                            className="h-12 border-2 rounded-md bg-background px-3 w-full"
-                            value={recurrenceDayOfWeek}
-                            onChange={(e) => setRecurrenceDayOfWeek(e.target.value)}
-                          >
-                            <option value="0">Domingo</option>
-                            <option value="1">Segunda</option>
-                            <option value="2">Terça</option>
-                            <option value="3">Quarta</option>
-                            <option value="4">Quinta</option>
-                            <option value="5">Sexta</option>
-                            <option value="6">Sábado</option>
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Right Column - Order Summary */}
@@ -949,18 +879,6 @@ const Checkout = () => {
                 <div className="border-2 border-border p-6 bg-card sticky top-4">
                   <h2 className="text-xl font-bold mb-4">Resumo do Pedido</h2>
                   
-                  <div className="space-y-3 mb-4">
-                    {!orderStatus && items.length > 0 && (
-                      <label className="flex items-center gap-2 text-sm border-2 border-border p-3 bg-background/40">
-                        <Checkbox
-                          checked={saveAsRecurring}
-                          onCheckedChange={(checked) => setSaveAsRecurring(checked === true)}
-                        />
-                        <span className="font-medium">Tornar esta compra recorrente</span>
-                      </label>
-                    )}
-                  </div>
-
                   <div className="space-y-3 mb-4 max-h-72 overflow-y-auto">
                     {items.map((item) => (
                       <div key={item.id} className="flex gap-3 border-b border-border/60 pb-3 last:border-b-0 last:pb-0">
@@ -974,19 +892,39 @@ const Checkout = () => {
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{item.name}</p>
                           <p className="text-xs text-muted-foreground">Qtd: {item.quantity}</p>
-                          {saveAsRecurring && !orderStatus && (
-                            <label className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-                              <Checkbox
-                                checked={!!recurrenceSelections[item.id]}
-                                onCheckedChange={(checked) =>
-                                  setRecurrenceSelections((current) => ({
-                                    ...current,
-                                    [item.id]: checked === true,
-                                  }))
-                                }
-                              />
-                              <span>Recorrente</span>
-                            </label>
+                          {!orderStatus && (
+                            <div className="mt-2 space-y-2">
+                              <span className="text-xs text-muted-foreground">Recorrência</span>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { id: "unica", title: "Única" },
+                                  { id: "semanal", title: "Semanal" },
+                                  { id: "quinzenal", title: "Quinzenal" },
+                                  { id: "mensal", title: "Mensal" },
+                                ].map((option) => {
+                                  const active = recurrenceByItem[item.id] === option.id;
+                                  return (
+                                    <button
+                                      key={option.id}
+                                      type="button"
+                                      onClick={() =>
+                                        setRecurrenceByItem((current) => ({
+                                          ...current,
+                                          [item.id]: option.id as RecurrenceOption,
+                                        }))
+                                      }
+                                      className={`px-2 py-1 text-xs border-2 transition-colors ${
+                                        active
+                                          ? "border-primary bg-primary/10 text-primary"
+                                          : "border-border text-muted-foreground hover:border-primary/50"
+                                      }`}
+                                    >
+                                      {option.title}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
                           )}
                         </div>
                         <p className="font-medium text-sm">

@@ -281,9 +281,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     method: string,
     collection: MedusaPaymentCollection | null,
     providerId: string,
-    stripeDetails?: PendingPaymentDetails
+    stripeDetails?: PendingPaymentDetails,
+    address?: Record<string, any>
   ): PendingPaymentDetails => {
     const details = { ...stripeDetails };
+    const companyId = address?.metadata?.company_id || null;
+    const companyName =
+      address?.metadata?.company_name || address?.address_1 || null;
+    if (companyId) {
+      details.company_id = companyId;
+    }
+    if (companyName) {
+      details.company_name = companyName;
+    }
     if (method === "boleto" || method === "pix") {
       const session = findStripeSession(collection, providerId);
       const sessionDetails = extractStripeDetailsFromSession(session);
@@ -479,7 +489,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
               paymentMethod,
               paymentCollection,
               providerId,
-              stripeDetails || undefined
+              stripeDetails || undefined,
+              address
             ),
           };
           setPendingPayment(pending);
@@ -512,7 +523,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           payment_collection_id: paymentCollection?.id || "",
           method: paymentMethod,
           created_at: new Date().toISOString(),
-          details: buildPendingDetails(paymentMethod, paymentCollection, providerId),
+          details: buildPendingDetails(paymentMethod, paymentCollection, providerId, undefined, address),
         };
         setPendingPayment(pending);
         await syncPendingPaymentToBackend(pending);

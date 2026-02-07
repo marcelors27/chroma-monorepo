@@ -419,7 +419,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
               payment_collection_id: paymentCollection?.id || "",
               method: paymentMethod,
               created_at: new Date().toISOString(),
-              details: { ...details, method: paymentMethod },
+              details: {
+                ...details,
+                method: paymentMethod,
+                company_id: address?.metadata?.company_id || address?.metadata?.condo_id,
+                company_name: address?.metadata?.company_name || address?.address_1,
+              },
             };
             await setPendingPayment(pending);
             await syncPendingPaymentToBackend(pending);
@@ -486,7 +491,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
               payment_collection_id: paymentCollection?.id || "",
               method: paymentMethod,
               created_at: new Date().toISOString(),
-              details: { ...details, method: paymentMethod },
+              details: {
+                ...details,
+                method: paymentMethod,
+                company_id: address?.metadata?.company_id || address?.metadata?.condo_id,
+                company_name: address?.metadata?.company_name || address?.address_1,
+              },
             };
             await setPendingPayment(pending);
             await syncPendingPaymentToBackend(pending);

@@ -52,6 +52,19 @@ const trackingIcons: Record<string, React.ReactNode> = {
   cancelled: <XCircle className="h-4 w-4" />,
 };
 
+const buildTrackingSteps = (createdAt?: string) => {
+  const base = createdAt ? new Date(createdAt) : null;
+  const format = (value: Date | null) => (value ? value.toLocaleDateString("pt-BR") : "--");
+  const addDays = (days: number) =>
+    base ? new Date(base.getTime() + days * 24 * 60 * 60 * 1000) : null;
+  return [
+    { key: "confirmed", title: "Pedido confirmado", date: format(base) },
+    { key: "separation", title: "Em separação", date: format(addDays(1)) },
+    { key: "transit", title: "Em transporte", date: format(addDays(2)) },
+    { key: "out_for_delivery", title: "Saiu para entrega", date: format(addDays(3)) },
+  ];
+};
+
 const resolveStatus = (order: MedusaOrder): OrderStatus => {
   if (order.status === "canceled" || order.fulfillment_status === "canceled") return "cancelled";
   if (order.fulfillment_status === "shipped" || order.fulfillment_status === "partially_shipped") return "shipped";
@@ -182,6 +195,18 @@ const Orders = () => {
     return "Pagamento";
   };
 
+  const resolveOrderCondo = (order: MedusaOrder) => {
+    return (
+      order?.shipping_address?.metadata?.company_name ||
+      order?.shipping_address?.address_1 ||
+      "Condomínio"
+    );
+  };
+
+  const resolvePendingCondo = (pending: PendingPayment) => {
+    return pending?.details?.company_name || "Condomínio";
+  };
+
   const orderStatus = selectedOrder ? resolveStatus(selectedOrder) : "processing";
 
   useEffect(() => {
@@ -276,6 +301,9 @@ const Orders = () => {
                               ? formatDate(pending.created_at)
                               : "Data indisponível"}{" "}
                             • ID cobrança {pending.payment_collection_id}
+                          </p>
+                          <p className="text-muted-foreground text-sm">
+                            Condomínio: {resolvePendingCondo(pending)}
                           </p>
                           {pending.details?.boleto_line && (
                             <div className="mt-3 text-sm text-muted-foreground">
@@ -377,6 +405,9 @@ const Orders = () => {
                           <p className="text-muted-foreground text-sm">
                             {formatDate(order.created_at)} • {itemsCount} {itemsCount === 1 ? "item" : "itens"}
                           </p>
+                          <p className="text-muted-foreground text-sm">
+                            Condomínio: {resolveOrderCondo(order)}
+                          </p>
                           <p className="text-primary font-bold text-lg mt-2">
                             {formatMoney(total)}
                           </p>
@@ -432,6 +463,9 @@ const Orders = () => {
                 <p className="text-sm text-muted-foreground">
                   Realizado em {formatDate(selectedOrder.created_at)}
                 </p>
+                <p className="text-sm text-muted-foreground">
+                  Condomínio: {resolveOrderCondo(selectedOrder)}
+                </p>
                 <p className="text-lg font-bold text-primary">
                   Total: {formatMoney(selectedOrder.total || 0)}
                 </p>
@@ -467,6 +501,35 @@ const Orders = () => {
                   </p>
                 </div>
               )}
+
+              <div className="space-y-3">
+                <h3 className="font-semibold">Rastreamento</h3>
+                <div className="border border-border p-3 bg-background space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Código de rastreio: BR123456789
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 border-2"
+                    onClick={() => copyText("BR123456789", "Código de rastreio")}
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copiar código
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {buildTrackingSteps(selectedOrder.created_at).map((step) => (
+                    <div
+                      key={step.key}
+                      className="flex items-center justify-between border border-border p-3 bg-background"
+                    >
+                      <span className="text-sm font-medium">{step.title}</span>
+                      <span className="text-xs text-muted-foreground">{step.date}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               <div className="space-y-2">
                 <h3 className="font-semibold">Linha do tempo</h3>

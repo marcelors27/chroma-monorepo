@@ -16,10 +16,13 @@ export type Order = {
   id: string
   display_id?: number
   status?: string
+  payment_status?: string
+  fulfillment_status?: string
   total?: number
   currency_code?: string
   created_at?: string
   items?: { quantity?: number; title?: string; product_id?: string; unit_price?: number }[]
+  metadata?: Record<string, any>
 }
 
 export type PendingCompany = {
