@@ -3,7 +3,7 @@
     "name": "Chroma Mobile Store",
     "slug": "chroma-mobile-front-v2",
     "scheme": "chroma-mobile",
-    "version": "0.2.18",
+    "version": "0.2.19",
     "orientation": "portrait",
     "platforms": [
       "ios",
@@ -28,10 +28,11 @@
     },
     "ios": {
       "bundleIdentifier": "com.chroma.mobilestore",
-      "buildNumber": "19",
+      "buildNumber": "20",
       "appleTeamId": "BMZ7XQ54J3",
       "usesAppleSignIn": true,
       "infoPlist": {
+        "NSCameraUsageDescription": "Usamos a camera para permitir que voce tire fotos para o seu perfil e envio de conteudos no app.",
         "ITSAppUsesNonExemptEncryption": false,
         "UIStatusBarStyle": "UIStatusBarStyleLightContent",
         "UIViewControllerBasedStatusBarAppearance": false
