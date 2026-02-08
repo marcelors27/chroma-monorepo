@@ -2,7 +2,7 @@ const { remoteQueryObjectFromString, ContainerRegistrationKeys } = require("@med
 const { updateCustomersWorkflow } = require("@medusajs/core-flows")
 const { sendEmail } = require("../../../../services/send-email")
 const { buildPendingPaymentEmail } = require("../../../../services/pending-payment-email")
-const { sendBoletoAdminEmail } = require("../../../../services/email-template-sender")
+const { sendBoletoAdminEmail, sendPixAdminEmail } = require("../../../../services/email-template-sender")
 
 const safeLog = (logger, payload) => {
   try {
@@ -214,9 +214,45 @@ const POST = async (req, res) => {
 
   if (method === "pix" && adminEmail) {
     try {
-      await appendEmailLog("sent", false)
+      const storeUrl = process.env.STORE_URL || process.env.FRONTEND_URL || ""
+      const qrUrl =
+        details?.pix_qr && String(details.pix_qr).startsWith("http")
+          ? details.pix_qr
+          : details?.pix_code && storeUrl
+            ? `${storeUrl.replace(/\/$/, "")}/store/custom/pix/qr?code=${encodeURIComponent(details.pix_code)}`
+            : ""
+
+      let attachment = null
+      let embeddedImage = ""
+      if (details?.pix_qr && String(details.pix_qr).startsWith("data:image/png")) {
+        const base64 = String(details.pix_qr).split(",")[1] || ""
+        if (base64) {
+          attachment = {
+            filename: `pix-${companyId || "chroma"}.png`,
+            content: base64,
+            contentType: "image/png",
+          }
+          embeddedImage = `<div style="margin:16px 0;">
+  <img src="data:image/png;base64,${base64}" alt="QR Code PIX" style="max-width:180px;width:100%;height:auto;border-radius:12px;border:1px solid #1f2937;" />
+</div>`
+        }
+      }
+
+      await sendPixAdminEmail({
+        to: adminEmail,
+        companyName,
+        pixCode: details?.pix_code || "",
+        pixTxid: details?.pix_txid || "",
+        pixQrUrl: qrUrl,
+        pixQrImage: embeddedImage,
+        attachments: attachment ? [attachment] : undefined,
+        logger,
+      })
+
+      await appendEmailLog("sent", Boolean(attachment))
     } catch (err) {
       logger?.warn?.("[email] pix admin falhou", { error: err?.message })
+      await appendEmailLog("failed", false)
     }
   }
 

@@ -16,6 +16,7 @@ import {
   registerStore,
   startSocialAuth,
 } from "@/lib/medusa";
+import { isUnauthorizedError } from "@/lib/auth-errors";
 
 interface User {
   id: string;
@@ -171,8 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await loginCustomer(email, password);
     } catch (err: any) {
-      const message = err?.message || "";
-      if (message.includes("401") || /unauthorized/i.test(message)) {
+      if (isUnauthorizedError(err)) {
         setAuthError("Email ou senha inválidos.");
       } else {
         setAuthError("Não foi possível entrar. Tente novamente.");

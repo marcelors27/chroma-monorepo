@@ -32,7 +32,7 @@ import {
 export default function Index() {
   const navigation = useNavigation();
   const { activeCondo } = useCondo();
-  const { addItem } = useCart();
+  const { addItem, isAddingItem } = useCart();
   const { user } = useAuth();
   const netInfo = useNetInfo();
   const { data, refetch: refetchProducts } = useQuery({ queryKey: ["home-products"], queryFn: listProducts });
@@ -190,6 +190,15 @@ export default function Index() {
 
   return (
     <AuthenticatedLayout>
+      {isAddingItem && (
+        <View style={styles.processingOverlay} pointerEvents="auto">
+          <View style={styles.processingCard}>
+            <LoadingSpinner size={64} />
+            <Text style={styles.processingTitle}>Adicionando ao carrinho...</Text>
+            <Text style={styles.processingSubtitle}>Aguarde um instante.</Text>
+          </View>
+        </View>
+      )}
       <Header subtitle={`Olá, ${user?.name || ""}`.trim()} showCondoSelector />
 
       <ScrollView
@@ -602,5 +611,37 @@ const styles = StyleSheet.create({
     color: "#8C98A8",
     fontSize: 12,
     marginTop: 4,
+  },
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(7, 10, 16, 0.7)",
+    zIndex: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  processingCard: {
+    width: "100%",
+    maxWidth: 320,
+    backgroundColor: "rgba(24, 28, 36, 0.98)",
+    borderRadius: 22,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: "rgba(93, 162, 230, 0.4)",
+    alignItems: "center",
+    gap: 10,
+  },
+  processingTitle: {
+    color: "#E6E8EA",
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 6,
+    textAlign: "center",
+  },
+  processingSubtitle: {
+    color: "#8C98A8",
+    fontSize: 12,
+    textAlign: "center",
   },
 });

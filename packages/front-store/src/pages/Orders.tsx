@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   ShoppingCart,
@@ -26,10 +26,14 @@ import {
   getPendingPayments,
   getActiveCondo,
   listOrders,
+  syncStripePayments,
   MedusaOrder,
   mergePendingPayments,
   PendingPayment,
   formatMoney,
+  removePendingPayment,
+  removePendingPaymentFromBackend,
+  testBoletoPayment,
 } from "@/lib/medusa";
 
 type OrderStatus = "processing" | "shipped" | "delivered" | "cancelled";
@@ -73,10 +77,13 @@ const resolveStatus = (order: MedusaOrder): OrderStatus => {
 };
 
 const ENABLE_PIX = import.meta.env.VITE_ENABLE_PIX === "true";
+const ENABLE_TEST_BOLETO = import.meta.env.VITE_ENABLE_TEST_BOLETO === "true";
+const IS_DEV = import.meta.env.DEV === true;
 
 const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState<MedusaOrder | null>(null);
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
+  const [testPaymentId, setTestPaymentId] = useState<string | null>(null);
   const [recurrenceOrder, setRecurrenceOrder] = useState<MedusaOrder | null>(null);
   const [recurrenceName, setRecurrenceName] = useState("");
   const [recurrenceFrequency, setRecurrenceFrequency] =
@@ -88,7 +95,12 @@ const Orders = () => {
   );
   const [recurrenceItemId, setRecurrenceItemId] = useState("");
   const [recurrenceSaving, setRecurrenceSaving] = useState(false);
-  const { data, isLoading, isError } = useQuery({ queryKey: ["orders"], queryFn: listOrders });
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["orders"],
+    queryFn: listOrders,
+    refetchOnMount: "always",
+  });
   const orders = data?.orders || [];
 
   const formatDate = (value?: string) => {
@@ -211,16 +223,49 @@ const Orders = () => {
     return pending?.details?.company_name || "Condomínio";
   };
 
+  const handleTestBoleto = async (pending: PendingPayment) => {
+    if (!pending?.payment_collection_id || testPaymentId) return;
+    if (!IS_DEV) return;
+    const confirmed = window.confirm(
+      "Confirmar pagamento de boleto em modo de teste?"
+    );
+    if (!confirmed) return;
+    setTestPaymentId(pending.payment_collection_id);
+    try {
+      await testBoletoPayment({ payment_collection_id: pending.payment_collection_id });
+      removePendingPayment({ payment_collection_id: pending.payment_collection_id });
+      await removePendingPaymentFromBackend({ payment_collection_id: pending.payment_collection_id });
+      const local = getPendingPayments();
+      const remote = await fetchPendingPaymentsFromBackend();
+      setPendingPayments(mergePendingPayments(local, remote));
+      await queryClient.invalidateQueries({ queryKey: ["orders"] });
+      toast({
+        title: "Pagamento confirmado (teste)",
+        description: "O boleto foi marcado como pago.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Falha no pagamento teste",
+        description: error?.message || "Não foi possível confirmar o boleto.",
+        variant: "destructive",
+      });
+    } finally {
+      setTestPaymentId(null);
+    }
+  };
+
   const orderStatus = selectedOrder ? resolveStatus(selectedOrder) : "processing";
 
   useEffect(() => {
     let active = true;
     const load = async () => {
+      await syncStripePayments();
       const local = getPendingPayments();
       const remote = await fetchPendingPaymentsFromBackend();
       const merged = mergePendingPayments(local, remote);
       if (active) {
         setPendingPayments(merged);
+        queryClient.invalidateQueries({ queryKey: ["orders"] });
       }
     };
     load();
@@ -334,6 +379,19 @@ const Orders = () => {
                                     <a href={pending.details.boleto_url} target="_blank" rel="noreferrer">
                                       Abrir boleto
                                     </a>
+                                  </Button>
+                                )}
+                                {ENABLE_TEST_BOLETO && IS_DEV && pending.method === "boleto" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-2"
+                                    disabled={testPaymentId === pending.payment_collection_id}
+                                    onClick={() => handleTestBoleto(pending)}
+                                  >
+                                    {testPaymentId === pending.payment_collection_id
+                                      ? "Confirmando..."
+                                      : "Pagar em teste"}
                                   </Button>
                                 )}
                               </div>

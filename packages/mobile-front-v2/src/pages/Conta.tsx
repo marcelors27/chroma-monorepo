@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useState } from "react";
 import {
   User,
   Building2,
@@ -15,6 +16,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCondo } from "@/contexts/CondoContext";
 import { toast } from "@/lib/toast";
@@ -65,8 +67,31 @@ export default function Conta() {
   const navigation = useNavigation();
   const { logout, user } = useAuth();
   const { condos } = useCondo();
-  const { data } = useQuery({ queryKey: ["orders"], queryFn: listOrders });
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: ["orders"],
+    queryFn: listOrders,
+    refetchOnMount: "always",
+  });
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const pullThreshold = 80;
   const ordersCount = data?.orders?.length || 0;
+
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+      setPullDistance(0);
+    }
+  };
+
+  const pullRatio = Math.min(pullDistance / pullThreshold, 1);
+  const showPullIndicator = refreshing || pullDistance > 0;
+  const indicatorOpacity = refreshing ? 1 : pullRatio;
+  const indicatorScale = refreshing ? 1 : 0.85 + 0.15 * pullRatio;
 
   const handleLogout = () => {
     logout();
@@ -76,7 +101,37 @@ export default function Conta() {
     <AuthenticatedLayout>
       <Header title="Minha Conta" showNotification={false} showCondoSelector />
 
-      <ScrollView style={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollContent}
+        stickyHeaderIndices={refreshing ? [0] : undefined}
+        onScroll={(event) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          if (offsetY < 0) {
+            setPullDistance(-offsetY);
+          } else if (pullDistance !== 0) {
+            setPullDistance(0);
+          }
+        }}
+        onScrollEndDrag={(event) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          if (offsetY < -pullThreshold && !refreshing && !isFetching) {
+            handleRefresh();
+          }
+        }}
+        scrollEventThrottle={16}
+      >
+        <View style={[styles.refreshContainer, showPullIndicator && styles.refreshContainerVisible]}>
+          <View style={[styles.refreshRow, { opacity: indicatorOpacity, transform: [{ scale: indicatorScale }] }]}>
+            <LoadingSpinner size={32} />
+            <Text style={styles.refreshText}>
+              {refreshing || isFetching
+                ? "Atualizando..."
+                : pullRatio >= 1
+                  ? "Solte para atualizar"
+                  : "Puxe para atualizar"}
+            </Text>
+          </View>
+        </View>
         <View style={styles.profileCard}>
           <View style={styles.profileRow}>
             <View style={styles.avatar}>
@@ -147,6 +202,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 12,
+  },
+  refreshContainer: {
+    height: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: 0,
+  },
+  refreshContainerVisible: {
+    height: 56,
+    opacity: 1,
+  },
+  refreshRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  refreshText: {
+    color: "#E6E8EA",
+    fontSize: 14,
+    fontWeight: "600",
   },
   profileCard: {
     backgroundColor: "rgba(24, 28, 36, 0.95)",

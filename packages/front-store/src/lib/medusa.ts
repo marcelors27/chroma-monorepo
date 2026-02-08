@@ -116,6 +116,7 @@ export type PendingPaymentDetails = {
   boleto_expires_after_days?: number
   pix_code?: string
   pix_qr?: string
+  pix_txid?: string
   company_id?: string
   company_name?: string
   amount?: number
@@ -535,6 +536,23 @@ export const notifyPendingPayment = async (payload: {
   details?: PendingPaymentDetails
 }) => {
   return apiFetch("/store/notifications/pending-payment", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export const syncStripePayments = async () => {
+  try {
+    await apiFetch("/store/custom/payments/sync-stripe", { method: "POST" })
+  } catch {
+    // ignore sync failures
+  }
+}
+
+export const testBoletoPayment = async (payload: {
+  payment_collection_id: string
+}) => {
+  return apiFetch("/store/custom/payments/test-boleto", {
     method: "POST",
     body: JSON.stringify(payload),
   })
@@ -1075,11 +1093,45 @@ export const deleteLineItem = async (cartId: string, lineId: string) => {
   return data.cart
 }
 
+const retrieveOrder = async (orderId: string) => {
+  const params = new URLSearchParams()
+  params.set(
+    "fields",
+    "+items,+items.id,+items.quantity,+items.title,+items.product_id,+items.variant_id,+items.thumbnail,+items.unit_price"
+  )
+  return apiFetch<{ order: MedusaOrder }>(`/store/orders/${orderId}?${params.toString()}`, {
+    method: "GET",
+  })
+}
+
 export const listOrders = async () => {
   const params = new URLSearchParams()
-  params.set("fields", "+items.product_id,+items.variant_id")
+  params.set(
+    "fields",
+    "+items,+items.id,+items.quantity,+items.title,+items.product_id,+items.variant_id,+items.thumbnail,+items.unit_price"
+  )
   const suffix = params.toString()
-  return apiFetch<{ orders: MedusaOrder[] }>(`/store/orders?${suffix}`, { method: "GET" })
+  const data = await apiFetch<{ orders: MedusaOrder[] }>(`/store/orders?${suffix}`, {
+    method: "GET",
+  })
+  const orders = data?.orders || []
+  if (!orders.length) {
+    return { orders }
+  }
+  const hydrated = await Promise.all(
+    orders.map(async (order) => {
+      if (!order?.id || (order.items && order.items.length > 0)) {
+        return order
+      }
+      try {
+        const detail = await retrieveOrder(order.id)
+        return detail?.order || order
+      } catch {
+        return order
+      }
+    })
+  )
+  return { orders: hydrated }
 }
 
 export const setCartShippingAddress = async (

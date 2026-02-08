@@ -1,6 +1,7 @@
 const WELCOME_TEMPLATE_NAME = "Chroma | Boas-vindas"
 const COMPANY_ADDED_TEMPLATE_NAME = "Chroma | Condominio adicionado"
 const BOLETO_ADMIN_TEMPLATE_NAME = "Chroma | Boleto para administradora"
+const PIX_ADMIN_TEMPLATE_NAME = "Chroma | PIX para administradora"
 const PASSWORD_RESET_TEMPLATE_NAME = "Chroma | Reset de senha"
 
 const buildWelcomeTemplate = () => {
@@ -83,6 +84,36 @@ const buildBoletoAdminTemplate = () => {
   }
 }
 
+const buildPixAdminTemplate = () => {
+  const html = `
+  <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
+    <h2 style="margin: 0 0 16px;">PIX para administradora</h2>
+    <p style="margin: 0 0 12px;">Segue o PIX do condominio {{{COMPANY_NAME}}}.</p>
+    <ul style="margin: 0 0 12px; padding-left: 20px;">
+      <li><strong>Código PIX:</strong> {{{PIX_CODE}}}</li>
+      <li><strong>TXID:</strong> {{{PIX_TXID}}}</li>
+    </ul>
+    <p style="margin: 0 0 12px;">
+      <a href="{{{PIX_QR_URL}}}" style="color: #2563eb;">Abrir QR Code</a>
+    </p>
+    {{{PIX_QR_IMAGE}}}
+  </div>
+  `.trim()
+
+  return {
+    name: PIX_ADMIN_TEMPLATE_NAME,
+    subject: "PIX para administradora",
+    html,
+    variables: [
+      { key: "COMPANY_NAME", type: "string", fallback: "" },
+      { key: "PIX_CODE", type: "string", fallback: "" },
+      { key: "PIX_TXID", type: "string", fallback: "" },
+      { key: "PIX_QR_URL", type: "string", fallback: "" },
+      { key: "PIX_QR_IMAGE", type: "string", fallback: "" },
+    ],
+  }
+}
+
 const buildPasswordResetTemplate = () => {
   const html = `
   <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
@@ -122,10 +153,12 @@ module.exports = {
   WELCOME_TEMPLATE_NAME,
   COMPANY_ADDED_TEMPLATE_NAME,
   BOLETO_ADMIN_TEMPLATE_NAME,
+  PIX_ADMIN_TEMPLATE_NAME,
   PASSWORD_RESET_TEMPLATE_NAME,
   buildWelcomeTemplate,
   buildCompanyAddedTemplate,
   buildBoletoAdminTemplate,
+  buildPixAdminTemplate,
   buildPasswordResetTemplate,
   renderTemplateHtml,
 }

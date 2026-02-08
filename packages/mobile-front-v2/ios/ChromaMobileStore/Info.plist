@@ -21,7 +21,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.2.18</string>
+	<string>0.2.19</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -47,7 +47,7 @@
       </dict>
     </array>
 	<key>CFBundleVersion</key>
-	<string>19</string>
+	<string>20</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
@@ -68,6 +68,8 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Usamos a camera para permitir que voce tire fotos para o seu perfil e envio de conteudos no app.</string>
     <key>FacebookAppID</key>
     <string>1214447910638658</string>
     <key>FacebookClientToken</key>

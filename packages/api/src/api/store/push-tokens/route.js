@@ -73,7 +73,7 @@ const POST = async (req, res) => {
         device_id: deviceId,
       })
       .andWhere("token", "<>", token)
-      .andWhereNull("disabled_at")
+      .whereNull("disabled_at")
       .update({ disabled_at: now, updated_at: now })
   }
 

@@ -4,10 +4,12 @@ const {
   WELCOME_TEMPLATE_NAME,
   COMPANY_ADDED_TEMPLATE_NAME,
   BOLETO_ADMIN_TEMPLATE_NAME,
+  PIX_ADMIN_TEMPLATE_NAME,
   PASSWORD_RESET_TEMPLATE_NAME,
   buildWelcomeTemplate,
   buildCompanyAddedTemplate,
   buildBoletoAdminTemplate,
+  buildPixAdminTemplate,
   buildPasswordResetTemplate,
   renderTemplateHtml,
 } = require("./email-templates")
@@ -133,6 +135,37 @@ const sendBoletoAdminEmail = async ({
   })
 }
 
+const sendPixAdminEmail = async ({
+  to,
+  companyName,
+  pixCode,
+  pixTxid,
+  pixQrUrl,
+  pixQrImage,
+  attachments,
+  logger,
+}) => {
+  if (!to) return { skipped: true }
+  const template = buildPixAdminTemplate()
+  const variables = {
+    COMPANY_NAME: companyName || "",
+    PIX_CODE: pixCode || "",
+    PIX_TXID: pixTxid || "",
+    PIX_QR_URL: pixQrUrl || "",
+    PIX_QR_IMAGE: pixQrImage || "",
+  }
+
+  return sendTemplateOrFallback({
+    to,
+    subject: template.subject,
+    templateName: PIX_ADMIN_TEMPLATE_NAME,
+    templateDefinition: template,
+    variables,
+    attachments,
+    logger,
+  })
+}
+
 const sendPasswordResetEmail = async ({ to, name, password, logger }) => {
   if (!to) return { skipped: true }
   const template = buildPasswordResetTemplate()
@@ -151,4 +184,10 @@ const sendPasswordResetEmail = async ({ to, name, password, logger }) => {
   })
 }
 
-module.exports = { sendWelcomeEmail, sendCompanyAddedEmail, sendBoletoAdminEmail, sendPasswordResetEmail }
+module.exports = {
+  sendWelcomeEmail,
+  sendCompanyAddedEmail,
+  sendBoletoAdminEmail,
+  sendPixAdminEmail,
+  sendPasswordResetEmail,
+}

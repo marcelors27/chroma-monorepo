@@ -60,7 +60,7 @@ export default function ProductDetails() {
   const { share } = useShare();
   const { toggleFavorite, isFavorite } = useFavorites();
   const { activeCondo } = useCondo();
-  const { addItem } = useCart();
+  const { addItem, isAddingItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -218,6 +218,15 @@ export default function ProductDetails() {
 
   return (
     <AuthenticatedLayout>
+      {isAddingItem && (
+        <View style={styles.processingOverlay} pointerEvents="auto">
+          <View style={styles.processingCard}>
+            <LoadingSpinner size={64} />
+            <Text style={styles.processingTitle}>Adicionando ao carrinho...</Text>
+            <Text style={styles.processingSubtitle}>Aguarde um instante.</Text>
+          </View>
+        </View>
+      )}
       <ScrollView style={styles.scrollContent}>
         <View style={styles.mediaHeader}>
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -735,5 +744,37 @@ const styles = StyleSheet.create({
     color: "#8C98A8",
     fontSize: 13,
     marginTop: 12,
+  },
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(7, 10, 16, 0.7)",
+    zIndex: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  processingCard: {
+    width: "100%",
+    maxWidth: 320,
+    backgroundColor: "rgba(24, 28, 36, 0.98)",
+    borderRadius: 22,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: "rgba(93, 162, 230, 0.4)",
+    alignItems: "center",
+    gap: 10,
+  },
+  processingTitle: {
+    color: "#E6E8EA",
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 6,
+    textAlign: "center",
+  },
+  processingSubtitle: {
+    color: "#8C98A8",
+    fontSize: 12,
+    textAlign: "center",
   },
 });

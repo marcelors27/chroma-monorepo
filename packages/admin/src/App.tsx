@@ -8,6 +8,8 @@ import MarketingSection from "./modules/MarketingSection"
 import EmailTemplatesSection from "./modules/EmailTemplatesSection"
 import BillingResendSection from "./modules/BillingResendSection"
 import EmailLogsSection from "./modules/EmailLogsSection"
+import TestPaymentLogsSection from "./modules/TestPaymentLogsSection"
+import PixManualPaymentsSection from "./modules/PixManualPaymentsSection"
 import OrdersSection from "./modules/OrdersSection"
 import PaymentsSection from "./modules/PaymentsSection"
 import PendingCondosSection from "./modules/PendingCondosSection"
@@ -86,6 +88,8 @@ export default function App() {
       { id: "emails", label: "E-mails", path: "/emails", count: 0 },
       { id: "cobrancas", label: "Reenvio cobranças", path: "/cobrancas", count: 0 },
       { id: "email-logs", label: "Histórico e-mails", path: "/email-logs", count: 0 },
+      { id: "test-payment-logs", label: "Logs pagamento teste", path: "/test-payment-logs", count: 0 },
+      { id: "pix-manual", label: "PIX manual", path: "/pix-manual", count: 0 },
       { id: "pagamentos", label: "Pagamentos", path: "/pagamentos", count: 0 },
       { id: "push", label: "Push", path: "/push", count: 0 },
       {
@@ -138,7 +142,9 @@ export default function App() {
       },
       {
         label: "Financeiro",
-        items: ["pagamentos", "cobrancas"].map((id) => sectionById.get(id)).filter(Boolean),
+        items: ["pagamentos", "cobrancas", "pix-manual", "test-payment-logs"]
+          .map((id) => sectionById.get(id))
+          .filter(Boolean),
       },
       {
         label: "Operações",
@@ -637,6 +643,29 @@ export default function App() {
                   path="/email-logs"
                   element={
                     <EmailLogsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      users={storeUsers}
+                      companies={companies}
+                      pushToast={pushToast}
+                    />
+                  }
+                />
+                <Route
+                  path="/test-payment-logs"
+                  element={
+                    <TestPaymentLogsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      users={storeUsers}
+                      pushToast={pushToast}
+                    />
+                  }
+                />
+                <Route
+                  path="/pix-manual"
+                  element={
+                    <PixManualPaymentsSection
                       medusaUrl={MEDUSA_URL}
                       headers={headers}
                       users={storeUsers}

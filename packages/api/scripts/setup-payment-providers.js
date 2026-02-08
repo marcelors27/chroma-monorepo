@@ -79,6 +79,16 @@ function resolveStripeProviderId(providers) {
   return fallback?.id || null
 }
 
+function resolvePixManualProviderId(providers) {
+  if (!Array.isArray(providers) || !providers.length) return null
+  const exact = providers.find((p) => p?.id === "pp_pix_manual_pix_manual")
+  if (exact) return exact.id
+  const fallback = providers.find(
+    (p) => typeof p?.id === "string" && p.id.includes("pix_manual")
+  )
+  return fallback?.id || null
+}
+
 async function updateRegion(token, id, paymentProviders) {
   const { res, text } = await apiFetch(`${MEDUSA_URL}/admin/regions/${id}`, {
     method: "POST",
@@ -100,6 +110,7 @@ async function run() {
   const token = await authenticate()
   const providers = await listProviders(token)
   const stripeProviderId = resolveStripeProviderId(providers)
+  const pixProviderId = resolvePixManualProviderId(providers)
   if (!stripeProviderId) {
     throw new Error(
       `Provider do Stripe nao encontrado. Providers disponiveis: ${providers
@@ -118,13 +129,19 @@ async function run() {
     const current = Array.isArray(region.payment_providers)
       ? region.payment_providers
       : []
-    if (current.includes(stripeProviderId)) {
-      console.log(`Região ${region.id}: stripe já configurado.`)
+    let next = [...current]
+    if (!next.includes(stripeProviderId)) {
+      next.push(stripeProviderId)
+    }
+    if (pixProviderId && !next.includes(pixProviderId)) {
+      next.push(pixProviderId)
+    }
+    if (next.length === current.length) {
+      console.log(`Região ${region.id}: providers já configurados.`)
       continue
     }
-    const next = [...current, stripeProviderId]
     await updateRegion(token, region.id, next)
-    console.log(`Região ${region.id}: stripe adicionado.`)
+    console.log(`Região ${region.id}: providers atualizados.`)
   }
 
   console.log("Concluído.")

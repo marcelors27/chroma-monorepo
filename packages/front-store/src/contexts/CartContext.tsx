@@ -28,6 +28,7 @@ import { loadStripe } from "@stripe/stripe-js";
 const DEBUG = import.meta.env.VITE_DEBUG_FRONT === "true";
 const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 const ENABLE_PIX = import.meta.env.VITE_ENABLE_PIX === "true";
+const PIX_PROVIDER = import.meta.env.VITE_PIX_PROVIDER || "stripe";
 const stripePromise = STRIPE_PUBLISHABLE_KEY
   ? loadStripe(STRIPE_PUBLISHABLE_KEY)
   : null;
@@ -241,6 +242,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         if (!ENABLE_PIX) {
           throw new Error("PIX não habilitado.");
         }
+        if (PIX_PROVIDER === "manual") {
+          return {
+            providerId: "pp_pix_manual_pix_manual",
+            data: { payment_method_types: ["pix"], payment_method_type: "pix" },
+          };
+        }
         return {
           providerId: "pp_stripe_stripe",
           data: { payment_method_types: ["pix"], capture_method: "automatic" },
@@ -291,6 +298,18 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     return extractStripeDetailsFromIntent(intent);
   };
 
+  const extractManualPixDetailsFromSession = (
+    session: Record<string, any> | null
+  ): PendingPaymentDetails => {
+    if (!session) return {};
+    const data = session?.data || {};
+    return {
+      pix_code: data?.pix_code,
+      pix_qr: data?.pix_qr,
+      pix_txid: data?.pix_txid,
+    };
+  };
+
   const buildPendingDetails = (
     method: string,
     collection: MedusaPaymentCollection | null,
@@ -298,6 +317,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     stripeDetails?: PendingPaymentDetails,
     address?: Record<string, any>,
     amount?: number,
+    currencyCode?: string,
     options?: { boletoExpiresAfterDays?: number }
   ): PendingPaymentDetails => {
     const details = { ...stripeDetails };
@@ -313,12 +333,22 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     if (typeof amount === "number") {
       details.amount = amount;
     }
+    if (currencyCode) {
+      details.currency_code = currencyCode;
+    }
     if (method === "boleto" && options?.boletoExpiresAfterDays) {
       details.boleto_expires_after_days = options.boletoExpiresAfterDays;
     }
     if (method === "boleto" || method === "pix") {
-      const session = findStripeSession(collection, providerId);
-      const sessionDetails = extractStripeDetailsFromSession(session);
+      const session =
+        providerId.startsWith("pp_stripe")
+          ? findStripeSession(collection, providerId)
+          : collection?.payment_sessions?.find(
+              (item) => item?.provider_id === providerId
+            ) || null;
+      const sessionDetails = providerId.startsWith("pp_stripe")
+        ? extractStripeDetailsFromSession(session)
+        : extractManualPixDetailsFromSession(session);
       return { ...sessionDetails, ...details, method };
     }
     return { ...details, method };
@@ -488,6 +518,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       if (providerId.startsWith("pp_stripe")) {
         const existingSession = findStripeSession(paymentCollection, providerId);
         if (!existingSession?.data?.client_secret) {
+          if (data && typeof data === "object") {
+            data.payment_collection_id = paymentCollection?.id || null;
+          }
           paymentCollection = await setPaymentSession(cartSnapshot.id, providerId, data);
         }
         setCheckoutLocked(true);
@@ -525,6 +558,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             stripeDetails || undefined,
             address,
             cartSnapshot?.total,
+            cartSnapshot?.currency_code,
             options
           ),
         };
@@ -535,7 +569,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
               await notifyPendingPayment({
                 payment_method: paymentMethod,
                 payment_collection_id: pending.payment_collection_id,
-                company_id: address?.metadata?.company_id || null,
+                company_id:
+                  address?.metadata?.company_id ||
+                  pending.details?.company_id ||
+                  getActiveCondo()?.id ||
+                  null,
                 details: pending.details,
               });
             } catch (err: any) {
@@ -550,6 +588,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           };
         }
       } else {
+        if (data && typeof data === "object") {
+          data.payment_collection_id = paymentCollection?.id || null;
+        }
         await setPaymentSession(cartSnapshot.id, providerId, data);
       }
       if (isAsyncPayment) {
@@ -565,6 +606,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             undefined,
             address,
             cartSnapshot?.total,
+            cartSnapshot?.currency_code,
             options
           ),
         };
@@ -572,12 +614,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         await syncPendingPaymentToBackend(pending);
         if (paymentMethod === "boleto" || paymentMethod === "pix") {
           try {
-            await notifyPendingPayment({
-              payment_method: paymentMethod,
-              payment_collection_id: pending.payment_collection_id,
-              company_id: address?.metadata?.company_id || null,
-              details: pending.details,
-            });
+          await notifyPendingPayment({
+            payment_method: paymentMethod,
+            payment_collection_id: pending.payment_collection_id,
+            company_id:
+              address?.metadata?.company_id ||
+              pending.details?.company_id ||
+              getActiveCondo()?.id ||
+              null,
+            details: pending.details,
+          });
           } catch (err: any) {
             if (DEBUG) console.debug("[cart] notifyPendingPayment:error", err?.message || err);
           }

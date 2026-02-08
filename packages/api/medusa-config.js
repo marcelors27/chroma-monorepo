@@ -169,6 +169,16 @@ module.exports = {
               webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
             },
           },
+          {
+            resolve: "./src/modules/payment-pix-manual",
+            id: "pix_manual",
+            options: {
+              pixKey: process.env.PIX_KEY,
+              merchantName: process.env.PIX_MERCHANT_NAME,
+              merchantCity: process.env.PIX_MERCHANT_CITY,
+              description: process.env.PIX_DESCRIPTION,
+            },
+          },
         ],
       },
     },

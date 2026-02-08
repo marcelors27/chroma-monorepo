@@ -16,6 +16,7 @@ import {
   removePendingPayment,
   removePendingPaymentFromBackend,
   confirmStripePaymentServerSide,
+  createPaymentSessions,
   setCartShippingAddress,
   setPaymentSession,
   setPendingPayment,
@@ -27,6 +28,7 @@ import { useCondo } from "@/contexts/CondoContext";
 
 const DEBUG = process.env.EXPO_PUBLIC_DEBUG_FRONT === "true";
 const ENABLE_PIX = process.env.EXPO_PUBLIC_ENABLE_PIX === "true";
+const PIX_PROVIDER = process.env.EXPO_PUBLIC_PIX_PROVIDER || "stripe";
 
 export interface CartItem {
   productId: string;
@@ -60,6 +62,7 @@ interface CartContextType {
   updateQuantity: (id: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
   refreshCart: () => Promise<void>;
+  isAddingItem: boolean;
   completeBackendCheckout: (
     address: Record<string, any>,
     paymentMethod: string,
@@ -88,6 +91,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [cartId, setCartId] = useState<string | null>(null);
   const [checkoutLocked, setCheckoutLocked] = useState(false);
+  const [isAddingItem, setIsAddingItem] = useState(false);
   const [lastAddId, setLastAddId] = useState(0);
   const [lastAddQty, setLastAddQty] = useState(1);
   const { initPaymentSheet, presentPaymentSheet, retrievePaymentIntent, confirmPayment } = useStripe();
@@ -120,6 +124,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (DEBUG) console.debug("[cart] addItem", product);
+    setIsAddingItem(true);
     try {
       const cart = await ensureCart();
       if (!cart?.id) throw new Error("Carrinho não encontrado");
@@ -173,6 +178,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         description: err?.message || "Verifique se há estoque disponível.",
         variant: "destructive",
       });
+    } finally {
+      setIsAddingItem(false);
     }
   };
 
@@ -304,6 +311,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (!ENABLE_PIX) {
           throw new Error("PIX não habilitado.");
         }
+        if (PIX_PROVIDER === "manual") {
+          return {
+            providerId: "pp_pix_manual_pix_manual",
+            data: { payment_method_types: ["pix"], payment_method_type: "pix" },
+          };
+        }
         return {
           providerId: "pp_stripe_stripe",
           data: { payment_method_types: ["pix"], capture_method: "automatic" },
@@ -369,6 +382,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       boleto_qr: qrImage,
       pix_code: pix?.data || pix?.emv || pix?.qr_code?.data,
       pix_qr: pix?.image_url || pix?.qr_code?.image_url || pix?.image,
+    };
+  };
+
+  const extractManualPixDetailsFromSession = (session: any) => {
+    const data = session?.data || {};
+    return {
+      pix_code: data?.pix_code,
+      pix_qr: data?.pix_qr,
+      pix_txid: data?.pix_txid,
     };
   };
 
@@ -505,6 +527,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      const collection = await createPaymentSessions(cartSnapshot.id);
+      if (data && typeof data === "object") {
+        data.payment_collection_id = collection?.id || undefined;
+      }
       const paymentCollection = await setPaymentSession(cartSnapshot.id, providerId, data);
 
       if (providerId.startsWith("pp_stripe")) {
@@ -533,6 +559,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 company_id: address?.metadata?.company_id || address?.metadata?.condo_id,
                 company_name: address?.metadata?.company_name || address?.address_1,
                 amount: cartSnapshot?.total,
+                currency_code: cartSnapshot?.currency_code,
                 boleto_expires_after_days: options?.boletoExpiresAfterDays,
               },
             };
@@ -542,7 +569,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
               await notifyPendingPayment({
                 payment_method: paymentMethod,
                 payment_collection_id: pending.payment_collection_id,
-                company_id: address?.metadata?.company_id || null,
+                company_id:
+                  address?.metadata?.company_id ||
+                  pending.details?.company_id ||
+                  address?.metadata?.condo_id ||
+                  null,
                 details: pending.details,
               });
             } catch (err: any) {
@@ -567,6 +598,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 company_id: address?.metadata?.company_id || address?.metadata?.condo_id,
                 company_name: address?.metadata?.company_name || address?.address_1,
                 amount: cartSnapshot?.total,
+                currency_code: cartSnapshot?.currency_code,
                 boleto_expires_after_days: options?.boletoExpiresAfterDays,
               },
             };
@@ -626,19 +658,57 @@ export function CartProvider({ children }: { children: ReactNode }) {
               payment_collection_id: paymentCollection?.id || "",
               method: paymentMethod,
               created_at: new Date().toISOString(),
-              details: {
-                ...details,
-                method: paymentMethod,
-                company_id: address?.metadata?.company_id || address?.metadata?.condo_id,
-                company_name: address?.metadata?.company_name || address?.address_1,
-              },
-            };
+            details: {
+              ...details,
+              method: paymentMethod,
+              company_id: address?.metadata?.company_id || address?.metadata?.condo_id,
+              company_name: address?.metadata?.company_name || address?.address_1,
+              currency_code: cartSnapshot?.currency_code,
+            },
+          };
             await setPendingPayment(pending);
             await syncPendingPaymentToBackend(pending);
             await resetCartAfterPending();
             return { status: "pending", pendingDetails: details, pendingPayment: pending };
           }
         }
+      } else if (paymentMethod === "pix") {
+        const session = paymentCollection?.payment_sessions?.find(
+          (item: any) => item?.provider_id === providerId
+        );
+        const manualDetails = extractManualPixDetailsFromSession(session);
+        const pending: PendingPayment = {
+          cart_id: cartSnapshot.id,
+          payment_collection_id: paymentCollection?.id || "",
+          method: paymentMethod,
+          created_at: new Date().toISOString(),
+          details: {
+            ...manualDetails,
+            method: paymentMethod,
+            company_id: address?.metadata?.company_id || address?.metadata?.condo_id,
+            company_name: address?.metadata?.company_name || address?.address_1,
+            amount: cartSnapshot?.total,
+            currency_code: cartSnapshot?.currency_code,
+          },
+        };
+        await setPendingPayment(pending);
+        await syncPendingPaymentToBackend(pending);
+        try {
+          await notifyPendingPayment({
+            payment_method: paymentMethod,
+            payment_collection_id: pending.payment_collection_id,
+            company_id:
+              address?.metadata?.company_id ||
+              pending.details?.company_id ||
+              address?.metadata?.condo_id ||
+              null,
+            details: pending.details,
+          });
+        } catch (err: any) {
+          if (DEBUG) console.debug("[cart] notifyPendingPayment:error", err?.message || err);
+        }
+        await resetCartAfterPending();
+        return { status: "pending", pendingDetails: manualDetails, pendingPayment: pending };
       }
 
       setCheckoutLocked(true);
@@ -681,6 +751,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         updateQuantity,
         clearCart,
         refreshCart,
+        isAddingItem,
         completeBackendCheckout,
         finalizePendingBoleto,
         totalItems,

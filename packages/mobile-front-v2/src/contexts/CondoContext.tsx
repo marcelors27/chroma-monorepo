@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getTokenValue, listCompanies } from "@/lib/medusa";
+import { clearSession, getTokenValue, listCompanies } from "@/lib/medusa";
+import { isUnauthorizedError } from "@/lib/auth-errors";
 import { registerDevicePushToken } from "@/lib/push";
 import { toast } from "@/lib/toast";
 
@@ -101,6 +102,12 @@ export function CondoProvider({
       });
       return mapped;
     } catch (err: any) {
+      if (isUnauthorizedError(err)) {
+        await clearSession();
+        setCondos([]);
+        setActiveCondoState(null);
+        return [];
+      }
       toast.error(err?.message || "Não foi possível carregar os condomínios.");
       setCondos([]);
       setActiveCondoState(null);

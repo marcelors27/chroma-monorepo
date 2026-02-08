@@ -1,18 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, Linking } from "react-native";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, Linking } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Clock, ClipboardList, ChevronRight, Truck, Check, X } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
   fetchPendingPaymentsFromBackend,
   formatMoney,
   getPendingPayments,
   listOrders,
+  syncStripePayments,
   MedusaOrder,
   mergePendingPayments,
   PendingPayment,
+  removePendingPayment,
+  removePendingPaymentFromBackend,
+  testBoletoPayment,
 } from "@/lib/medusa";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/lib/toast";
@@ -38,13 +43,24 @@ const resolveStatusTone = (order: MedusaOrder): StatusTone => {
 export default function Pedidos() {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
+  const ENABLE_TEST_BOLETO = process.env.EXPO_PUBLIC_ENABLE_TEST_BOLETO === "true";
+  const [testPaymentId, setTestPaymentId] = useState<string | null>(null);
   const { finalizePendingBoleto } = useCart();
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
-  const { data } = useQuery({ queryKey: ["orders"], queryFn: listOrders });
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: ["orders"],
+    queryFn: listOrders,
+    refetchOnMount: "always",
+  });
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
+  const pullThreshold = 80;
 
   useEffect(() => {
     const loadPending = async () => {
+      await syncStripePayments();
+      await refetch();
       const local = await getPendingPayments();
       const remote = await fetchPendingPaymentsFromBackend();
       setPendingPayments(mergePendingPayments(local, remote));
@@ -126,11 +142,91 @@ export default function Pedidos() {
     return [...pendingMapped, ...pendingOrders];
   }, [activeTab, orders, pendingPayments, pendingByCollection]);
 
+  const handleTestBoleto = async (paymentCollectionId?: string | null) => {
+    if (!paymentCollectionId || testPaymentId) return;
+    if (!__DEV__) return;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      Alert.alert(
+        "Pagamento de teste",
+        "Confirmar pagamento do boleto em modo de teste?",
+        [
+          { text: "Cancelar", style: "cancel", onPress: () => resolve(false) },
+          { text: "Confirmar", style: "destructive", onPress: () => resolve(true) },
+        ]
+      );
+    });
+    if (!confirmed) return;
+    setTestPaymentId(paymentCollectionId);
+    try {
+      await testBoletoPayment({ payment_collection_id: paymentCollectionId });
+      await removePendingPayment({ payment_collection_id: paymentCollectionId });
+      await removePendingPaymentFromBackend({ payment_collection_id: paymentCollectionId });
+      await queryClient.invalidateQueries({ queryKey: ["orders"] });
+      const local = await getPendingPayments();
+      const remote = await fetchPendingPaymentsFromBackend();
+      setPendingPayments(mergePendingPayments(local, remote));
+      toast.success("Pagamento confirmado (teste).");
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível confirmar o boleto.");
+    } finally {
+      setTestPaymentId(null);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await syncStripePayments();
+      await refetch();
+      const local = await getPendingPayments();
+      const remote = await fetchPendingPaymentsFromBackend();
+      setPendingPayments(mergePendingPayments(local, remote));
+    } finally {
+      setRefreshing(false);
+      setPullDistance(0);
+    }
+  };
+
+  const pullRatio = Math.min(pullDistance / pullThreshold, 1);
+  const showPullIndicator = refreshing || pullDistance > 0;
+  const indicatorOpacity = refreshing ? 1 : pullRatio;
+  const indicatorScale = refreshing ? 1 : 0.85 + 0.15 * pullRatio;
+
   return (
     <AuthenticatedLayout>
       <Header title="Meus Pedidos" showCondoSelector showNotification={false} />
 
-      <ScrollView style={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollContent}
+        stickyHeaderIndices={refreshing ? [0] : undefined}
+        onScroll={(event) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          if (offsetY < 0) {
+            setPullDistance(-offsetY);
+          } else if (pullDistance !== 0) {
+            setPullDistance(0);
+          }
+        }}
+        onScrollEndDrag={(event) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          if (offsetY < -pullThreshold && !refreshing && !isFetching) {
+            handleRefresh();
+          }
+        }}
+        scrollEventThrottle={16}
+      >
+        <View style={[styles.refreshContainer, showPullIndicator && styles.refreshContainerVisible]}>
+          <View style={[styles.refreshRow, { opacity: indicatorOpacity, transform: [{ scale: indicatorScale }] }]}>
+            <LoadingSpinner size={32} />
+            <Text style={styles.refreshText}>
+              {refreshing || isFetching
+                ? "Atualizando..."
+                : pullRatio >= 1
+                  ? "Solte para atualizar"
+                  : "Puxe para atualizar"}
+            </Text>
+          </View>
+        </View>
         <View style={styles.tabsContainer}>
           <Pressable
             onPress={() => setActiveTab("pending")}
@@ -287,6 +383,17 @@ export default function Pedidos() {
                         </Text>
                       </Pressable>
                     )}
+                    {ENABLE_TEST_BOLETO && __DEV__ && order.paymentType === "boleto" && (
+                      <Pressable
+                        style={[styles.pendingActionButton, styles.pendingActionGhost]}
+                        onPress={() => handleTestBoleto(order.payment_collection_id)}
+                        disabled={testPaymentId === order.payment_collection_id}
+                      >
+                        <Text style={styles.pendingActionText}>
+                          {testPaymentId === order.payment_collection_id ? "Confirmando..." : "Pagar em teste"}
+                        </Text>
+                      </Pressable>
+                    )}
                   </View>
                   {order.details?.client_secret && (
                     <Pressable
@@ -362,6 +469,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
+  },
+  refreshContainer: {
+    height: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: 0,
+  },
+  refreshContainerVisible: {
+    height: 56,
+    opacity: 1,
+  },
+  refreshRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  refreshText: {
+    color: "#E6E8EA",
+    fontSize: 14,
+    fontWeight: "600",
   },
   tabsContainer: {
     flexDirection: "row",

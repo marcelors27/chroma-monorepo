@@ -133,6 +133,13 @@ const buildShippingAddress = (company) => {
 const extractStripeDetailsFromSession = (session) => {
   if (!session) return {}
   const data = session?.data || {}
+  if (data?.pix_code || data?.pix_qr) {
+    return {
+      pix_code: data?.pix_code,
+      pix_qr: data?.pix_qr,
+      pix_txid: data?.pix_txid,
+    }
+  }
   const intent =
     data?.payment_intent?.payment_intent ||
     data?.payment_intent ||
@@ -285,42 +292,53 @@ const runRecurringPurchases = async function runRecurringPurchases(container) {
             throw new Error("Falha ao criar pagamento")
           }
 
-          const providerId = "pp_stripe_stripe"
-          const paymentData = {
-            payment_method_types:
-              recurrence.payment_method === "credit"
-                ? ["card"]
-                : [recurrence.payment_method],
-            capture_method: "automatic",
-            confirm: recurrence.payment_method !== "credit",
-            payment_method_data:
-              recurrence.payment_method === "boleto"
-                ? {
-                    type: "boleto",
-                    boleto: { tax_id: "00000000000" },
-                    billing_details: {
-                      name: shippingAddress.first_name,
-                      email: customer.email,
-                      address: {
-                        line1: shippingAddress.address_1,
-                        line2: shippingAddress.address_2,
-                        city: shippingAddress.city,
-                        state: shippingAddress.province,
-                        postal_code: shippingAddress.postal_code,
-                        country: "BR",
-                      },
-                    },
-                  }
-                : recurrence.payment_method === "pix"
-                  ? {
-                      type: "pix",
-                      billing_details: {
-                        name: shippingAddress.first_name,
-                        email: customer.email,
-                      },
-                    }
-                  : undefined,
-          }
+          const pixProvider = process.env.PIX_PROVIDER || "manual"
+          const providerId =
+            recurrence.payment_method === "pix" && pixProvider === "manual"
+              ? "pp_pix_manual_pix_manual"
+              : "pp_stripe_stripe"
+          const paymentData =
+            recurrence.payment_method === "pix" && providerId === "pp_pix_manual_pix_manual"
+              ? {
+                  payment_method_types: ["pix"],
+                  payment_method_type: "pix",
+                  payment_collection_id: paymentCollectionId,
+                }
+              : {
+                  payment_method_types:
+                    recurrence.payment_method === "credit"
+                      ? ["card"]
+                      : [recurrence.payment_method],
+                  capture_method: "automatic",
+                  confirm: recurrence.payment_method !== "credit",
+                  payment_method_data:
+                    recurrence.payment_method === "boleto"
+                      ? {
+                          type: "boleto",
+                          boleto: { tax_id: "00000000000" },
+                          billing_details: {
+                            name: shippingAddress.first_name,
+                            email: customer.email,
+                            address: {
+                              line1: shippingAddress.address_1,
+                              line2: shippingAddress.address_2,
+                              city: shippingAddress.city,
+                              state: shippingAddress.province,
+                              postal_code: shippingAddress.postal_code,
+                              country: "BR",
+                            },
+                          },
+                        }
+                      : recurrence.payment_method === "pix"
+                        ? {
+                            type: "pix",
+                            billing_details: {
+                              name: shippingAddress.first_name,
+                              email: customer.email,
+                            },
+                          }
+                        : undefined,
+                }
 
           await createPaymentSessionsWorkflow(container).run({
             input: {

@@ -125,6 +125,30 @@ export type EmailLog = {
   user_name?: string | null
 }
 
+export type TestPaymentLog = {
+  type?: string | null
+  payment_collection_id?: string | null
+  session_id?: string | null
+  actor_customer_id?: string | null
+  ip?: string | null
+  user_agent?: string | null
+  created_at?: string | null
+  user_id?: string | null
+  user_email?: string | null
+  user_name?: string | null
+}
+
+export type PendingPixPayment = {
+  payment_collection_id?: string | null
+  cart_id?: string | null
+  created_at?: string | null
+  method?: string | null
+  details?: Record<string, any>
+  user_id?: string | null
+  user_email?: string | null
+  user_name?: string | null
+}
+
 export type PriceList = {
   id: string
   title?: string
@@ -143,6 +167,8 @@ export type SectionId =
   | "emails"
   | "cobrancas"
   | "email-logs"
+  | "test-payment-logs"
+  | "pix-manual"
   | "pagamentos"
   | "produtos"
   | "entregas"

@@ -6,7 +6,7 @@ const {
 } = require("@medusajs/framework/utils")
 const { sendEmail } = require("../../../../services/send-email")
 const { buildPendingPaymentEmail } = require("../../../../services/pending-payment-email")
-const { sendBoletoAdminEmail } = require("../../../../services/email-template-sender")
+const { sendBoletoAdminEmail, sendPixAdminEmail } = require("../../../../services/email-template-sender")
 const { updateCustomersWorkflow } = require("@medusajs/core-flows")
 
 const safeLog = (logger, payload) => {
@@ -145,7 +145,12 @@ const POST = async (req, res) => {
   const body = req.body || {}
   const method = body.payment_method || body.method
   const paymentCollectionId = body.payment_collection_id || body.paymentCollectionId
-  const companyId = body.company_id || body.companyId
+  const companyId =
+    body.company_id ||
+    body.companyId ||
+    details?.company_id ||
+    details?.companyId ||
+    null
   const details = body.details || {}
 
   if (!method || !paymentCollectionId || !companyId) {
@@ -315,9 +320,53 @@ const POST = async (req, res) => {
 
   if (method === "pix" && adminEmail) {
     try {
-      await appendEmailLog("pix_admin", "sent", false)
+      const storeUrl = process.env.STORE_URL || process.env.FRONTEND_URL || ""
+      const qrUrl =
+        details?.pix_qr && String(details.pix_qr).startsWith("http")
+          ? details.pix_qr
+          : details?.pix_code && storeUrl
+            ? `${storeUrl.replace(/\/$/, "")}/store/custom/pix/qr?code=${encodeURIComponent(details.pix_code)}`
+            : ""
+
+      let attachment = null
+      let embeddedImage = ""
+      if (details?.pix_qr && String(details.pix_qr).startsWith("data:image/png")) {
+        const base64 = String(details.pix_qr).split(",")[1] || ""
+        if (base64) {
+          attachment = {
+            filename: `pix-${companyId || "chroma"}.png`,
+            content: base64,
+            contentType: "image/png",
+          }
+          embeddedImage = `<div style="margin:16px 0;">
+  <img src="data:image/png;base64,${base64}" alt="QR Code PIX" style="max-width:180px;width:100%;height:auto;border-radius:12px;border:1px solid #1f2937;" />
+</div>`
+        }
+      }
+
+      await sendPixAdminEmail({
+        to: adminEmail,
+        companyName,
+        pixCode: details?.pix_code || "",
+        pixTxid: details?.pix_txid || "",
+        pixQrUrl: qrUrl,
+        pixQrImage: embeddedImage,
+        attachments: attachment ? [attachment] : undefined,
+        logger,
+      })
+
+      try {
+        await appendEmailLog("pix_admin", "sent", Boolean(attachment))
+      } catch (err) {
+        logger?.warn?.("[email] log pix admin falhou", { error: err?.message })
+      }
     } catch (err) {
-      logger?.warn?.("[email] log pix admin falhou", { error: err?.message })
+      logger?.warn?.("[email] pix admin falhou", { error: err?.message })
+      try {
+        await appendEmailLog("pix_admin", "failed", false)
+      } catch (logErr) {
+        logger?.warn?.("[email] log pix admin falhou", { error: logErr?.message })
+      }
     }
   }
 
