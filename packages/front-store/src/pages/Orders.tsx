@@ -36,14 +36,26 @@ import {
   testBoletoPayment,
 } from "@/lib/medusa";
 
-type OrderStatus = "processing" | "shipped" | "delivered" | "cancelled";
+type OrderStatus =
+  | "processing"
+  | "separating"
+  | "partial_fulfilled"
+  | "ready"
+  | "partial_shipped"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
 
 const statusConfig: Record<
   OrderStatus,
   { label: string; icon: React.ReactNode; variant: "default" | "secondary" | "destructive" | "outline" }
 > = {
   processing: { label: "Processando", icon: <Clock className="h-4 w-4" />, variant: "secondary" },
-  shipped: { label: "Enviado", icon: <Truck className="h-4 w-4" />, variant: "default" },
+  separating: { label: "Em separação", icon: <Package className="h-4 w-4" />, variant: "secondary" },
+  partial_fulfilled: { label: "Separação parcial", icon: <Package className="h-4 w-4" />, variant: "secondary" },
+  ready: { label: "Separado", icon: <Package className="h-4 w-4" />, variant: "secondary" },
+  partial_shipped: { label: "Envio parcial", icon: <Truck className="h-4 w-4" />, variant: "default" },
+  shipped: { label: "Em trânsito", icon: <Truck className="h-4 w-4" />, variant: "default" },
   delivered: { label: "Entregue", icon: <CheckCircle className="h-4 w-4" />, variant: "outline" },
   cancelled: { label: "Cancelado", icon: <XCircle className="h-4 w-4" />, variant: "destructive" },
 };
@@ -51,6 +63,10 @@ const statusConfig: Record<
 const trackingIcons: Record<string, React.ReactNode> = {
   created: <Clock className="h-4 w-4" />,
   processing: <Package className="h-4 w-4" />,
+  separating: <Package className="h-4 w-4" />,
+  partial_fulfilled: <Package className="h-4 w-4" />,
+  ready: <Package className="h-4 w-4" />,
+  partial_shipped: <Truck className="h-4 w-4" />,
   shipped: <Truck className="h-4 w-4" />,
   delivered: <PackageCheck className="h-4 w-4" />,
   cancelled: <XCircle className="h-4 w-4" />,
@@ -71,9 +87,22 @@ const buildTrackingSteps = (createdAt?: string) => {
 
 const resolveStatus = (order: MedusaOrder): OrderStatus => {
   if (order.status === "canceled" || order.fulfillment_status === "canceled") return "cancelled";
-  if (order.fulfillment_status === "shipped" || order.fulfillment_status === "partially_shipped") return "shipped";
-  if (order.fulfillment_status === "delivered") return "delivered";
-  return "processing";
+  switch (order.fulfillment_status) {
+    case "delivered":
+      return "delivered";
+    case "shipped":
+      return "shipped";
+    case "partially_shipped":
+      return "partial_shipped";
+    case "fulfilled":
+      return "ready";
+    case "partially_fulfilled":
+      return "partial_fulfilled";
+    case "not_fulfilled":
+      return "separating";
+    default:
+      return "processing";
+  }
 };
 
 const ENABLE_PIX = import.meta.env.VITE_ENABLE_PIX === "true";
@@ -102,6 +131,14 @@ const Orders = () => {
     refetchOnMount: "always",
   });
   const orders = data?.orders || [];
+  const pendingCollections = new Set(
+    (pendingPayments || [])
+      .map((pending) => pending?.payment_collection_id)
+      .filter(Boolean) as string[]
+  );
+  const visibleOrders = orders.filter(
+    (order) => !pendingCollections.has(order.payment_collection_id || "")
+  );
 
   const formatDate = (value?: string) => {
     if (!value) return "";
@@ -320,7 +357,7 @@ const Orders = () => {
             {pendingPayments.length > 0 && (
               <div className="space-y-4 mb-6">
                 <div>
-                  <h2 className="text-xl font-bold">Pagamentos pendentes</h2>
+                  <h2 className="text-xl font-bold">Em Andamento</h2>
                   <p className="text-muted-foreground text-sm">
                     Estes pagamentos ainda aguardam compensação.
                   </p>
@@ -436,6 +473,17 @@ const Orders = () => {
                                   </Button>
                                 )}
                               </div>
+                              {pending.details?.pix_expires_at && (
+                                <p className="mt-2">
+                                  Vencimento: {formatUnixDate(pending.details.pix_expires_at)}
+                                </p>
+                              )}
+                              {!pending.details?.pix_expires_at && pending.details?.pix_expires_after_days && (
+                                <p className="mt-1">
+                                  Prazo selecionado: {pending.details.pix_expires_after_days}{" "}
+                                  {pending.details.pix_expires_after_days === 1 ? "dia" : "dias"}
+                                </p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -446,7 +494,7 @@ const Orders = () => {
               </div>
             )}
             <div className="space-y-4">
-              {orders.map((order) => {
+              {visibleOrders.map((order) => {
                 const status = resolveStatus(order);
                 const cfg = statusConfig[status];
                 const itemsCount = order.items?.length || 0;
@@ -496,7 +544,7 @@ const Orders = () => {
               })}
             </div>
 
-            {orders.length === 0 && pendingPayments.length === 0 && (
+            {visibleOrders.length === 0 && pendingPayments.length === 0 && (
               <div className="border-2 border-border p-12 bg-card text-center">
                 <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-bold text-lg mb-2">Nenhum pedido encontrado</h3>

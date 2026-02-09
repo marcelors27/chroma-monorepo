@@ -36,6 +36,7 @@ export default function Carrinho() {
     ENABLE_PIX ? "pix" : "boleto"
   );
   const [boletoExpiresAfterDays, setBoletoExpiresAfterDays] = useState(3);
+  const [pixExpiresAfterDays, setPixExpiresAfterDays] = useState(15);
   const navigation = useNavigation();
   const [shippingOptions, setShippingOptions] = useState<any[]>([]);
   const [shippingOptionId, setShippingOptionId] = useState<string | null>(null);
@@ -60,7 +61,14 @@ export default function Carrinho() {
   );
   const paymentOptions = [
     ...(ENABLE_PIX
-      ? [{ id: "pix" as const, title: "Pix", subtitle: "Pagamento instantâneo", icon: QrCode }]
+      ? [
+          {
+            id: "pix" as const,
+            title: "Pix",
+            subtitle: `Vencimento em ${pixExpiresAfterDays} dias`,
+            icon: QrCode,
+          },
+        ]
       : []),
     { id: "cartao" as const, title: "Cartão", subtitle: "Crédito ou débito", icon: CreditCard },
     {
@@ -147,6 +155,13 @@ export default function Carrinho() {
     }
   }, [selectedPayment, boletoExpiresAfterDays]);
 
+  useEffect(() => {
+    if (selectedPayment !== "pix") return;
+    if (!pixExpiresAfterDays) {
+      setPixExpiresAfterDays(15);
+    }
+  }, [selectedPayment, pixExpiresAfterDays]);
+
 
   useEffect(() => {
     const loadShippingOptions = async () => {
@@ -214,6 +229,8 @@ export default function Carrinho() {
           cnpj: activeCondo.cnpj || "",
           boleto_expires_after_days:
             paymentMethod === "boleto" ? boletoExpiresAfterDays : undefined,
+          pix_expires_after_days:
+            paymentMethod === "pix" ? pixExpiresAfterDays : undefined,
         },
       };
 
@@ -223,7 +240,9 @@ export default function Carrinho() {
         shippingOptionId,
         paymentMethod === "boleto"
           ? { boletoExpiresAfterDays }
-          : undefined
+          : paymentMethod === "pix"
+            ? { pixExpiresAfterDays }
+            : undefined
       );
 
       const recurringItems = items.filter((item) => recurrenceByItem[item.id] && recurrenceByItem[item.id] !== "unica");
@@ -466,6 +485,27 @@ export default function Carrinho() {
                   <Pressable
                     key={days}
                     onPress={() => setBoletoExpiresAfterDays(days)}
+                    style={[styles.boletoDaysChip, active ? styles.boletoDaysChipActive : styles.boletoDaysChipIdle]}
+                  >
+                    <Text style={[styles.boletoDaysChipText, active ? styles.boletoDaysChipTextActive : null]}>
+                      {days} {days === 1 ? "dia" : "dias"}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+        {selectedPayment === "pix" && (
+          <View style={styles.boletoInfo}>
+            <Text style={styles.boletoInfoText}>Prazo de vencimento do PIX</Text>
+            <View style={styles.boletoDaysRow}>
+              {[15, 30].map((days) => {
+                const active = pixExpiresAfterDays === days;
+                return (
+                  <Pressable
+                    key={days}
+                    onPress={() => setPixExpiresAfterDays(days)}
                     style={[styles.boletoDaysChip, active ? styles.boletoDaysChipActive : styles.boletoDaysChipIdle]}
                   >
                     <Text style={[styles.boletoDaysChipText, active ? styles.boletoDaysChipTextActive : null]}>

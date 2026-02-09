@@ -117,6 +117,8 @@ export type PendingPaymentDetails = {
   pix_code?: string
   pix_qr?: string
   pix_txid?: string
+  pix_expires_at?: number
+  pix_expires_after_days?: number
   company_id?: string
   company_name?: string
   amount?: number

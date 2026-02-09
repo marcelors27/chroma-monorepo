@@ -27,8 +27,22 @@ type StatusTone = "info" | "warning" | "success" | "danger";
 
 const resolveStatusLabel = (order: MedusaOrder) => {
   if (order.status === "canceled" || order.fulfillment_status === "canceled") return "Cancelado";
-  if (order.fulfillment_status === "delivered") return "Entregue";
-  if (order.fulfillment_status === "shipped" || order.fulfillment_status === "partially_shipped") return "Em trânsito";
+  switch (order.fulfillment_status) {
+    case "delivered":
+      return "Entregue";
+    case "shipped":
+      return "Em trânsito";
+    case "partially_shipped":
+      return "Envio parcial";
+    case "fulfilled":
+      return "Separado";
+    case "partially_fulfilled":
+      return "Separação parcial";
+    case "not_fulfilled":
+      return "Em separação";
+    default:
+      break;
+  }
   if (order.payment_status === "captured") return "Pago";
   return "Processando";
 };
@@ -37,6 +51,7 @@ const resolveStatusTone = (order: MedusaOrder): StatusTone => {
   if (order.status === "canceled" || order.fulfillment_status === "canceled") return "danger";
   if (order.fulfillment_status === "delivered") return "success";
   if (order.fulfillment_status === "shipped" || order.fulfillment_status === "partially_shipped") return "info";
+  if (order.fulfillment_status === "fulfilled" || order.fulfillment_status === "partially_fulfilled") return "info";
   return "warning";
 };
 
@@ -138,7 +153,13 @@ export default function Pedidos() {
       paymentType: pending.details?.method || "pagamento",
       payment_collection_id: pending.payment_collection_id,
     }));
-    const pendingOrders = orders.filter((order) => ["info", "warning"].includes(order.statusTone));
+    const pendingOrders = orders.filter((order) => {
+      if (!["info", "warning"].includes(order.statusTone)) return false;
+      if (order.payment_collection_id && pendingByCollection.has(order.payment_collection_id)) {
+        return false;
+      }
+      return true;
+    });
     return [...pendingMapped, ...pendingOrders];
   }, [activeTab, orders, pendingPayments, pendingByCollection]);
 
@@ -234,7 +255,7 @@ export default function Pedidos() {
           >
             <Clock color="#E6E8EA" size={16} />
             <Text style={[styles.tabText, activeTab === "pending" && styles.tabTextActive]}>
-              Pendentes
+              Em Andamento
             </Text>
             {pendingCount > 0 && (
               <View style={styles.tabBadge}>
@@ -333,6 +354,17 @@ export default function Pedidos() {
                   )}
                   {order.details?.pix_qr && (
                     <Image source={{ uri: order.details.pix_qr }} style={styles.pendingQr} />
+                  )}
+                  {order.details?.pix_expires_at && (
+                    <Text style={styles.pendingText}>
+                      Vencimento: {new Date(order.details.pix_expires_at * 1000).toLocaleDateString("pt-BR")}
+                    </Text>
+                  )}
+                  {!order.details?.pix_expires_at && order.details?.pix_expires_after_days && (
+                    <Text style={styles.pendingText}>
+                      Prazo selecionado: {order.details.pix_expires_after_days}{" "}
+                      {order.details.pix_expires_after_days === 1 ? "dia" : "dias"}
+                    </Text>
                   )}
                   {order.details?.boleto_line && (
                     <View style={styles.pendingCodeBox}>
@@ -439,6 +471,17 @@ export default function Pedidos() {
                   )}
                   {order.details?.pix_qr && (
                     <Image source={{ uri: order.details.pix_qr }} style={styles.pendingQr} />
+                  )}
+                  {order.details?.pix_expires_at && (
+                    <Text style={styles.pendingText}>
+                      Vencimento: {new Date(order.details.pix_expires_at * 1000).toLocaleDateString("pt-BR")}
+                    </Text>
+                  )}
+                  {!order.details?.pix_expires_at && order.details?.pix_expires_after_days && (
+                    <Text style={styles.pendingText}>
+                      Prazo selecionado: {order.details.pix_expires_after_days}{" "}
+                      {order.details.pix_expires_after_days === 1 ? "dia" : "dias"}
+                    </Text>
                   )}
                   {order.details?.boleto_line && (
                     <View style={styles.pendingCodeBox}>

@@ -60,7 +60,7 @@ const Checkout = () => {
     condo?: string;
     shippingMethod?: string;
   }>({});
-  const [pixExpirationTime, setPixExpirationTime] = useState(30 * 60); // 30 minutes in seconds
+  const [pixExpiresAfterDays, setPixExpiresAfterDays] = useState(15);
   const [recurrenceByItem, setRecurrenceByItem] = useState<Record<string, RecurrenceOption>>({});
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [customerEmail, setCustomerEmail] = useState("");
@@ -75,13 +75,11 @@ const Checkout = () => {
   );
 
   useEffect(() => {
-    if (orderStatus && paymentMethod === "pix" && pixExpirationTime > 0) {
-      const timer = setInterval(() => {
-        setPixExpirationTime((prev) => prev - 1);
-      }, 1000);
-      return () => clearInterval(timer);
+    if (paymentMethod !== "pix") return;
+    if (!pixExpiresAfterDays) {
+      setPixExpiresAfterDays(15);
     }
-  }, [orderStatus, paymentMethod, pixExpirationTime]);
+  }, [paymentMethod, pixExpiresAfterDays]);
 
   useEffect(() => {
     const pendingId = searchParams.get("pending");
@@ -237,12 +235,6 @@ const Checkout = () => {
     };
   }, [orderStatus, clearCart]);
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-  };
-
   const formatUnixDate = (value?: number) => {
     if (!value) return "";
     const date = new Date(value * 1000);
@@ -256,7 +248,7 @@ const Checkout = () => {
     return name || "Entrega";
   };
 
-  const isPixExpired = pixExpirationTime <= 0;
+  const pixExpiresAt = pendingDetails?.pix_expires_at;
 
   const [deliveryData, setDeliveryData] = useState(() => ({
     condo: getActiveCondo()?.name || "",
@@ -353,6 +345,8 @@ const Checkout = () => {
           company_cnpj: activeCondo?.cnpj || null,
           boleto_expires_after_days:
             paymentMethod === "boleto" ? boletoExpiresAfterDays : undefined,
+          pix_expires_after_days:
+            paymentMethod === "pix" ? pixExpiresAfterDays : undefined,
         },
       };
 
@@ -362,7 +356,9 @@ const Checkout = () => {
         shippingOptionId || null,
         paymentMethod === "boleto"
           ? { boletoExpiresAfterDays }
-          : undefined
+          : paymentMethod === "pix"
+            ? { pixExpiresAfterDays }
+            : undefined
       );
       const recurringItems = items.filter(
         (item) => recurrenceByItem[item.id] && recurrenceByItem[item.id] !== "unica"
@@ -620,16 +616,25 @@ const Checkout = () => {
                   </Button>
                 </div>
               </div>
-              <div className={`flex items-center justify-center gap-2 mt-3 p-2 border-2 ${isPixExpired ? "border-destructive bg-destructive/10" : "border-primary/30 bg-primary/10"}`}>
-                <Clock className={`h-4 w-4 ${isPixExpired ? "text-destructive" : "text-primary"}`} />
-                {isPixExpired ? (
-                  <p className="text-sm font-medium text-destructive">Código expirado</p>
-                ) : (
-                  <p className="text-sm font-medium">
-                    Expira em: <span className="font-bold text-primary">{formatTime(pixExpirationTime)}</span>
-                  </p>
-                )}
-              </div>
+              {(pixExpiresAt || pendingDetails?.pix_expires_after_days) && (
+                <div className="flex items-center justify-center gap-2 mt-3 p-2 border-2 border-primary/30 bg-primary/10">
+                  <Clock className="h-4 w-4 text-primary" />
+                  {pixExpiresAt ? (
+                    <p className="text-sm font-medium">
+                      Vencimento:{" "}
+                      <span className="font-bold text-primary">{formatUnixDate(pixExpiresAt)}</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm font-medium">
+                      Prazo selecionado:{" "}
+                      <span className="font-bold text-primary">
+                        {pendingDetails?.pix_expires_after_days}{" "}
+                        {pendingDetails?.pix_expires_after_days === 1 ? "dia" : "dias"}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -899,7 +904,25 @@ const Checkout = () => {
                         <QrCode className="h-5 w-5" />
                         <div className="flex-1">
                           <p className="font-medium">PIX</p>
-                          <p className="text-sm text-muted-foreground">Aprovação instantânea</p>
+                          <p className="text-sm text-muted-foreground">
+                            Vencimento em {pixExpiresAfterDays} dias
+                          </p>
+                          {paymentMethod === "pix" && (
+                            <div className="mt-3">
+                              <Label className="text-xs">Prazo de vencimento</Label>
+                              <select
+                                className="mt-1 h-10 border-2 rounded-md bg-background px-3 w-full text-sm"
+                                value={pixExpiresAfterDays}
+                                onChange={(e) => setPixExpiresAfterDays(Number(e.target.value))}
+                              >
+                                {[15, 30].map((days) => (
+                                  <option key={days} value={days}>
+                                    {days} {days === 1 ? "dia" : "dias"}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
                         </div>
                       </label>
                     )}

@@ -5,15 +5,23 @@ import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { toast } from "@/lib/toast";
-import { listOrders } from "@/lib/medusa";
+import { listOrders, type MedusaOrder } from "@/lib/medusa";
 import { useState } from "react";
 
-const trackingSteps = [
-  { id: "1", title: "Pedido confirmado", date: "08/07" },
-  { id: "2", title: "Em separação", date: "09/07" },
-  { id: "3", title: "Em transporte", date: "10/07" },
-  { id: "4", title: "Saiu para entrega", date: "11/07" },
-];
+const buildTrackingSteps = (order?: MedusaOrder | null) => {
+  const createdAt = order?.created_at ? new Date(order.created_at) : null;
+  const format = (value: Date | null) =>
+    value ? value.toLocaleDateString("pt-BR") : "--";
+  const addDays = (days: number) =>
+    createdAt ? new Date(createdAt.getTime() + days * 24 * 60 * 60 * 1000) : null;
+
+  return [
+    { id: "1", title: "Pedido confirmado", date: format(createdAt) },
+    { id: "2", title: "Em separação", date: format(addDays(1)) },
+    { id: "3", title: "Em transporte", date: format(addDays(2)) },
+    { id: "4", title: "Saiu para entrega", date: format(addDays(3)) },
+  ];
+};
 
 export default function Rastreamento() {
   const route = useRoute();
@@ -31,6 +39,7 @@ export default function Rastreamento() {
     order?.shipping_address?.metadata?.company_name ||
     order?.shipping_address?.address_1 ||
     "Condomínio";
+  const trackingSteps = buildTrackingSteps(order);
 
   const handleRefresh = async () => {
     if (refreshing) return;

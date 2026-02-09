@@ -125,6 +125,8 @@ export type PendingPaymentDetails = {
   pix_code?: string;
   pix_qr?: string;
   pix_txid?: string;
+  pix_expires_at?: number;
+  pix_expires_after_days?: number;
   boleto_qr?: string;
   client_secret?: string;
   company_id?: string;

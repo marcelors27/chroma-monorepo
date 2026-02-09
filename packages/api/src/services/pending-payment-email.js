@@ -9,6 +9,13 @@ const buildPendingPaymentEmail = ({ method, companyName, details, checkoutUrl })
   const rows = []
   const textRows = []
 
+  const formatDate = (value) => {
+    if (!value) return ""
+    const date = new Date(Number(value) * 1000)
+    if (Number.isNaN(date.getTime())) return ""
+    return date.toLocaleDateString("pt-BR")
+  }
+
   if (method === "boleto") {
     if (details?.boleto_line) {
       rows.push({
@@ -38,6 +45,19 @@ const buildPendingPaymentEmail = ({ method, companyName, details, checkoutUrl })
         value: `<a href="${details.pix_qr}" style="color:#0f766e;text-decoration:none;">Ver QR</a>`,
       })
       textRows.push(`QR Code: ${details.pix_qr}`)
+    }
+    if (details?.pix_expires_at) {
+      const formatted = formatDate(details.pix_expires_at)
+      if (formatted) {
+        rows.push({ label: "Vencimento", value: formatted })
+        textRows.push(`Vencimento: ${formatted}`)
+      }
+    } else if (details?.pix_expires_after_days) {
+      const days = Number(details.pix_expires_after_days)
+      if (Number.isFinite(days)) {
+        rows.push({ label: "Prazo", value: `${days} ${days === 1 ? "dia" : "dias"}` })
+        textRows.push(`Prazo: ${days} ${days === 1 ? "dia" : "dias"}`)
+      }
     }
   }
 

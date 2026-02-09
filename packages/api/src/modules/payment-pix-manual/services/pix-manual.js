@@ -32,6 +32,11 @@ class PixManualProviderService extends AbstractPaymentProvider {
       data?.payment_collection_id ||
       data?.metadata?.payment_collection_id ||
       data?.session_id
+    const expiresAfterDays = Number(data?.pix_expires_after_days || 0) || null
+    const expiresAt =
+      expiresAfterDays && Number.isFinite(expiresAfterDays)
+        ? Math.floor(Date.now() / 1000) + expiresAfterDays * 24 * 60 * 60
+        : data?.pix_expires_at || null
     const { pix_code, pix_qr } = await generatePix({
       key: this.options_.pixKey,
       merchantName: this.options_.merchantName,
@@ -53,6 +58,8 @@ class PixManualProviderService extends AbstractPaymentProvider {
         pix_code,
         pix_qr,
         pix_txid: buildTxId(txid),
+        pix_expires_after_days: expiresAfterDays || undefined,
+        pix_expires_at: expiresAt || undefined,
       },
     }
   }
@@ -86,6 +93,12 @@ class PixManualProviderService extends AbstractPaymentProvider {
       return this.getStatus(data)
     }
     const txid = data?.pix_txid || data?.payment_collection_id || data?.session_id
+    const expiresAfterDays = Number(data?.pix_expires_after_days || 0) || null
+    const expiresAt =
+      data?.pix_expires_at ||
+      (expiresAfterDays && Number.isFinite(expiresAfterDays)
+        ? Math.floor(Date.now() / 1000) + expiresAfterDays * 24 * 60 * 60
+        : null)
     const { pix_code, pix_qr } = await generatePix({
       key: this.options_.pixKey,
       merchantName: this.options_.merchantName,
@@ -105,6 +118,8 @@ class PixManualProviderService extends AbstractPaymentProvider {
         status: "pending",
         pix_code,
         pix_qr,
+        pix_expires_after_days: expiresAfterDays || undefined,
+        pix_expires_at: expiresAt || undefined,
       },
     }
   }

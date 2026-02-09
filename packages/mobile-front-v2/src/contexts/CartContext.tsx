@@ -12,9 +12,11 @@ import {
   mapCartToItems,
   notifyPendingPayment,
   PendingPayment,
+  PendingPaymentDetails,
   retrieveCart,
   removePendingPayment,
   removePendingPaymentFromBackend,
+  getPendingPayments,
   confirmStripePaymentServerSide,
   createPaymentSessions,
   setCartShippingAddress,
@@ -67,17 +69,11 @@ interface CartContextType {
     address: Record<string, any>,
     paymentMethod: string,
     shippingOptionId?: string | null,
-    options?: { boletoExpiresAfterDays?: number }
+    options?: { boletoExpiresAfterDays?: number; pixExpiresAfterDays?: number }
   ) => Promise<{
     status: "completed" | "pending";
     orderId?: string | null;
-    pendingDetails?: {
-      boleto_line?: string;
-      boleto_url?: string;
-      boleto_expires_at?: string | number;
-      boleto_qr?: string;
-      client_secret?: string;
-    };
+    pendingDetails?: PendingPaymentDetails;
     pendingPayment?: PendingPayment;
   }>;
   finalizePendingBoleto: (clientSecret: string) => Promise<{ status: "pending" | "completed"; orderId?: string | null }>;
@@ -288,7 +284,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const resolvePaymentProvider = (
     paymentMethod: string,
-    options?: { boletoExpiresAfterDays?: number }
+    options?: { boletoExpiresAfterDays?: number; pixExpiresAfterDays?: number }
   ) => {
     switch (paymentMethod) {
       case "credit":
@@ -314,7 +310,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (PIX_PROVIDER === "manual") {
           return {
             providerId: "pp_pix_manual_pix_manual",
-            data: { payment_method_types: ["pix"], payment_method_type: "pix" },
+            data: {
+              payment_method_types: ["pix"],
+              payment_method_type: "pix",
+              pix_expires_after_days: options?.pixExpiresAfterDays,
+            },
           };
         }
         return {
@@ -391,6 +391,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       pix_code: data?.pix_code,
       pix_qr: data?.pix_qr,
       pix_txid: data?.pix_txid,
+      pix_expires_at: data?.pix_expires_at,
+      pix_expires_after_days: data?.pix_expires_after_days,
     };
   };
 
@@ -461,26 +463,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const finalizePendingBoleto = async (clientSecret: string) => {
-    if (!cartId) return { status: "pending" as const };
     try {
       const intentResult = await retrievePaymentIntent(clientSecret);
       const status = intentResult?.paymentIntent?.status;
       if (status !== "succeeded") {
         return { status: "pending" as const };
       }
-      setCheckoutLocked(true);
-      const cartSnapshot = await retrieveCart(cartId);
-      const orderId = await completeCart(cartId);
-      await refreshCart();
-      await applyPointsToOrder(orderId, cartSnapshot);
-      await removePendingPayment({ cart_id: cartId });
-      await removePendingPaymentFromBackend({ cart_id: cartId });
-      return { status: "completed" as const, orderId };
+      const pendingList = await getPendingPayments();
+      const match = pendingList.find((item) => item?.details?.client_secret === clientSecret);
+      if (match?.payment_collection_id) {
+        await removePendingPayment({ payment_collection_id: match.payment_collection_id });
+        await removePendingPaymentFromBackend({ payment_collection_id: match.payment_collection_id });
+      }
+      return { status: "completed" as const };
     } catch (err: any) {
       if (DEBUG) console.debug("[cart] finalizePendingBoleto:error", err?.message || err);
       return { status: "pending" as const };
-    } finally {
-      setCheckoutLocked(false);
     }
   };
 
@@ -488,7 +486,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     address: Record<string, any>,
     paymentMethod: string,
     shippingOptionId?: string | null,
-    options?: { boletoExpiresAfterDays?: number }
+    options?: { boletoExpiresAfterDays?: number; pixExpiresAfterDays?: number }
   ) => {
     if (DEBUG)
       console.debug("[cart] completeBackendCheckout:start", { cartId, address, paymentMethod, shippingOptionId });
@@ -579,8 +577,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
             } catch (err: any) {
               if (DEBUG) console.debug("[cart] notifyPendingPayment:error", err?.message || err);
             }
+            const orderId = await completeCart(cartSnapshot.id);
             await resetCartAfterPending();
-            return { status: "pending", pendingDetails: details, pendingPayment: pending };
+            return { status: "pending", orderId, pendingDetails: details, pendingPayment: pending };
           }
         } else if (paymentMethod === "pix") {
           const { paymentIntent, details } = await confirmPixPayment(clientSecret);
@@ -599,13 +598,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 company_name: address?.metadata?.company_name || address?.address_1,
                 amount: cartSnapshot?.total,
                 currency_code: cartSnapshot?.currency_code,
-                boleto_expires_after_days: options?.boletoExpiresAfterDays,
+                pix_expires_after_days: options?.pixExpiresAfterDays,
               },
             };
             await setPendingPayment(pending);
             await syncPendingPaymentToBackend(pending);
+            const orderId = await completeCart(cartSnapshot.id);
             await resetCartAfterPending();
-            return { status: "pending", pendingDetails: details, pendingPayment: pending };
+            return { status: "pending", orderId, pendingDetails: details, pendingPayment: pending };
           }
         } else {
           const billingDetails = buildBillingDetails();
@@ -668,8 +668,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           };
             await setPendingPayment(pending);
             await syncPendingPaymentToBackend(pending);
+            const orderId = await completeCart(cartSnapshot.id);
             await resetCartAfterPending();
-            return { status: "pending", pendingDetails: details, pendingPayment: pending };
+            return { status: "pending", orderId, pendingDetails: details, pendingPayment: pending };
           }
         }
       } else if (paymentMethod === "pix") {
@@ -689,6 +690,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             company_name: address?.metadata?.company_name || address?.address_1,
             amount: cartSnapshot?.total,
             currency_code: cartSnapshot?.currency_code,
+            pix_expires_after_days: options?.pixExpiresAfterDays,
           },
         };
         await setPendingPayment(pending);
@@ -707,8 +709,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         } catch (err: any) {
           if (DEBUG) console.debug("[cart] notifyPendingPayment:error", err?.message || err);
         }
+        const orderId = await completeCart(cartSnapshot.id);
         await resetCartAfterPending();
-        return { status: "pending", pendingDetails: manualDetails, pendingPayment: pending };
+        return { status: "pending", orderId, pendingDetails: manualDetails, pendingPayment: pending };
       }
 
       setCheckoutLocked(true);

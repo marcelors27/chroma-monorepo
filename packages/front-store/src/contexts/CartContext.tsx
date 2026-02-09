@@ -67,7 +67,7 @@ interface CartContextType {
     address: Record<string, any>,
     paymentMethod: string,
     shippingOptionId?: string | null,
-    options?: { boletoExpiresAfterDays?: number }
+    options?: { boletoExpiresAfterDays?: number; pixExpiresAfterDays?: number }
   ) => Promise<{
     status: "completed" | "pending";
     orderId?: string | null;
@@ -219,7 +219,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const resolvePaymentProvider = (
     paymentMethod: string,
-    options?: { boletoExpiresAfterDays?: number }
+    options?: { boletoExpiresAfterDays?: number; pixExpiresAfterDays?: number }
   ) => {
     switch (paymentMethod) {
       case "credit":
@@ -245,7 +245,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         if (PIX_PROVIDER === "manual") {
           return {
             providerId: "pp_pix_manual_pix_manual",
-            data: { payment_method_types: ["pix"], payment_method_type: "pix" },
+            data: {
+              payment_method_types: ["pix"],
+              payment_method_type: "pix",
+              pix_expires_after_days: options?.pixExpiresAfterDays,
+            },
           };
         }
         return {
@@ -307,6 +311,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       pix_code: data?.pix_code,
       pix_qr: data?.pix_qr,
       pix_txid: data?.pix_txid,
+      pix_expires_at: data?.pix_expires_at,
+      pix_expires_after_days: data?.pix_expires_after_days,
     };
   };
 
@@ -318,7 +324,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     address?: Record<string, any>,
     amount?: number,
     currencyCode?: string,
-    options?: { boletoExpiresAfterDays?: number }
+    options?: { boletoExpiresAfterDays?: number; pixExpiresAfterDays?: number }
   ): PendingPaymentDetails => {
     const details = { ...stripeDetails };
     const companyId = address?.metadata?.company_id || null;
@@ -338,6 +344,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
     if (method === "boleto" && options?.boletoExpiresAfterDays) {
       details.boleto_expires_after_days = options.boletoExpiresAfterDays;
+    }
+    if (method === "pix" && options?.pixExpiresAfterDays) {
+      details.pix_expires_after_days = options.pixExpiresAfterDays;
     }
     if (method === "boleto" || method === "pix") {
       const session =
@@ -453,7 +462,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     address: Record<string, any>,
     paymentMethod: string,
     shippingOptionId?: string | null,
-    options?: { boletoExpiresAfterDays?: number }
+    options?: { boletoExpiresAfterDays?: number; pixExpiresAfterDays?: number }
   ) => {
     if (DEBUG) console.debug("[cart] completeBackendCheckout:start", { cartId, address, paymentMethod });
     if (!cartId) throw new Error("Carrinho não encontrado");
@@ -555,13 +564,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
               paymentMethod,
               paymentCollection,
               providerId,
-            stripeDetails || undefined,
-            address,
-            cartSnapshot?.total,
-            cartSnapshot?.currency_code,
-            options
-          ),
-        };
+              stripeDetails || undefined,
+              address,
+              cartSnapshot?.total,
+              cartSnapshot?.currency_code,
+              options
+            ),
+          };
           setPendingPayment(pending);
           await syncPendingPaymentToBackend(pending);
           if (paymentMethod === "boleto" || paymentMethod === "pix") {
@@ -580,18 +589,21 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
               if (DEBUG) console.debug("[cart] notifyPendingPayment:error", err?.message || err);
             }
           }
+          const orderId = await completeCart(cartSnapshot.id);
+          if (DEBUG) console.debug("[cart] completeBackendCheckout:pending-order", { orderId });
           await resetCartState(true);
           return {
             status: "pending",
             paymentCollectionId: paymentCollection?.id || null,
             cartId: cartSnapshot.id,
+            orderId,
           };
         }
       } else {
         if (data && typeof data === "object") {
           data.payment_collection_id = paymentCollection?.id || null;
         }
-        await setPaymentSession(cartSnapshot.id, providerId, data);
+        paymentCollection = await setPaymentSession(cartSnapshot.id, providerId, data);
       }
       if (isAsyncPayment) {
         const pending = {
@@ -614,25 +626,28 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         await syncPendingPaymentToBackend(pending);
         if (paymentMethod === "boleto" || paymentMethod === "pix") {
           try {
-          await notifyPendingPayment({
-            payment_method: paymentMethod,
-            payment_collection_id: pending.payment_collection_id,
-            company_id:
-              address?.metadata?.company_id ||
-              pending.details?.company_id ||
-              getActiveCondo()?.id ||
-              null,
-            details: pending.details,
-          });
+            await notifyPendingPayment({
+              payment_method: paymentMethod,
+              payment_collection_id: pending.payment_collection_id,
+              company_id:
+                address?.metadata?.company_id ||
+                pending.details?.company_id ||
+                getActiveCondo()?.id ||
+                null,
+              details: pending.details,
+            });
           } catch (err: any) {
             if (DEBUG) console.debug("[cart] notifyPendingPayment:error", err?.message || err);
           }
         }
+        const orderId = await completeCart(cartSnapshot.id);
+        if (DEBUG) console.debug("[cart] completeBackendCheckout:pending-order", { orderId });
         await resetCartState(true);
         return {
           status: "pending",
           paymentCollectionId: paymentCollection?.id || null,
           cartId: cartSnapshot.id,
+          orderId,
         };
       }
       const orderId = await completeCart(cartSnapshot.id);
