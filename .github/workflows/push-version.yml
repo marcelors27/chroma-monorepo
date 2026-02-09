@@ -105,8 +105,8 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build (iOS + Android)
-        run: eas build --platform all --profile production --non-interactive --wait
+      - name: Build (iOS)
+        run: eas build --platform ios --profile production --non-interactive --wait
 
-      - name: Submit (iOS + Android)
-        run: eas submit --platform all --profile production --non-interactive
+      - name: Submit (iOS)
+        run: eas submit --platform ios --profile production --non-interactive
