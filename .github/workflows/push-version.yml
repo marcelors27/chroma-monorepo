@@ -4,14 +4,23 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to bump (format: X.Y.Z or X.Y.Z-rc.1)"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
   bump:
-    if: "${{ contains(toJson(github.event.commits), 'push-ver:') && contains(toJson(github.event.commits), 'ci: version bump') == false }}"
+    if: "${{ (github.event_name == 'workflow_dispatch') || (contains(toJson(github.event.commits), 'push-ver:') && contains(toJson(github.event.commits), 'ci: version bump') == false) }}"
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      build: ${{ steps.bump.outputs.build }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,7 +35,7 @@ jobs:
       - name: Bump versions
         id: bump
         env:
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_MESSAGE: ${{ github.event_name == 'workflow_dispatch' && format('push-ver:{0}', github.event.inputs.version) || github.event.head_commit.message }}
           COMMIT_MESSAGES: ${{ toJson(github.event.commits.*.message) }}
         run: node scripts/ci/push-version.js
 
@@ -58,4 +67,41 @@ jobs:
           name: v${{ steps.bump.outputs.version }} (build ${{ steps.bump.outputs.build }})
           body: |
             Release triggered by commit:
-            ${{ github.event.head_commit.message }}
+            ${{ github.event_name == 'workflow_dispatch' && format('workflow_dispatch (version {0})', github.event.inputs.version) || github.event.head_commit.message }}
+
+  mobile-deploy:
+    if: ${{ needs.bump.outputs.version != '' }}
+    needs: bump
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/mobile-front-v2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.bump.outputs.version }}+build.${{ needs.bump.outputs.build }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build (iOS + Android)
+        run: eas build --platform all --profile production --non-interactive --wait
+
+      - name: Submit (iOS + Android)
+        run: eas submit --platform all --profile production --non-interactive
