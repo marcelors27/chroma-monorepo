@@ -3,7 +3,7 @@
     "name": "Chroma Mobile Store",
     "slug": "chroma-mobile-front-v2",
     "scheme": "chroma-mobile",
-    "version": "0.2.22",
+    "version": "0.2.23",
     "orientation": "portrait",
     "platforms": [
       "ios",
@@ -28,7 +28,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.chroma.mobilestore",
-      "buildNumber": "23",
+      "buildNumber": "24",
       "appleTeamId": "BMZ7XQ54J3",
       "usesAppleSignIn": true,
       "infoPlist": {
