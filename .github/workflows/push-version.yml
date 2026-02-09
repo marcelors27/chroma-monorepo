@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   bump:
-    if: "${{ contains(github.event.head_commit.message, 'push-ver:') && contains(github.event.head_commit.message, 'ci: version bump') == false }}"
+    if: "${{ contains(toJson(github.event.commits), 'push-ver:') && contains(toJson(github.event.commits), 'ci: version bump') == false }}"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,6 +27,7 @@ jobs:
         id: bump
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_MESSAGES: ${{ toJson(github.event.commits.*.message) }}
         run: node scripts/ci/push-version.js
 
       - name: Commit and tag

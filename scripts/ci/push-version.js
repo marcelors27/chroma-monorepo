@@ -2,7 +2,19 @@ const fs = require("fs");
 const path = require("path");
 
 const COMMIT_MESSAGE = process.env.COMMIT_MESSAGE || "";
-const MATCH = COMMIT_MESSAGE.match(/push-ver:([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)/);
+const COMMIT_MESSAGES_RAW = process.env.COMMIT_MESSAGES || "";
+let combinedMessages = COMMIT_MESSAGE;
+if (COMMIT_MESSAGES_RAW) {
+  try {
+    const parsed = JSON.parse(COMMIT_MESSAGES_RAW);
+    if (Array.isArray(parsed)) {
+      combinedMessages = [COMMIT_MESSAGE, ...parsed].join("\n");
+    }
+  } catch (_) {
+    combinedMessages = `${COMMIT_MESSAGE}\n${COMMIT_MESSAGES_RAW}`;
+  }
+}
+const MATCH = combinedMessages.match(/push-ver:([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)/);
 
 if (!MATCH) {
   process.exit(0);
