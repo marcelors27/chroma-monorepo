@@ -109,4 +109,4 @@ jobs:
         run: eas build --platform ios --profile production --non-interactive --wait
 
       - name: Submit (iOS)
-        run: eas submit --platform ios --profile production --non-interactive
+        run: eas submit --platform ios --profile production --non-interactive --latest
