@@ -53,6 +53,9 @@ export default function ProductsSection({
   const [productEditMediaUploadError, setProductEditMediaUploadError] = useState<string | null>(
     null
   )
+  const [shippingOptionsFallback, setShippingOptionsFallback] = useState<ShippingOption[]>([])
+  const [shippingOptionsLoading, setShippingOptionsLoading] = useState(false)
+  const [shippingOptionsError, setShippingOptionsError] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set())
@@ -113,10 +116,48 @@ export default function ProductsSection({
     }, 0)
   }, [products])
 
+  const effectiveShippingOptions = shippingOptions.length ? shippingOptions : shippingOptionsFallback
   const allShippingOptionIds = useMemo(
-    () => shippingOptions.map((option) => option.id).filter(Boolean),
-    [shippingOptions]
+    () => effectiveShippingOptions.map((option) => option.id).filter(Boolean),
+    [effectiveShippingOptions]
   )
+
+  useEffect(() => {
+    if (!showCreateModal && !editingProductId) return
+    if (shippingOptionsLoading) return
+    if (effectiveShippingOptions.length) return
+    const load = async () => {
+      setShippingOptionsLoading(true)
+      setShippingOptionsError(null)
+      try {
+        const res = await fetch(
+          `${medusaUrl}/admin/shipping-options?limit=200&fields=${encodeURIComponent(
+            "+name,+shipping_profile.name,+service_zone.name"
+          )}`,
+          { headers }
+        )
+        if (!res.ok) {
+          const body = await res.text()
+          setShippingOptionsError(body || "Não foi possível carregar as formas de entrega.")
+          return
+        }
+        const json = await res.json()
+        setShippingOptionsFallback(json.shipping_options ?? [])
+      } catch {
+        setShippingOptionsError("Não foi possível carregar as formas de entrega.")
+      } finally {
+        setShippingOptionsLoading(false)
+      }
+    }
+    load()
+  }, [
+    showCreateModal,
+    editingProductId,
+    effectiveShippingOptions.length,
+    medusaUrl,
+    headers,
+    shippingOptionsLoading,
+  ])
 
   useEffect(() => {
     products.forEach((product) => {
@@ -1131,7 +1172,7 @@ export default function ProductsSection({
                   className="btn btn-secondary btn-sm"
                   type="button"
                   onClick={selectAllShippingOptions}
-                  disabled={!shippingOptions.length}
+                  disabled={!effectiveShippingOptions.length}
                 >
                   Selecionar tudo
                 </button>
@@ -1139,15 +1180,19 @@ export default function ProductsSection({
                   className="btn btn-secondary btn-sm"
                   type="button"
                   onClick={clearShippingOptions}
-                  disabled={!shippingOptions.length}
+                  disabled={!effectiveShippingOptions.length}
                 >
                   Limpar
                 </button>
               </div>
             </div>
 
-            {shippingOptions.length === 0 ? (
-              <p className="muted">Nenhuma forma de entrega cadastrada.</p>
+            {effectiveShippingOptions.length === 0 ? (
+              <p className="muted">
+                {shippingOptionsLoading
+                  ? "Carregando formas de entrega..."
+                  : shippingOptionsError || "Nenhuma forma de entrega cadastrada."}
+              </p>
             ) : (
               <div
                 className="grid"
@@ -1156,7 +1201,7 @@ export default function ProductsSection({
                   gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
                 }}
               >
-                {shippingOptions.map((option) => {
+                {effectiveShippingOptions.map((option) => {
                   const checked = productForm.allowed_shipping_option_ids.includes(option.id)
                   const region =
                     option.region?.name ||
@@ -1739,7 +1784,7 @@ export default function ProductsSection({
                                     className="btn btn-secondary btn-sm"
                                     type="button"
                                     onClick={selectAllEditShippingOptions}
-                                    disabled={!shippingOptions.length}
+                                  disabled={!effectiveShippingOptions.length}
                                   >
                                     Selecionar tudo
                                   </button>
@@ -1747,14 +1792,18 @@ export default function ProductsSection({
                                     className="btn btn-secondary btn-sm"
                                     type="button"
                                     onClick={clearEditShippingOptions}
-                                    disabled={!shippingOptions.length}
+                                  disabled={!effectiveShippingOptions.length}
                                   >
                                     Limpar
                                   </button>
                                 </div>
                               </div>
-                              {shippingOptions.length === 0 ? (
-                                <span className="muted">Nenhuma forma de entrega cadastrada.</span>
+                              {effectiveShippingOptions.length === 0 ? (
+                                <span className="muted">
+                                  {shippingOptionsLoading
+                                    ? "Carregando formas de entrega..."
+                                    : shippingOptionsError || "Nenhuma forma de entrega cadastrada."}
+                                </span>
                               ) : (
                                 <div
                                   className="grid"
@@ -1763,7 +1812,7 @@ export default function ProductsSection({
                                     gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
                                   }}
                                 >
-                                  {shippingOptions.map((option) => {
+                                  {effectiveShippingOptions.map((option) => {
                                     const checked =
                                       productEditForm.allowed_shipping_option_ids.includes(option.id)
                                     const region =

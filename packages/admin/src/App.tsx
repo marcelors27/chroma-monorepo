@@ -243,7 +243,7 @@ export default function App() {
           fetch(stockLocationsUrl, { headers }),
           fetch(
             `${MEDUSA_URL}/admin/shipping-options?limit=200&fields=${encodeURIComponent(
-              "+name,+region.name,+region.currency_code,+shipping_profile.name"
+              "+name,+shipping_profile.name,+service_zone.name"
             )}`,
             { headers }
           ),
