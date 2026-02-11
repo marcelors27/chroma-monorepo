@@ -34,6 +34,7 @@ import {
   Product,
   Region,
   SalesChannel,
+  ShippingOption,
   StoreUser,
   StockLocation,
 } from "./types"
@@ -73,6 +74,7 @@ export default function App() {
   const [salesChannels, setSalesChannels] = useState<SalesChannel[]>([])
   const [regions, setRegions] = useState<Region[]>([])
   const [stockLocations, setStockLocations] = useState<StockLocation[]>([])
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([])
   const [deliveryMethodsCount, setDeliveryMethodsCount] = useState(0)
   const [serviceZonesCount, setServiceZonesCount] = useState(0)
   const [catalogError, setCatalogError] = useState<string | null>(null)
@@ -239,7 +241,12 @@ export default function App() {
           fetch(`${MEDUSA_URL}/admin/sales-channels?limit=200`, { headers }),
           fetch(`${MEDUSA_URL}/admin/regions?limit=200`, { headers }),
           fetch(stockLocationsUrl, { headers }),
-          fetch(`${MEDUSA_URL}/admin/shipping-options?limit=200`, { headers }),
+          fetch(
+            `${MEDUSA_URL}/admin/shipping-options?limit=200&fields=${encodeURIComponent(
+              "+name,+region.name,+region.currency_code,+shipping_profile.name"
+            )}`,
+            { headers }
+          ),
         ])
 
         if (productsRes.ok) {
@@ -333,7 +340,9 @@ export default function App() {
         }
         if (shippingOptionsRes.ok) {
           const json = await shippingOptionsRes.json()
-          setDeliveryMethodsCount((json.shipping_options ?? []).length)
+          const options = json.shipping_options ?? []
+          setShippingOptions(options)
+          setDeliveryMethodsCount(options.length)
         }
       } catch (err) {
         console.error("Erro ao buscar dados", err)
@@ -684,6 +693,7 @@ export default function App() {
                       products={products}
                       setProducts={setProducts}
                       salesChannels={salesChannels}
+                      shippingOptions={shippingOptions}
                       stockLocations={stockLocations}
                       openOrders={openOrders}
                     />

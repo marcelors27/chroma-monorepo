@@ -4,8 +4,13 @@ const listeners = new Set<Listener>();
 let activeCount = 0;
 let visible = false;
 let delayTimer: ReturnType<typeof setTimeout> | null = null;
+let hideTimer: ReturnType<typeof setTimeout> | null = null;
+let visibleSince = 0;
 let suppressCount = 0;
 let suppressed = false;
+
+const MIN_VISIBLE_MS = 500;
+const HIDE_DELAY_MS = 150;
 
 const notify = () => {
   listeners.forEach((listener) => listener(visible));
@@ -14,14 +19,37 @@ const notify = () => {
 const show = () => {
   if (suppressed) return;
   if (visible) return;
+  if (hideTimer) {
+    clearTimeout(hideTimer);
+    hideTimer = null;
+  }
   visible = true;
+  visibleSince = Date.now();
   notify();
 };
 
-const hide = () => {
+const hide = (force = false) => {
   if (!visible) return;
-  visible = false;
-  notify();
+  if (force) {
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+    visible = false;
+    notify();
+    return;
+  }
+  if (hideTimer) return;
+  const elapsed = Date.now() - visibleSince;
+  const remaining = Math.max(0, MIN_VISIBLE_MS - elapsed);
+  const delay = Math.max(remaining, HIDE_DELAY_MS);
+  hideTimer = setTimeout(() => {
+    hideTimer = null;
+    if (!visible) return;
+    if (activeCount > 0 || suppressed) return;
+    visible = false;
+    notify();
+  }, delay);
 };
 
 const setSuppressed = (value: boolean) => {
@@ -31,7 +59,11 @@ const setSuppressed = (value: boolean) => {
       clearTimeout(delayTimer);
       delayTimer = null;
     }
-    hide();
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+    hide(true);
     return;
   }
   if (activeCount > 0) {
@@ -55,6 +87,10 @@ export const beginGlobalLoading = (delayMs = 400) => {
     if (delayTimer) {
       clearTimeout(delayTimer);
       delayTimer = null;
+    }
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
     }
     delayTimer = setTimeout(() => {
       delayTimer = null;

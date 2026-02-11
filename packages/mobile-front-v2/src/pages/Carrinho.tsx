@@ -314,7 +314,11 @@ export default function Carrinho() {
         navigation.navigate("Pedidos" as never);
       }
     } catch (err: any) {
-      toast.error(err?.message || "Não foi possível finalizar o pedido.");
+      const rawMessage = err?.message || "";
+      const normalizedMessage = rawMessage.includes("shipping profiles")
+        ? "Houve problema ao configurar envio"
+        : rawMessage || "Não foi possível finalizar o pedido.";
+      toast.error(normalizedMessage);
     } finally {
       setIsProcessing(false);
     }

@@ -755,11 +755,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return { status: "completed", orderId: null };
       }
       if (DEBUG) console.debug("[cart] completeBackendCheckout:error", err?.message || err);
+      const rawMessage = err?.message || "";
+      const normalizedMessage =
+        rawMessage.includes("shipping profiles")
+          ? "Houve problema ao configurar envio"
+          : rawMessage || "Tente novamente ou revise os dados.";
       toast({
         title: "Não foi possível concluir",
-        description: err?.message || "Tente novamente ou revise os dados.",
+        description: normalizedMessage,
         variant: "destructive",
       });
+      if (normalizedMessage !== rawMessage) {
+        const wrappedError: any = new Error(normalizedMessage);
+        wrappedError.originalMessage = rawMessage;
+        throw wrappedError;
+      }
       throw err;
     } finally {
       setCheckoutLocked(false);

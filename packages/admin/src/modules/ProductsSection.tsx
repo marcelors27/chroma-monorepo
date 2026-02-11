@@ -12,7 +12,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons"
 import type { Dispatch, SetStateAction } from "react"
 
-import { MediaPayload, Product, SalesChannel, StockLocation } from "../types"
+import { MediaPayload, Product, SalesChannel, ShippingOption, StockLocation } from "../types"
 import { formatMoney } from "../utils/format"
 
 type VariantLocation = { id: string; name: string; stocked?: number | null }
@@ -24,6 +24,7 @@ type ProductsSectionProps = {
   products: Product[]
   setProducts: Dispatch<SetStateAction<Product[]>>
   salesChannels: SalesChannel[]
+  shippingOptions: ShippingOption[]
   stockLocations: StockLocation[]
   openOrders: number
 }
@@ -35,6 +36,7 @@ export default function ProductsSection({
   products,
   setProducts,
   salesChannels,
+  shippingOptions,
   stockLocations,
   openOrders,
 }: ProductsSectionProps) {
@@ -70,6 +72,7 @@ export default function ProductsSection({
     featured: false,
     stock_location_id: "",
     stock_quantity: "",
+    allowed_shipping_option_ids: [] as string[],
   })
   const [productOptions, setProductOptions] = useState<
     { id: string; title: string; values: string }[]
@@ -100,6 +103,7 @@ export default function ProductsSection({
     media_videos: "",
     media_youtube: "",
     featured: false,
+    allowed_shipping_option_ids: [] as string[],
   })
 
   const totalInventory = useMemo(() => {
@@ -108,6 +112,11 @@ export default function ProductsSection({
       return acc + inv
     }, 0)
   }, [products])
+
+  const allShippingOptionIds = useMemo(
+    () => shippingOptions.map((option) => option.id).filter(Boolean),
+    [shippingOptions]
+  )
 
   useEffect(() => {
     products.forEach((product) => {
@@ -124,6 +133,15 @@ export default function ProductsSection({
       }
     })
   }, [products])
+
+  useEffect(() => {
+    if (!showCreateModal) return
+    if (!allShippingOptionIds.length) return
+    setProductForm((prev) => {
+      if (prev.allowed_shipping_option_ids?.length) return prev
+      return { ...prev, allowed_shipping_option_ids: allShippingOptionIds }
+    })
+  }, [showCreateModal, allShippingOptionIds])
 
   const toggleProductExpanded = (productId: string) => {
     setExpandedProducts((prev) => {
@@ -188,6 +206,23 @@ export default function ProductsSection({
     setProductForm((prev) => ({ ...prev, [field]: value }))
   }
 
+  const toggleShippingOption = (optionId: string) => {
+    setProductForm((prev) => {
+      const current = prev.allowed_shipping_option_ids || []
+      const exists = current.includes(optionId)
+      const next = exists ? current.filter((id) => id !== optionId) : [...current, optionId]
+      return { ...prev, allowed_shipping_option_ids: next }
+    })
+  }
+
+  const selectAllShippingOptions = () => {
+    setProductForm((prev) => ({ ...prev, allowed_shipping_option_ids: allShippingOptionIds }))
+  }
+
+  const clearShippingOptions = () => {
+    setProductForm((prev) => ({ ...prev, allowed_shipping_option_ids: [] }))
+  }
+
   const resetProductForm = () => {
     setProductForm({
       title: "",
@@ -204,6 +239,7 @@ export default function ProductsSection({
       featured: false,
       stock_location_id: "",
       stock_quantity: "",
+      allowed_shipping_option_ids: allShippingOptionIds,
     })
     setProductOptions([])
     setProductVariants([
@@ -635,6 +671,12 @@ export default function ProductsSection({
       const mediaImages = parseMediaList(productForm.media_images)
       const mediaVideos = parseMediaList(productForm.media_videos)
       const mediaYoutube = parseMediaList(productForm.media_youtube)
+      const selectedShippingOptions = productForm.allowed_shipping_option_ids || []
+      if (!selectedShippingOptions.length) {
+        setProductError("Selecione ao menos uma forma de entrega.")
+        setProductSaving(false)
+        return
+      }
       const mediaValidation = validateMedia({
         images: mediaImages,
         videos: mediaVideos,
@@ -717,8 +759,10 @@ export default function ProductsSection({
       const metadata: Record<string, any> | undefined = (() => {
         const featured = productForm.featured === true
         const hasMedia = mediaImages.length || mediaVideos.length || mediaYoutube.length
-        if (!featured && !hasMedia) return undefined
-        const base: Record<string, any> = { featured }
+        const base: Record<string, any> = { allowed_shipping_option_ids: selectedShippingOptions }
+        if (featured) {
+          base.featured = true
+        }
         if (hasMedia) {
           base.media = {
             images: mediaImages,
@@ -869,6 +913,9 @@ export default function ProductsSection({
   const startEditProductMedia = (product: Product) => {
     const metadata = product.metadata as Record<string, unknown> | undefined
     const media = (metadata?.media || {}) as Record<string, unknown>
+    const storedShippingOptions = Array.isArray(metadata?.allowed_shipping_option_ids)
+      ? (metadata?.allowed_shipping_option_ids as string[])
+      : []
     setEditingProductId(product.id)
     setProductEditMediaUploadError(null)
     setProductEditForm({
@@ -876,6 +923,9 @@ export default function ProductsSection({
       media_videos: formatMediaValue(media.videos as string[] | undefined),
       media_youtube: formatMediaValue(media.youtube as string[] | undefined),
       featured: Boolean(metadata?.featured),
+      allowed_shipping_option_ids: storedShippingOptions.length
+        ? storedShippingOptions
+        : allShippingOptionIds,
     })
   }
 
@@ -892,6 +942,23 @@ export default function ProductsSection({
     setProductEditForm((prev) => ({ ...prev, [field]: value }))
   }
 
+  const toggleEditShippingOption = (optionId: string) => {
+    setProductEditForm((prev) => {
+      const current = prev.allowed_shipping_option_ids || []
+      const exists = current.includes(optionId)
+      const next = exists ? current.filter((id) => id !== optionId) : [...current, optionId]
+      return { ...prev, allowed_shipping_option_ids: next }
+    })
+  }
+
+  const selectAllEditShippingOptions = () => {
+    setProductEditForm((prev) => ({ ...prev, allowed_shipping_option_ids: allShippingOptionIds }))
+  }
+
+  const clearEditShippingOptions = () => {
+    setProductEditForm((prev) => ({ ...prev, allowed_shipping_option_ids: [] }))
+  }
+
   const saveProductMedia = async (product: Product) => {
     const mediaImages = parseMediaList(productEditForm.media_images)
     const mediaVideos = parseMediaList(productEditForm.media_videos)
@@ -905,6 +972,10 @@ export default function ProductsSection({
       setProductEditError(mediaValidation)
       return
     }
+    if (!productEditForm.allowed_shipping_option_ids?.length) {
+      setProductEditError("Selecione ao menos uma forma de entrega.")
+      return
+    }
     setProductEditSaving(true)
     setProductEditError(null)
     try {
@@ -912,6 +983,7 @@ export default function ProductsSection({
         metadata: {
           ...(product.metadata || {}),
           featured: productEditForm.featured === true,
+          allowed_shipping_option_ids: productEditForm.allowed_shipping_option_ids,
           media: {
             images: mediaImages,
             videos: mediaVideos,
@@ -1036,6 +1108,91 @@ export default function ProductsSection({
                 ))}
               </select>
             </label>
+          </div>
+
+          <div className="panel grid" style={{ gap: "0.75rem" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "1rem",
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <h4>Formas de entrega permitidas</h4>
+                <p className="muted" style={{ marginTop: "0.25rem" }}>
+                  Defina quais opções de envio podem ser usadas para este produto.
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  type="button"
+                  onClick={selectAllShippingOptions}
+                  disabled={!shippingOptions.length}
+                >
+                  Selecionar tudo
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  type="button"
+                  onClick={clearShippingOptions}
+                  disabled={!shippingOptions.length}
+                >
+                  Limpar
+                </button>
+              </div>
+            </div>
+
+            {shippingOptions.length === 0 ? (
+              <p className="muted">Nenhuma forma de entrega cadastrada.</p>
+            ) : (
+              <div
+                className="grid"
+                style={{
+                  gap: "0.5rem",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                }}
+              >
+                {shippingOptions.map((option) => {
+                  const checked = productForm.allowed_shipping_option_ids.includes(option.id)
+                  const region =
+                    option.region?.name ||
+                    option.service_zone?.region?.name ||
+                    option.service_zone?.name
+                  const profile = option.shipping_profile?.name
+                  const meta = [region ? `Região: ${region}` : null, profile ? `Perfil: ${profile}` : null]
+                    .filter(Boolean)
+                    .join(" · ")
+                  return (
+                    <label
+                      key={option.id}
+                      style={{
+                        display: "flex",
+                        gap: "0.5rem",
+                        alignItems: "flex-start",
+                        padding: "0.5rem 0.65rem",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: "0.5rem",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleShippingOption(option.id)}
+                        className="checkbox"
+                      />
+                      <div className="grid" style={{ gap: "0.2rem" }}>
+                        <span>{option.name || option.id}</span>
+                        {meta && <span className="muted">{meta}</span>}
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           <div className="panel grid" style={{ gap: "0.75rem" }}>
@@ -1566,6 +1723,88 @@ export default function ProductsSection({
                               />
                               <span className="muted">Produto em destaque</span>
                             </label>
+                            <div className="panel grid" style={{ gap: "0.5rem" }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  gap: "0.5rem",
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                <span className="muted">Formas de entrega permitidas</span>
+                                <div style={{ display: "flex", gap: "0.5rem" }}>
+                                  <button
+                                    className="btn btn-secondary btn-sm"
+                                    type="button"
+                                    onClick={selectAllEditShippingOptions}
+                                    disabled={!shippingOptions.length}
+                                  >
+                                    Selecionar tudo
+                                  </button>
+                                  <button
+                                    className="btn btn-secondary btn-sm"
+                                    type="button"
+                                    onClick={clearEditShippingOptions}
+                                    disabled={!shippingOptions.length}
+                                  >
+                                    Limpar
+                                  </button>
+                                </div>
+                              </div>
+                              {shippingOptions.length === 0 ? (
+                                <span className="muted">Nenhuma forma de entrega cadastrada.</span>
+                              ) : (
+                                <div
+                                  className="grid"
+                                  style={{
+                                    gap: "0.5rem",
+                                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                                  }}
+                                >
+                                  {shippingOptions.map((option) => {
+                                    const checked =
+                                      productEditForm.allowed_shipping_option_ids.includes(option.id)
+                                    const region =
+                                      option.region?.name ||
+                                      option.service_zone?.region?.name ||
+                                      option.service_zone?.name
+                                    const profile = option.shipping_profile?.name
+                                    const meta = [
+                                      region ? `Região: ${region}` : null,
+                                      profile ? `Perfil: ${profile}` : null,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ")
+                                    return (
+                                      <label
+                                        key={option.id}
+                                        style={{
+                                          display: "flex",
+                                          gap: "0.5rem",
+                                          alignItems: "flex-start",
+                                          padding: "0.4rem 0.55rem",
+                                          border: "1px solid rgba(255,255,255,0.08)",
+                                          borderRadius: "0.5rem",
+                                        }}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={() => toggleEditShippingOption(option.id)}
+                                          className="checkbox"
+                                        />
+                                        <div className="grid" style={{ gap: "0.2rem" }}>
+                                          <span>{option.name || option.id}</span>
+                                          {meta && <span className="muted">{meta}</span>}
+                                        </div>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
                             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                               <button
                                 className="btn btn-sm btn-icon"
