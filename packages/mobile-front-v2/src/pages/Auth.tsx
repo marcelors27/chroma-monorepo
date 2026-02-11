@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Image,
   ImageBackground,
@@ -15,7 +15,8 @@ import { Apple, ArrowLeft, Chrome, Eye, EyeOff, Facebook, Lock, Mail, User } fro
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/lib/toast";
 import logo from "@/assets/logo.png";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { suspendGlobalLoading } from "@/lib/global-loading";
 
 const AUTH_BG = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&auto=format&fit=crop&q=80";
 
@@ -108,6 +109,11 @@ export default function Auth() {
       setLinkPrompt(null);
     }
   };
+
+  useEffect(() => {
+    if (!isLoading) return;
+    return suspendGlobalLoading();
+  }, [isLoading]);
 
   return (
     <ImageBackground source={{ uri: AUTH_BG }} style={styles.screen} resizeMode="cover">
@@ -235,11 +241,7 @@ export default function Auth() {
         </View>
       </ScrollView>
 
-      {isLoading && (
-        <View style={styles.loadingOverlay}>
-          <LoadingSpinner size={84} style={styles.loadingIcon} />
-        </View>
-      )}
+      <LoadingOverlay visible={isLoading} />
 
       {linkPrompt && (
         <View style={styles.linkScreen}>
@@ -396,20 +398,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(12, 15, 20, 0.78)",
     justifyContent: "center",
     padding: 24,
-  },
-  loadingOverlay: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: "rgba(8, 12, 18, 0.35)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 20,
-  },
-  loadingIcon: {
-    opacity: 0.7,
   },
   linkCard: {
     backgroundColor: "rgba(28, 32, 40, 0.92)",

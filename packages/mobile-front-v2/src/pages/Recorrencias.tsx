@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
 import { deleteRecurrence, listRecurrences, updateRecurrence } from "@/lib/medusa";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formatFrequency = (value: string) => {
   if (value === "weekly") return "Semanal";
@@ -16,7 +17,7 @@ const formatFrequency = (value: string) => {
 export default function Recorrencias() {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
-  const { data } = useQuery({ queryKey: ["recurrences"], queryFn: listRecurrences });
+  const { data, isLoading } = useQuery({ queryKey: ["recurrences"], queryFn: listRecurrences });
   const recurrences = data?.recurrences || [];
 
   const handleToggle = async (id: string, currentStatus: string) => {
@@ -50,26 +51,38 @@ export default function Recorrencias() {
         >
           <Text style={styles.addButtonText}>Adicionar recorrência</Text>
         </Pressable>
-        {recurrences.map((item) => (
-          <View key={item.id} style={styles.card}>
-            <Text style={styles.cardTitle}>{item.name}</Text>
-            <Text style={styles.cardMeta}>{formatFrequency(item.frequency)}</Text>
-            <Text style={styles.cardStatus}>{item.status === "active" ? "Ativa" : "Pausada"}</Text>
-            <View style={styles.actionsRow}>
-              <Pressable
-                onPress={() => handleToggle(item.id, item.status)}
-                style={styles.secondaryButton}
-              >
-                <Text style={styles.secondaryButtonText}>Alternar</Text>
-              </Pressable>
-              <Pressable onPress={() => handleDelete(item.id)} style={styles.destructiveButton}>
-                <Text style={styles.destructiveButtonText}>Remover</Text>
-              </Pressable>
-            </View>
-          </View>
-        ))}
+        {isLoading
+          ? Array.from({ length: 3 }).map((_, index) => (
+              <View key={`recurrence-skeleton-${index}`} style={styles.skeletonCard}>
+                <Skeleton style={styles.skeletonLine} />
+                <Skeleton style={styles.skeletonLineShort} />
+                <Skeleton style={styles.skeletonStatus} />
+                <View style={styles.skeletonActions}>
+                  <Skeleton style={styles.skeletonButton} />
+                  <Skeleton style={styles.skeletonButton} />
+                </View>
+              </View>
+            ))
+          : recurrences.map((item) => (
+              <View key={item.id} style={styles.card}>
+                <Text style={styles.cardTitle}>{item.name}</Text>
+                <Text style={styles.cardMeta}>{formatFrequency(item.frequency)}</Text>
+                <Text style={styles.cardStatus}>{item.status === "active" ? "Ativa" : "Pausada"}</Text>
+                <View style={styles.actionsRow}>
+                  <Pressable
+                    onPress={() => handleToggle(item.id, item.status)}
+                    style={styles.secondaryButton}
+                  >
+                    <Text style={styles.secondaryButtonText}>Alternar</Text>
+                  </Pressable>
+                  <Pressable onPress={() => handleDelete(item.id)} style={styles.destructiveButton}>
+                    <Text style={styles.destructiveButtonText}>Remover</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
 
-        {recurrences.length === 0 && (
+        {!isLoading && recurrences.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>Nenhuma recorrência cadastrada.</Text>
           </View>
@@ -138,6 +151,37 @@ const styles = StyleSheet.create({
   emptyText: {
     color: "#8C98A8",
     fontSize: 13,
+  },
+  skeletonCard: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    gap: 10,
+  },
+  skeletonLine: {
+    height: 12,
+    borderRadius: 8,
+  },
+  skeletonLineShort: {
+    height: 10,
+    width: "55%",
+    borderRadius: 8,
+  },
+  skeletonStatus: {
+    height: 10,
+    width: "30%",
+    borderRadius: 8,
+  },
+  skeletonActions: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 6,
+  },
+  skeletonButton: {
+    flex: 1,
+    height: 32,
+    borderRadius: 12,
   },
   addButton: {
     paddingHorizontal: 16,

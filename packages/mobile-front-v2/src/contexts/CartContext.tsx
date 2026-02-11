@@ -111,6 +111,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const isCompletedCartError = (err: any) => {
+    const message = String(err?.message || "");
+    return /already completed/i.test(message) || /cart .*completed/i.test(message);
+  };
+
+  const handleCompletedCart = async () => {
+    if (DEBUG) console.debug("[cart] completed:reset");
+    await resetCartAfterPending();
+    toast.info("Seu carrinho foi finalizado. Criamos um novo para você.");
+  };
+
   const addItem = async (product: AddItemInput) => {
     if (checkoutLocked) {
       toast({
@@ -141,6 +152,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setLastAddId((prev) => prev + 1);
     } catch (err: any) {
       const message = err?.message || "";
+      if (isCompletedCartError(err)) {
+        await handleCompletedCart();
+        return;
+      }
       if (message.includes("payment sessions")) {
         const nextItems = (() => {
           const existing = items.find((item) => item.variantId === product.variantId);
@@ -194,6 +209,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setItems(mapCartToItems(updatedCart));
     } catch (err: any) {
       const message = err?.message || "";
+      if (isCompletedCartError(err)) {
+        await handleCompletedCart();
+        return;
+      }
       if (message.includes("payment sessions")) {
         const nextItems = items.filter((item) => item.id !== id);
         await rebuildCartWithItems(nextItems);
@@ -224,6 +243,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setItems(mapCartToItems(updatedCart));
     } catch (err: any) {
       const message = err?.message || "";
+      if (isCompletedCartError(err)) {
+        await handleCompletedCart();
+        return;
+      }
       if (message.includes("payment sessions")) {
         const nextItems =
           quantity <= 0
@@ -500,6 +523,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (!cartSnapshot?.id) {
         throw new Error("Carrinho não encontrado");
       }
+      if ((cartSnapshot as any)?.completed_at || (cartSnapshot as any)?.status === "completed") {
+        await handleCompletedCart();
+        throw new Error("Carrinho já finalizado.");
+      }
       if (
         paymentMethod === "boleto" &&
         options?.boletoExpiresAfterDays &&
@@ -723,6 +750,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       await removePendingPaymentFromBackend({ cart_id: cartSnapshot.id });
       return { status: "completed", orderId };
     } catch (err: any) {
+      if (isCompletedCartError(err)) {
+        await handleCompletedCart();
+        return { status: "completed", orderId: null };
+      }
       if (DEBUG) console.debug("[cart] completeBackendCheckout:error", err?.message || err);
       toast({
         title: "Não foi possível concluir",

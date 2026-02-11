@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { toast } from "@/lib/toast";
 import { createCompany, listCompanies, updateCompany } from "@/lib/medusa";
+import { beginGlobalLoading } from "@/lib/global-loading";
 import { useCondo } from "@/contexts/CondoContext";
 
 type CondoForm = {
@@ -142,6 +143,7 @@ export default function CondominioDetalhes() {
     if (cleanCNPJ.length !== 14) return;
     if (isLoadingCNPJ) return;
     setIsLoadingCNPJ(true);
+    const endLoading = beginGlobalLoading();
     try {
       const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanCNPJ}`);
       if (!response.ok) {
@@ -165,6 +167,7 @@ export default function CondominioDetalhes() {
       toast.error("Não foi possível consultar o CNPJ.");
     } finally {
       setIsLoadingCNPJ(false);
+      endLoading();
     }
   };
 
@@ -173,6 +176,7 @@ export default function CondominioDetalhes() {
     if (cleanCEP.length !== 8) return;
     if (isLoadingCEP) return;
     setIsLoadingCEP(true);
+    const endLoading = beginGlobalLoading();
     try {
       const response = await fetch(`https://brasilapi.com.br/api/cep/v1/${cleanCEP}`);
       if (!response.ok) {
@@ -193,6 +197,7 @@ export default function CondominioDetalhes() {
       toast.error("Não foi possível consultar o CEP.");
     } finally {
       setIsLoadingCEP(false);
+      endLoading();
     }
   };
 

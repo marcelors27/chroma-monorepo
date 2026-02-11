@@ -65,6 +65,12 @@ export default function OrdersSection({ orders, medusaUrl, headers }: OrdersSect
   const [savingById, setSavingById] = useState<Record<string, boolean>>({})
   const [errorById, setErrorById] = useState<Record<string, string | null>>({})
   const [historyOrder, setHistoryOrder] = useState<Order | null>(null)
+  const [filters, setFilters] = useState({
+    status: "",
+    fulfillment: "",
+    payment: "",
+    query: "",
+  })
   const openOrders = localOrders.filter((o) => o.status !== "completed").length
 
   useEffect(() => {
@@ -87,6 +93,20 @@ export default function OrdersSection({ orders, medusaUrl, headers }: OrdersSect
       (draft.fulfillment_status && draft.fulfillment_status !== order.fulfillment_status)
     )
   }
+
+  const filteredOrders = localOrders.filter((order) => {
+    if (filters.status && order.status !== filters.status) return false
+    if (filters.fulfillment && order.fulfillment_status !== filters.fulfillment) return false
+    if (filters.payment && order.payment_status !== filters.payment) return false
+    if (filters.query) {
+      const query = filters.query.toLowerCase()
+      const displayId = order.display_id ? `#${order.display_id}` : ""
+      const idMatch = order.id?.toLowerCase().includes(query) || false
+      const displayMatch = displayId.toLowerCase().includes(query)
+      if (!idMatch && !displayMatch) return false
+    }
+    return true
+  })
 
   const saveOrder = async (order: Order) => {
     const payload = {
@@ -162,7 +182,58 @@ export default function OrdersSection({ orders, medusaUrl, headers }: OrdersSect
           }}
         >
           <h3>Pedidos recentes</h3>
-          <span className="pill">{localOrders.length} entradas</span>
+          <span className="pill">{filteredOrders.length} entradas</span>
+        </div>
+        <div className="filters-grid" style={{ marginBottom: "0.75rem" }}>
+          <input
+            className="field-input"
+            placeholder="Buscar por # ou ID"
+            value={filters.query}
+            onChange={(e) => setFilters((current) => ({ ...current, query: e.target.value }))}
+          />
+          <select
+            className="field-input"
+            value={filters.status}
+            onChange={(e) => setFilters((current) => ({ ...current, status: e.target.value }))}
+          >
+            <option value="">Status (todos)</option>
+            {withCurrentOption(ORDER_STATUS_OPTIONS, undefined).map((option) => (
+              <option key={`status-${option.value}`} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="field-input"
+            value={filters.fulfillment}
+            onChange={(e) => setFilters((current) => ({ ...current, fulfillment: e.target.value }))}
+          >
+            <option value="">Entrega (todas)</option>
+            {withCurrentOption(FULFILLMENT_STATUS_OPTIONS, undefined).map((option) => (
+              <option key={`fulfillment-${option.value}`} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="field-input"
+            value={filters.payment}
+            onChange={(e) => setFilters((current) => ({ ...current, payment: e.target.value }))}
+          >
+            <option value="">Pagamento (todos)</option>
+            <option value="captured">Pago</option>
+            <option value="authorized">Autorizado</option>
+            <option value="pending">Pendente</option>
+            <option value="canceled">Cancelado</option>
+            <option value="refunded">Reembolsado</option>
+          </select>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => setFilters({ status: "", fulfillment: "", payment: "", query: "" })}
+          >
+            Limpar filtros
+          </button>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table className="table">
@@ -178,14 +249,14 @@ export default function OrdersSection({ orders, medusaUrl, headers }: OrdersSect
               </tr>
             </thead>
             <tbody>
-              {localOrders.map((o) => {
+              {filteredOrders.map((o) => {
                 const isSaving = savingById[o.id]
                 const history = Array.isArray(o.metadata?.status_history)
                   ? o.metadata?.status_history
                   : []
                 const recentHistory = history.slice(-2).reverse()
                 return (
-                  <tr key={o.id}>
+                  <tr key={o.id} className={hasChanges(o) ? "row-changed" : undefined}>
                     <td>#{o.display_id ?? o.id.slice(0, 6)}</td>
                     <td>
                       <select

@@ -85,6 +85,24 @@ const buildTrackingSteps = (createdAt?: string) => {
   ];
 };
 
+const resolveCurrentTrackingStep = (order?: MedusaOrder | null) => {
+  if (!order) return "confirmed";
+  if (order.status === "canceled" || order.fulfillment_status === "canceled") return "confirmed";
+  switch (order.fulfillment_status) {
+    case "not_fulfilled":
+    case "fulfilled":
+    case "partially_fulfilled":
+      return "separation";
+    case "shipped":
+    case "partially_shipped":
+      return "transit";
+    case "delivered":
+      return "out_for_delivery";
+    default:
+      return "confirmed";
+  }
+};
+
 const resolveStatus = (order: MedusaOrder): OrderStatus => {
   if (order.status === "canceled" || order.fulfillment_status === "canceled") return "cancelled";
   switch (order.fulfillment_status) {
@@ -112,6 +130,7 @@ const IS_DEV = import.meta.env.DEV === true;
 const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState<MedusaOrder | null>(null);
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
+  const [activeTab, setActiveTab] = useState<"pending" | "progress" | "history">("pending");
   const [testPaymentId, setTestPaymentId] = useState<string | null>(null);
   const [recurrenceOrder, setRecurrenceOrder] = useState<MedusaOrder | null>(null);
   const [recurrenceName, setRecurrenceName] = useState("");
@@ -139,6 +158,15 @@ const Orders = () => {
   const visibleOrders = orders.filter(
     (order) => !pendingCollections.has(order.payment_collection_id || "")
   );
+  const isHistoryOrder = (order: MedusaOrder) => {
+    const status = resolveStatus(order);
+    return status === "delivered" || status === "cancelled";
+  };
+  const inProgressOrders = visibleOrders.filter((order) => !isHistoryOrder(order));
+  const historyOrders = visibleOrders.filter(isHistoryOrder);
+  const pendingCount = pendingPayments.length;
+  const progressCount = inProgressOrders.length;
+  const historyCount = historyOrders.length;
 
   const formatDate = (value?: string) => {
     if (!value) return "";
@@ -354,147 +382,185 @@ const Orders = () => {
 
         {!isLoading && !isError && (
           <>
-            {pendingPayments.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-6">
+              <Button
+                variant={activeTab === "pending" ? "default" : "outline"}
+                className="w-full justify-center gap-2 border-2"
+                onClick={() => setActiveTab("pending")}
+              >
+                <Clock className="h-4 w-4" />
+                Pendentes
+                {pendingCount > 0 && <span className="ml-1 text-xs">({pendingCount})</span>}
+              </Button>
+              <Button
+                variant={activeTab === "progress" ? "default" : "outline"}
+                className="w-full justify-center gap-2 border-2"
+                onClick={() => setActiveTab("progress")}
+              >
+                <Truck className="h-4 w-4" />
+                Em andamento
+                {progressCount > 0 && <span className="ml-1 text-xs">({progressCount})</span>}
+              </Button>
+              <Button
+                variant={activeTab === "history" ? "default" : "outline"}
+                className="w-full justify-center gap-2 border-2"
+                onClick={() => setActiveTab("history")}
+              >
+                <ClipboardList className="h-4 w-4" />
+                Histórico
+                {historyCount > 0 && <span className="ml-1 text-xs">({historyCount})</span>}
+              </Button>
+            </div>
+
+            {activeTab === "pending" && (
               <div className="space-y-4 mb-6">
                 <div>
-                  <h2 className="text-xl font-bold">Em Andamento</h2>
+                  <h2 className="text-xl font-bold">Pendentes</h2>
                   <p className="text-muted-foreground text-sm">
                     Estes pagamentos ainda aguardam compensação.
                   </p>
                 </div>
-                {pendingPayments.map((pending) => (
-                  <div
-                    key={pending.payment_collection_id}
-                    className="border-2 border-border p-6 bg-card"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-start gap-4">
-                        <div className="p-3 bg-secondary border-2 border-border">
-                          <Clock className="h-6 w-6 text-primary" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-3 mb-1">
-                            <h3 className="font-bold text-lg">
-                              {formatPendingMethod(pending.method)} pendente
-                            </h3>
-                            <Badge variant="secondary" className="gap-1">
-                              <Clock className="h-4 w-4" />
-                              Aguardando pagamento
-                            </Badge>
+                {pendingPayments.length === 0 ? (
+                  <div className="border-2 border-border p-6 bg-card text-center">
+                    <p className="text-muted-foreground text-sm">Nenhum pagamento pendente.</p>
+                  </div>
+                ) : (
+                  pendingPayments.map((pending) => (
+                    <div
+                      key={pending.payment_collection_id}
+                      className="border-2 border-border p-6 bg-card"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="p-3 bg-secondary border-2 border-border">
+                            <Clock className="h-6 w-6 text-primary" />
                           </div>
-                          <p className="text-muted-foreground text-sm">
-                            {pending.created_at
-                              ? formatDate(pending.created_at)
-                              : "Data indisponível"}{" "}
-                            • ID cobrança {pending.payment_collection_id}
-                          </p>
-                          <p className="text-muted-foreground text-sm">
-                            Condomínio: {resolvePendingCondo(pending)}
-                          </p>
-                          {pending.details?.boleto_line && (
-                            <div className="mt-3 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <span>Linha digitável:</span>
-                                <span className="font-medium text-foreground">
-                                  {pending.details.boleto_line}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-2 border-2"
-                                  onClick={() =>
-                                    copyText(pending.details?.boleto_line || "", "Linha digitável")
-                                  }
-                                >
-                                  <Copy className="h-4 w-4" />
-                                  Copiar
-                                </Button>
-                                {pending.details?.boleto_url && (
-                                  <Button variant="outline" size="sm" className="border-2" asChild>
-                                    <a href={pending.details.boleto_url} target="_blank" rel="noreferrer">
-                                      Abrir boleto
-                                    </a>
-                                  </Button>
-                                )}
-                                {ENABLE_TEST_BOLETO && IS_DEV && pending.method === "boleto" && (
+                          <div>
+                            <div className="flex items-center gap-3 mb-1">
+                              <h3 className="font-bold text-lg">
+                                {formatPendingMethod(pending.method)} pendente
+                              </h3>
+                              <Badge variant="secondary" className="gap-1">
+                                <Clock className="h-4 w-4" />
+                                Aguardando pagamento
+                              </Badge>
+                            </div>
+                            <p className="text-muted-foreground text-sm">
+                              {pending.created_at
+                                ? formatDate(pending.created_at)
+                                : "Data indisponível"}{" "}
+                              • ID cobrança {pending.payment_collection_id}
+                            </p>
+                            <p className="text-muted-foreground text-sm">
+                              Condomínio: {resolvePendingCondo(pending)}
+                            </p>
+                            {pending.details?.boleto_line && (
+                              <div className="mt-3 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-2">
+                                  <span>Linha digitável:</span>
+                                  <span className="font-medium text-foreground">
+                                    {pending.details.boleto_line}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2">
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="border-2"
-                                    disabled={testPaymentId === pending.payment_collection_id}
-                                    onClick={() => handleTestBoleto(pending)}
+                                    className="gap-2 border-2"
+                                    onClick={() =>
+                                      copyText(pending.details?.boleto_line || "", "Linha digitável")
+                                    }
                                   >
-                                    {testPaymentId === pending.payment_collection_id
-                                      ? "Confirmando..."
-                                      : "Pagar em teste"}
+                                    <Copy className="h-4 w-4" />
+                                    Copiar
                                   </Button>
+                                  {pending.details?.boleto_url && (
+                                    <Button variant="outline" size="sm" className="border-2" asChild>
+                                      <a href={pending.details.boleto_url} target="_blank" rel="noreferrer">
+                                        Abrir boleto
+                                      </a>
+                                    </Button>
+                                  )}
+                                  {ENABLE_TEST_BOLETO && IS_DEV && pending.method === "boleto" && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="border-2"
+                                      disabled={testPaymentId === pending.payment_collection_id}
+                                      onClick={() => handleTestBoleto(pending)}
+                                    >
+                                      {testPaymentId === pending.payment_collection_id
+                                        ? "Confirmando..."
+                                        : "Pagar em teste"}
+                                    </Button>
+                                  )}
+                                </div>
+                                {pending.details?.boleto_expires_at && (
+                                  <p className="mt-2">
+                                    Vencimento: {formatUnixDate(pending.details.boleto_expires_at)}
+                                  </p>
+                                )}
+                                {pending.details?.boleto_expires_after_days && (
+                                  <p className="mt-1">
+                                    Prazo selecionado: {pending.details.boleto_expires_after_days}{" "}
+                                    {pending.details.boleto_expires_after_days === 1 ? "dia" : "dias"}
+                                  </p>
                                 )}
                               </div>
-                              {pending.details?.boleto_expires_at && (
-                                <p className="mt-2">
-                                  Vencimento: {formatUnixDate(pending.details.boleto_expires_at)}
-                                </p>
-                              )}
-                              {pending.details?.boleto_expires_after_days && (
-                                <p className="mt-1">
-                                  Prazo selecionado: {pending.details.boleto_expires_after_days}{" "}
-                                  {pending.details.boleto_expires_after_days === 1 ? "dia" : "dias"}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                          {pending.details?.pix_code && (
-                            <div className="mt-3 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <span>Código PIX:</span>
-                                <span className="font-medium text-foreground">
-                                  {pending.details.pix_code}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-2 border-2"
-                                  onClick={() =>
-                                    copyText(pending.details?.pix_code || "", "Código PIX")
-                                  }
-                                >
-                                  <Copy className="h-4 w-4" />
-                                  Copiar
-                                </Button>
-                                {pending.details?.pix_qr && (
-                                  <Button variant="outline" size="sm" className="border-2" asChild>
-                                    <a href={pending.details.pix_qr} target="_blank" rel="noreferrer">
-                                      Ver QR
-                                    </a>
+                            )}
+                            {pending.details?.pix_code && (
+                              <div className="mt-3 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-2">
+                                  <span>Código PIX:</span>
+                                  <span className="font-medium text-foreground">
+                                    {pending.details.pix_code}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2 border-2"
+                                    onClick={() =>
+                                      copyText(pending.details?.pix_code || "", "Código PIX")
+                                    }
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                    Copiar
                                   </Button>
+                                  {pending.details?.pix_qr && (
+                                    <Button variant="outline" size="sm" className="border-2" asChild>
+                                      <a href={pending.details.pix_qr} target="_blank" rel="noreferrer">
+                                        Ver QR
+                                      </a>
+                                    </Button>
+                                  )}
+                                </div>
+                                {pending.details?.pix_expires_at && (
+                                  <p className="mt-2">
+                                    Vencimento: {formatUnixDate(pending.details.pix_expires_at)}
+                                  </p>
+                                )}
+                                {!pending.details?.pix_expires_at && pending.details?.pix_expires_after_days && (
+                                  <p className="mt-1">
+                                    Prazo selecionado: {pending.details.pix_expires_after_days}{" "}
+                                    {pending.details.pix_expires_after_days === 1 ? "dia" : "dias"}
+                                  </p>
                                 )}
                               </div>
-                              {pending.details?.pix_expires_at && (
-                                <p className="mt-2">
-                                  Vencimento: {formatUnixDate(pending.details.pix_expires_at)}
-                                </p>
-                              )}
-                              {!pending.details?.pix_expires_at && pending.details?.pix_expires_after_days && (
-                                <p className="mt-1">
-                                  Prazo selecionado: {pending.details.pix_expires_after_days}{" "}
-                                  {pending.details.pix_expires_after_days === 1 ? "dia" : "dias"}
-                                </p>
-                              )}
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
-            <div className="space-y-4">
-              {visibleOrders.map((order) => {
+
+            {activeTab !== "pending" && (
+              <div className="space-y-4">
+                {(activeTab === "progress" ? inProgressOrders : historyOrders).map((order) => {
                 const status = resolveStatus(order);
                 const cfg = statusConfig[status];
                 const itemsCount = order.items?.length || 0;
@@ -544,11 +610,26 @@ const Orders = () => {
               })}
             </div>
 
-            {visibleOrders.length === 0 && pendingPayments.length === 0 && (
+            {activeTab === "progress" && inProgressOrders.length === 0 && (
               <div className="border-2 border-border p-12 bg-card text-center">
-                <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="font-bold text-lg mb-2">Nenhum pedido encontrado</h3>
-                <p className="text-muted-foreground mb-4">Você ainda não realizou nenhum pedido.</p>
+                <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="font-bold text-lg mb-2">Nenhum pedido em andamento</h3>
+                <p className="text-muted-foreground mb-4">
+                  Seus pedidos em andamento aparecerão aqui.
+                </p>
+                <Button asChild>
+                  <Link to="/dashboard">Ir às compras</Link>
+                </Button>
+              </div>
+            )}
+
+            {activeTab === "history" && historyOrders.length === 0 && (
+              <div className="border-2 border-border p-12 bg-card text-center">
+                <PackageCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="font-bold text-lg mb-2">Sem histórico</h3>
+                <p className="text-muted-foreground mb-4">
+                  Seus pedidos concluídos aparecerão aqui.
+                </p>
                 <Button asChild>
                   <Link to="/dashboard">Ir às compras</Link>
                 </Button>
@@ -643,15 +724,31 @@ const Orders = () => {
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {buildTrackingSteps(selectedOrder.created_at).map((step) => (
-                    <div
-                      key={step.key}
-                      className="flex items-center justify-between border border-border p-3 bg-background"
-                    >
-                      <span className="text-sm font-medium">{step.title}</span>
-                      <span className="text-xs text-muted-foreground">{step.date}</span>
-                    </div>
-                  ))}
+                  <div className="border-l-2 border-border pl-6 space-y-4">
+                    {buildTrackingSteps(selectedOrder.created_at).map((step) => {
+                      const currentStep = resolveCurrentTrackingStep(selectedOrder);
+                      const isCurrent = step.key === currentStep;
+                      return (
+                        <div key={step.key} className="relative">
+                          <span
+                            className={`absolute -left-3 top-2 h-3 w-3 rounded-full border-2 ${
+                              isCurrent
+                                ? "border-primary bg-primary/80 animate-pulse"
+                                : "border-muted bg-muted"
+                            }`}
+                          />
+                          <div
+                            className={`flex items-center justify-between border border-border p-3 bg-background ${
+                              isCurrent ? "border-primary/60" : ""
+                            }`}
+                          >
+                            <span className="text-sm font-medium">{step.title}</span>
+                            <span className="text-xs text-muted-foreground">{step.date}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 

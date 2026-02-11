@@ -2,13 +2,25 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_ENABLE_PIX": "true",
+        "EXPO_PUBLIC_PIX_PROVIDER": "manual"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_ENABLE_PIX": "true",
+        "EXPO_PUBLIC_PIX_PROVIDER": "manual"
+      }
     },
     "production": {
-      "distribution": "store"
+      "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_ENABLE_PIX": "true",
+        "EXPO_PUBLIC_PIX_PROVIDER": "manual"
+      }
     }
   }
 }

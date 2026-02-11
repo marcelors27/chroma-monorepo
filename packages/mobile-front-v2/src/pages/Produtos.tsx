@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { ProductCard } from "@/components/ui/ProductCard";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ProductFiltersSheet, ProductFilters } from "@/components/ui/ProductFiltersSheet";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
@@ -232,23 +233,28 @@ export default function Produtos() {
           ))}
         </ScrollView>
 
-        {isLoading && (
-          <View style={styles.loadingRow}>
-            <LoadingSpinner size={28} />
-            <Text style={styles.loadingText}>Carregando produtos...</Text>
+        {isLoading ? (
+          <View style={styles.productsGrid}>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <View key={`product-skeleton-${index}`} style={[styles.skeletonCard, { width: cardWidth }]}>
+                <Skeleton style={styles.skeletonImage} />
+                <Skeleton style={styles.skeletonLine} />
+                <Skeleton style={styles.skeletonLineShort} />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.productsGrid}>
+            {filteredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                {...product}
+                style={{ width: cardWidth }}
+                onAddToCart={() => handleAddToCart(product)}
+              />
+            ))}
           </View>
         )}
-
-        <View style={styles.productsGrid}>
-          {filteredProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              {...product}
-              style={{ width: cardWidth }}
-              onAddToCart={() => handleAddToCart(product)}
-            />
-          ))}
-        </View>
 
         {!isLoading && filteredProducts.length === 0 && (
           <View style={styles.emptyState}>
@@ -327,15 +333,25 @@ const styles = StyleSheet.create({
     color: "#E6E8EA",
     fontWeight: "600",
   },
-  loadingRow: {
-    marginTop: 16,
-    flexDirection: "row",
-    alignItems: "center",
+  skeletonCard: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 18,
+    padding: 12,
     gap: 10,
   },
-  loadingText: {
-    color: "#8C98A8",
-    fontSize: 13,
+  skeletonImage: {
+    width: "100%",
+    height: 120,
+    borderRadius: 12,
+  },
+  skeletonLine: {
+    height: 14,
+    borderRadius: 8,
+  },
+  skeletonLineShort: {
+    height: 12,
+    width: "60%",
+    borderRadius: 8,
   },
   productsGrid: {
     marginTop: 16,

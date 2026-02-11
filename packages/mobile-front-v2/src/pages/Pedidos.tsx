@@ -6,6 +6,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { Skeleton } from "@/components/ui/skeleton";
+import { suspendGlobalLoading } from "@/lib/global-loading";
 import {
   fetchPendingPaymentsFromBackend,
   formatMoney,
@@ -60,9 +63,10 @@ export default function Pedidos() {
   const queryClient = useQueryClient();
   const ENABLE_TEST_BOLETO = process.env.EXPO_PUBLIC_ENABLE_TEST_BOLETO === "true";
   const [testPaymentId, setTestPaymentId] = useState<string | null>(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const { finalizePendingBoleto } = useCart();
-  const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
-  const { data, isFetching, refetch } = useQuery({
+  const [activeTab, setActiveTab] = useState<"pending" | "progress" | "history">("pending");
+  const { data, isFetching, isLoading, refetch } = useQuery({
     queryKey: ["orders"],
     queryFn: listOrders,
     refetchOnMount: "always",
@@ -106,11 +110,33 @@ export default function Pedidos() {
     });
   }, [data]);
 
-  const { pendingCount, historyCount } = useMemo(() => {
-    const pending = orders.filter((order) => ["info", "warning"].includes(order.statusTone)).length + pendingPayments.length;
-    const history = orders.filter((order) => ["success", "danger"].includes(order.statusTone)).length;
-    return { pendingCount: pending, historyCount: history };
-  }, [orders, pendingPayments.length]);
+  const isHistoryOrder = (order: MedusaOrder) =>
+    order.status === "canceled" ||
+    order.fulfillment_status === "canceled" ||
+    order.fulfillment_status === "delivered";
+
+  const ordersWithoutPending = useMemo(() => {
+    return orders.filter(
+      (order) => !order.payment_collection_id || !pendingByCollection.has(order.payment_collection_id)
+    );
+  }, [orders, pendingByCollection]);
+
+  const inProgressOrders = useMemo(
+    () => ordersWithoutPending.filter((order) => !isHistoryOrder(order)),
+    [ordersWithoutPending]
+  );
+  const historyOrders = useMemo(
+    () => ordersWithoutPending.filter(isHistoryOrder),
+    [ordersWithoutPending]
+  );
+
+  const { pendingCount, progressCount, historyCount } = useMemo(() => {
+    return {
+      pendingCount: pendingPayments.length,
+      progressCount: inProgressOrders.length,
+      historyCount: historyOrders.length,
+    };
+  }, [pendingPayments.length, inProgressOrders.length, historyOrders.length]);
 
   const pendingByCollection = useMemo(() => {
     const map = new Map<string, PendingPayment>();
@@ -123,21 +149,6 @@ export default function Pedidos() {
   }, [pendingPayments]);
 
   const visibleOrders = useMemo(() => {
-    if (activeTab === "history") {
-      return orders
-        .filter((order) => ["success", "danger"].includes(order.statusTone))
-        .map((order) => {
-          const pending = order.payment_collection_id
-            ? pendingByCollection.get(order.payment_collection_id)
-            : undefined;
-          return {
-            ...order,
-            details: pending?.details,
-            paymentType: pending?.details?.method || "pagamento",
-            showPendingDetails: Boolean(pending?.details),
-          };
-        });
-    }
     const pendingMapped = pendingPayments.map((pending) => ({
       id: pending.payment_collection_id,
       status: "Pagamento pendente",
@@ -153,15 +164,22 @@ export default function Pedidos() {
       paymentType: pending.details?.method || "pagamento",
       payment_collection_id: pending.payment_collection_id,
     }));
-    const pendingOrders = orders.filter((order) => {
-      if (!["info", "warning"].includes(order.statusTone)) return false;
-      if (order.payment_collection_id && pendingByCollection.has(order.payment_collection_id)) {
-        return false;
-      }
-      return true;
-    });
-    return [...pendingMapped, ...pendingOrders];
-  }, [activeTab, orders, pendingPayments, pendingByCollection]);
+
+    if (activeTab === "pending") {
+      return pendingMapped;
+    }
+    if (activeTab === "progress") {
+      return inProgressOrders;
+    }
+    return historyOrders;
+  }, [activeTab, pendingPayments, inProgressOrders, historyOrders, pendingByCollection]);
+
+  const showSkeleton = isLoading && visibleOrders.length === 0;
+
+  useEffect(() => {
+    if (!isActionLoading) return;
+    return suspendGlobalLoading();
+  }, [isActionLoading]);
 
   const handleTestBoleto = async (paymentCollectionId?: string | null) => {
     if (!paymentCollectionId || testPaymentId) return;
@@ -178,6 +196,7 @@ export default function Pedidos() {
     });
     if (!confirmed) return;
     setTestPaymentId(paymentCollectionId);
+    setIsActionLoading(true);
     try {
       await testBoletoPayment({ payment_collection_id: paymentCollectionId });
       await removePendingPayment({ payment_collection_id: paymentCollectionId });
@@ -191,6 +210,7 @@ export default function Pedidos() {
       toast.error(err?.message || "Não foi possível confirmar o boleto.");
     } finally {
       setTestPaymentId(null);
+      setIsActionLoading(false);
     }
   };
 
@@ -216,6 +236,8 @@ export default function Pedidos() {
   return (
     <AuthenticatedLayout>
       <Header title="Meus Pedidos" showCondoSelector showNotification={false} />
+
+      <LoadingOverlay visible={isActionLoading} />
 
       <ScrollView
         style={styles.scrollContent}
@@ -255,7 +277,7 @@ export default function Pedidos() {
           >
             <Clock color="#E6E8EA" size={16} />
             <Text style={[styles.tabText, activeTab === "pending" && styles.tabTextActive]}>
-              Em Andamento
+              Pendentes
             </Text>
             {pendingCount > 0 && (
               <View style={styles.tabBadge}>
@@ -264,8 +286,22 @@ export default function Pedidos() {
             )}
           </Pressable>
           <Pressable
+            onPress={() => setActiveTab("progress")}
+            style={[styles.tab, activeTab === "progress" && styles.tabActive]}
+          >
+            <Truck color={activeTab === "progress" ? "#E6E8EA" : "#8C98A8"} size={16} />
+            <Text style={[styles.tabText, activeTab === "progress" && styles.tabTextActive]}>
+              Em andamento
+            </Text>
+            {progressCount > 0 && (
+              <View style={styles.tabBadge}>
+                <Text style={styles.tabBadgeText}>{progressCount}</Text>
+              </View>
+            )}
+          </Pressable>
+          <Pressable
             onPress={() => setActiveTab("history")}
-            style={[styles.tab, activeTab === "history" && styles.tabActive]}
+            style={[styles.tab, styles.tabFull, activeTab === "history" && styles.tabActive]}
           >
             <ClipboardList color={activeTab === "history" ? "#E6E8EA" : "#8C98A8"} size={16} />
             <Text style={[styles.tabText, activeTab === "history" && styles.tabTextActive]}>
@@ -274,17 +310,34 @@ export default function Pedidos() {
           </Pressable>
         </View>
 
-        {visibleOrders.map((order) => {
-          const statusStyles =
-            order.statusTone === "warning"
-              ? { backgroundColor: "rgba(245, 158, 11, 0.22)", color: "#FBBF24" }
-              : order.statusTone === "success"
-              ? { backgroundColor: "rgba(16, 185, 129, 0.2)", color: "#34D399" }
+        {showSkeleton ? (
+          Array.from({ length: 4 }).map((_, index) => (
+            <View key={`order-skeleton-${index}`} style={styles.orderSkeletonCard}>
+              <View style={styles.orderSkeletonTop}>
+                <Skeleton style={styles.orderSkeletonTag} />
+                <Skeleton style={styles.orderSkeletonPill} />
+              </View>
+              <Skeleton style={styles.orderSkeletonLine} />
+              <Skeleton style={styles.orderSkeletonLineShort} />
+              <Skeleton style={styles.orderSkeletonLineShorter} />
+              <View style={styles.orderSkeletonBottom}>
+                <Skeleton style={styles.orderSkeletonThumb} />
+                <Skeleton style={styles.orderSkeletonPrice} />
+              </View>
+            </View>
+          ))
+        ) : (
+          visibleOrders.map((order) => {
+            const statusStyles =
+              order.statusTone === "warning"
+                ? { backgroundColor: "rgba(245, 158, 11, 0.22)", color: "#FBBF24" }
+                : order.statusTone === "success"
+                ? { backgroundColor: "rgba(16, 185, 129, 0.2)", color: "#34D399" }
               : order.statusTone === "danger"
               ? { backgroundColor: "rgba(239, 68, 68, 0.2)", color: "#F87171" }
               : { backgroundColor: "rgba(93, 162, 230, 0.2)", color: "#5DA2E6" };
 
-          return (
+            return (
             <Pressable
               key={order.id}
               onPress={() =>
@@ -431,15 +484,20 @@ export default function Pedidos() {
                     <Pressable
                       style={[styles.pendingActionButton, styles.pendingActionClear]}
                       onPress={async () => {
-                        const result = await finalizePendingBoleto(order.details?.client_secret || "");
-                        if (result.status === "completed") {
-                          toast.success(`Pagamento confirmado! ${result.orderId ? `#${result.orderId}` : ""}`.trim());
-                          await queryClient.invalidateQueries({ queryKey: ["orders"] });
-                          const local = await getPendingPayments();
-                          const remote = await fetchPendingPaymentsFromBackend();
-                          setPendingPayments(mergePendingPayments(local, remote));
-                        } else {
-                          toast.info("Pagamento ainda pendente.");
+                        setIsActionLoading(true);
+                        try {
+                          const result = await finalizePendingBoleto(order.details?.client_secret || "");
+                          if (result.status === "completed") {
+                            toast.success(`Pagamento confirmado! ${result.orderId ? `#${result.orderId}` : ""}`.trim());
+                            await queryClient.invalidateQueries({ queryKey: ["orders"] });
+                            const local = await getPendingPayments();
+                            const remote = await fetchPendingPaymentsFromBackend();
+                            setPendingPayments(mergePendingPayments(local, remote));
+                          } else {
+                            toast.info("Pagamento ainda pendente.");
+                          }
+                        } finally {
+                          setIsActionLoading(false);
                         }
                       }}
                     >
@@ -500,8 +558,9 @@ export default function Pedidos() {
                 </View>
               )}
             </Pressable>
-          );
-        })}
+            );
+          })
+        )}
       </ScrollView>
     </AuthenticatedLayout>
   );
@@ -533,8 +592,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+  orderSkeletonCard: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    gap: 10,
+  },
+  orderSkeletonTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  orderSkeletonTag: {
+    width: 80,
+    height: 12,
+    borderRadius: 8,
+  },
+  orderSkeletonPill: {
+    width: 110,
+    height: 20,
+    borderRadius: 999,
+  },
+  orderSkeletonLine: {
+    height: 14,
+    borderRadius: 8,
+  },
+  orderSkeletonLineShort: {
+    height: 12,
+    width: "75%",
+    borderRadius: 8,
+  },
+  orderSkeletonLineShorter: {
+    height: 12,
+    width: "55%",
+    borderRadius: 8,
+  },
+  orderSkeletonBottom: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  orderSkeletonThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+  },
+  orderSkeletonPrice: {
+    width: 90,
+    height: 14,
+    borderRadius: 8,
+  },
   tabsContainer: {
     flexDirection: "row",
+    flexWrap: "wrap",
     backgroundColor: "rgba(24, 28, 36, 0.9)",
     borderRadius: 16,
     padding: 6,
@@ -542,16 +654,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   tab: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "48%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingVertical: 10,
+    paddingHorizontal: 8,
     borderRadius: 12,
     backgroundColor: "transparent",
     borderWidth: 1,
     borderColor: "transparent",
+  },
+  tabFull: {
+    flexBasis: "100%",
   },
   tabActive: {
     backgroundColor: "rgba(52, 59, 70, 0.9)",

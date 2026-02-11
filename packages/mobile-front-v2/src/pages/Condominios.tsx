@@ -8,13 +8,14 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { CondoCard } from "@/components/ui/CondoCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCondo } from "@/contexts/CondoContext";
 import { listCompanies } from "@/lib/medusa";
 
 export default function Condominios() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
-  const { data } = useQuery({ queryKey: ["companies"], queryFn: listCompanies });
+  const { data, isLoading } = useQuery({ queryKey: ["companies"], queryFn: listCompanies });
   const { hasApprovedCondo } = useCondo();
   const isFirstAccess = !hasApprovedCondo;
 
@@ -71,17 +72,29 @@ export default function Condominios() {
         </View>
 
         <View style={styles.list}>
-          {filteredCondos.map((condo) => (
-            <CondoCard
-              key={condo.id}
-              {...condo}
-              onEdit={() => navigation.navigate("CondominioDetalhes" as never, { id: condo.id } as never)}
-              onClick={() => navigation.navigate("CondominioDetalhes" as never, { id: condo.id } as never)}
-            />
-          ))}
+          {isLoading
+            ? Array.from({ length: 3 }).map((_, index) => (
+                <View key={`condo-skeleton-${index}`} style={styles.condoSkeletonCard}>
+                  <View style={styles.condoSkeletonRow}>
+                    <Skeleton style={styles.condoSkeletonIcon} />
+                    <View style={styles.condoSkeletonContent}>
+                      <Skeleton style={styles.condoSkeletonLine} />
+                      <Skeleton style={styles.condoSkeletonLineShort} />
+                    </View>
+                  </View>
+                </View>
+              ))
+            : filteredCondos.map((condo) => (
+                <CondoCard
+                  key={condo.id}
+                  {...condo}
+                  onEdit={() => navigation.navigate("CondominioDetalhes" as never, { id: condo.id } as never)}
+                  onClick={() => navigation.navigate("CondominioDetalhes" as never, { id: condo.id } as never)}
+                />
+              ))}
         </View>
 
-        {filteredCondos.length === 0 && (
+        {!isLoading && filteredCondos.length === 0 && (
           <View style={styles.emptyState}>
             <Building2 color="hsl(215 15% 55%)" size={40} />
             <Text style={styles.emptyTitle}>Nenhum condomínio encontrado</Text>
@@ -169,6 +182,34 @@ const styles = StyleSheet.create({
   list: {
     marginTop: 16,
     gap: 12,
+  },
+  condoSkeletonCard: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 18,
+    padding: 14,
+  },
+  condoSkeletonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  condoSkeletonIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+  },
+  condoSkeletonContent: {
+    flex: 1,
+    gap: 8,
+  },
+  condoSkeletonLine: {
+    height: 12,
+    borderRadius: 8,
+  },
+  condoSkeletonLineShort: {
+    height: 10,
+    width: "55%",
+    borderRadius: 8,
   },
   emptyState: {
     alignItems: "center",

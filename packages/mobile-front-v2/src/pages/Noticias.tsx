@@ -8,6 +8,7 @@ import { ptBR } from "date-fns/locale";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { NewsCard } from "@/components/ui/NewsCard";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { listNews, MedusaNews } from "@/lib/medusa";
 
@@ -15,7 +16,7 @@ export default function Noticias() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todas");
-  const { data } = useQuery({ queryKey: ["news-list"], queryFn: () => listNews({ limit: 100 }) });
+  const { data, isLoading } = useQuery({ queryKey: ["news-list"], queryFn: () => listNews({ limit: 100 }) });
   const allNews = (data?.news || []) as MedusaNews[];
 
   const categories = useMemo(() => {
@@ -88,12 +89,25 @@ export default function Noticias() {
           </View>
         </ScrollView>
 
-        <Text style={styles.resultsText}>
-          {filteredNews.length} {filteredNews.length === 1 ? "notícia encontrada" : "notícias encontradas"}
-        </Text>
+        {!isLoading && (
+          <Text style={styles.resultsText}>
+            {filteredNews.length} {filteredNews.length === 1 ? "notícia encontrada" : "notícias encontradas"}
+          </Text>
+        )}
 
         <View style={styles.newsList}>
-          {filteredNews.length > 0 ? (
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, index) => (
+              <View key={`news-skeleton-${index}`} style={styles.newsSkeletonCard}>
+                <Skeleton style={styles.newsSkeletonImage} />
+                <View style={styles.newsSkeletonContent}>
+                  <Skeleton style={styles.newsSkeletonLine} />
+                  <Skeleton style={styles.newsSkeletonLine} />
+                  <Skeleton style={styles.newsSkeletonLineShort} />
+                </View>
+              </View>
+            ))
+          ) : filteredNews.length > 0 ? (
             filteredNews.map((news, index) => (
               <NewsCard
                 key={news.id}
@@ -186,6 +200,29 @@ const styles = StyleSheet.create({
   newsList: {
     marginTop: 12,
     gap: 12,
+  },
+  newsSkeletonCard: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 18,
+    padding: 12,
+    gap: 12,
+  },
+  newsSkeletonImage: {
+    width: "100%",
+    height: 140,
+    borderRadius: 14,
+  },
+  newsSkeletonContent: {
+    gap: 8,
+  },
+  newsSkeletonLine: {
+    height: 12,
+    borderRadius: 8,
+  },
+  newsSkeletonLineShort: {
+    height: 12,
+    width: "55%",
+    borderRadius: 8,
   },
   emptyState: {
     alignItems: "center",

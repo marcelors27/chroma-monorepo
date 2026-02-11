@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Image,
   ImageBackground,
@@ -14,7 +14,8 @@ import { ArrowLeft, Mail } from "lucide-react-native";
 import { requestPasswordReset } from "@/lib/medusa";
 import { toast } from "@/lib/toast";
 import logo from "@/assets/logo.png";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { suspendGlobalLoading } from "@/lib/global-loading";
 
 const AUTH_BG = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&auto=format&fit=crop&q=80";
 
@@ -40,6 +41,11 @@ export default function ResetPassword() {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (!isSubmitting) return;
+    return suspendGlobalLoading();
+  }, [isSubmitting]);
 
   return (
     <ImageBackground source={{ uri: AUTH_BG }} style={styles.screen} resizeMode="cover">
@@ -82,11 +88,7 @@ export default function ResetPassword() {
         </View>
       </ScrollView>
 
-      {isSubmitting && (
-        <View style={styles.loadingOverlay}>
-          <LoadingSpinner size={84} style={styles.loadingIcon} />
-        </View>
-      )}
+      <LoadingOverlay visible={isSubmitting} />
     </ImageBackground>
   );
 }
@@ -168,19 +170,5 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
-  },
-  loadingOverlay: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: "rgba(8, 12, 18, 0.35)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 20,
-  },
-  loadingIcon: {
-    opacity: 0.7,
   },
 });

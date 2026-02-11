@@ -12,6 +12,7 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { NewsCard } from "@/components/ui/NewsCard";
 import { ProductCard } from "@/components/ui/ProductCard";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/lib/toast";
 import { useCondo } from "@/contexts/CondoContext";
 import { useCart } from "@/contexts/CartContext";
@@ -35,12 +36,15 @@ export default function Index() {
   const { addItem, isAddingItem } = useCart();
   const { user } = useAuth();
   const netInfo = useNetInfo();
-  const { data, refetch: refetchProducts } = useQuery({ queryKey: ["home-products"], queryFn: listProducts });
-  const { data: newsData, refetch: refetchNews } = useQuery({
+  const { data, isLoading: isLoadingProducts, refetch: refetchProducts } = useQuery({
+    queryKey: ["home-products"],
+    queryFn: listProducts,
+  });
+  const { data: newsData, isLoading: isLoadingNews, refetch: refetchNews } = useQuery({
     queryKey: ["home-news"],
     queryFn: () => listNews({ limit: 3 }),
   });
-  const { data: bannerData, refetch: refetchBanners } = useQuery({
+  const { data: bannerData, isLoading: isLoadingBanners, refetch: refetchBanners } = useQuery({
     queryKey: ["home-banners"],
     queryFn: () => listMarketingBanners({ limit: 5 }),
   });
@@ -228,7 +232,17 @@ export default function Index() {
             </Text>
           </View>
         </View>
-        {banners.length > 0 && (
+        {isLoadingBanners ? (
+          <View style={styles.bannerSection}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bannerRow}>
+              {Array.from({ length: 2 }).map((_, index) => (
+                <View key={`banner-skeleton-${index}`} style={styles.bannerCard}>
+                  <Skeleton style={styles.bannerSkeleton} />
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        ) : banners.length > 0 ? (
           <View style={styles.bannerSection}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bannerRow}>
               {banners.map((banner) => {
@@ -263,7 +277,7 @@ export default function Index() {
               })}
             </ScrollView>
           </View>
-        )}
+        ) : null}
         <View style={styles.metricsRow}>
           <View style={styles.metricCard}>
             <View style={styles.metricHeader}>
@@ -310,32 +324,49 @@ export default function Index() {
             </Pressable>
           </View>
 
-          {featuredNews && (
-            <NewsCard
-              title={featuredNews.title}
-              summary={featuredNews.summary}
-              source={featuredNews.source || featuredNews.author || "Chroma"}
-              date={formatNewsDate(featuredNews.published_at)}
-              image={featuredNews.image_url || undefined}
-              isHighlight
-              onClick={() =>
-                navigation.navigate("NoticiaDetalhes" as never, { id: featuredNews.id } as never)
-              }
-            />
+          {isLoadingNews ? (
+            <View style={styles.listGap}>
+              {Array.from({ length: 3 }).map((_, index) => (
+                <View key={`news-skeleton-${index}`} style={styles.newsSkeletonCard}>
+                  <Skeleton style={styles.newsSkeletonImage} />
+                  <View style={styles.newsSkeletonContent}>
+                    <Skeleton style={styles.newsSkeletonLine} />
+                    <Skeleton style={styles.newsSkeletonLine} />
+                    <Skeleton style={styles.newsSkeletonLineShort} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <>
+              {featuredNews && (
+                <NewsCard
+                  title={featuredNews.title}
+                  summary={featuredNews.summary}
+                  source={featuredNews.source || featuredNews.author || "Chroma"}
+                  date={formatNewsDate(featuredNews.published_at)}
+                  image={featuredNews.image_url || undefined}
+                  isHighlight
+                  onClick={() =>
+                    navigation.navigate("NoticiaDetalhes" as never, { id: featuredNews.id } as never)
+                  }
+                />
+              )}
+              <View style={styles.listGap}>
+                {listNewsItems.map((item) => (
+                  <NewsCard
+                    key={item.id}
+                    title={item.title}
+                    summary={item.summary}
+                    source={item.source || item.author || "Chroma"}
+                    date={formatNewsDate(item.published_at)}
+                    image={item.image_url || undefined}
+                    onClick={() => navigation.navigate("NoticiaDetalhes" as never, { id: item.id } as never)}
+                  />
+                ))}
+              </View>
+            </>
           )}
-          <View style={styles.listGap}>
-            {listNewsItems.map((item) => (
-              <NewsCard
-                key={item.id}
-                title={item.title}
-                summary={item.summary}
-                source={item.source || item.author || "Chroma"}
-                date={formatNewsDate(item.published_at)}
-                image={item.image_url || undefined}
-                onClick={() => navigation.navigate("NoticiaDetalhes" as never, { id: item.id } as never)}
-              />
-            ))}
-          </View>
         </View>
 
         <View style={styles.section}>
@@ -348,20 +379,28 @@ export default function Index() {
           </View>
 
           <View style={styles.productRow}>
-            {featuredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                {...product}
-                style={{ width: productCardWidth }}
-                onPress={() =>
-                  navigation.navigate(
-                    "Produtos" as never,
-                    { screen: "ProductDetails", params: { id: product.id } } as never
-                  )
-                }
-                onAddToCart={() => handleAddToCart(product)}
-              />
-            ))}
+            {isLoadingProducts
+              ? Array.from({ length: 2 }).map((_, index) => (
+                  <View key={`product-skeleton-${index}`} style={[styles.productSkeletonCard, { width: productCardWidth }]}>
+                    <Skeleton style={styles.productSkeletonImage} />
+                    <Skeleton style={styles.productSkeletonLine} />
+                    <Skeleton style={styles.productSkeletonLineShort} />
+                  </View>
+                ))
+              : featuredProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    {...product}
+                    style={{ width: productCardWidth }}
+                    onPress={() =>
+                      navigation.navigate(
+                        "Produtos" as never,
+                        { screen: "ProductDetails", params: { id: product.id } } as never
+                      )
+                    }
+                    onAddToCart={() => handleAddToCart(product)}
+                  />
+                ))}
           </View>
         </View>
 
@@ -393,6 +432,11 @@ const styles = StyleSheet.create({
   },
   bannerSection: {
     marginBottom: 16,
+  },
+  bannerSkeleton: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
   },
   refreshRow: {
     flexDirection: "column",
@@ -576,6 +620,49 @@ const styles = StyleSheet.create({
   listGap: {
     marginTop: 12,
     gap: 12,
+  },
+  newsSkeletonCard: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 18,
+    padding: 12,
+    gap: 12,
+  },
+  newsSkeletonImage: {
+    width: "100%",
+    height: 140,
+    borderRadius: 14,
+  },
+  newsSkeletonContent: {
+    gap: 8,
+  },
+  newsSkeletonLine: {
+    height: 12,
+    borderRadius: 8,
+  },
+  newsSkeletonLineShort: {
+    height: 12,
+    width: "55%",
+    borderRadius: 8,
+  },
+  productSkeletonCard: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 18,
+    padding: 12,
+    gap: 10,
+  },
+  productSkeletonImage: {
+    width: "100%",
+    height: 120,
+    borderRadius: 12,
+  },
+  productSkeletonLine: {
+    height: 12,
+    borderRadius: 8,
+  },
+  productSkeletonLineShort: {
+    height: 10,
+    width: "60%",
+    borderRadius: 8,
   },
   productRow: {
     flexDirection: "row",

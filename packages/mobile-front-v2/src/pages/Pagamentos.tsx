@@ -1,8 +1,12 @@
 import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
+import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { suspendGlobalLoading } from "@/lib/global-loading";
 import {
   fetchSavedPaymentMethodsFromBackend,
   removeSavedPaymentMethod,
@@ -11,7 +15,8 @@ import {
 
 export default function Pagamentos() {
   const ENABLE_PIX = process.env.EXPO_PUBLIC_ENABLE_PIX === "true";
-  const { data, refetch } = useQuery({
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["payment-methods"],
     queryFn: fetchSavedPaymentMethodsFromBackend,
   });
@@ -27,23 +32,34 @@ export default function Pagamentos() {
     return `${days} ${days === 1 ? "dia" : "dias"}`;
   };
 
+  useEffect(() => {
+    if (!isActionLoading) return;
+    return suspendGlobalLoading();
+  }, [isActionLoading]);
+
   const handleSetDefault = async (id: string) => {
+    setIsActionLoading(true);
     try {
       await setDefaultSavedPaymentMethod(id);
       toast.success("Forma de pagamento padrão atualizada");
       refetch();
     } catch (err: any) {
       toast.error(err?.message || "Não foi possível atualizar a forma de pagamento.");
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
   const handleRemove = async (id: string) => {
+    setIsActionLoading(true);
     try {
       await removeSavedPaymentMethod(id);
       toast.success("Forma de pagamento removida");
       refetch();
     } catch (err: any) {
       toast.error(err?.message || "Não foi possível remover a forma de pagamento.");
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -51,29 +67,42 @@ export default function Pagamentos() {
     <AuthenticatedLayout>
       <Header title="Pagamentos" showBackButton showCondoSelector />
 
+      <LoadingOverlay visible={isActionLoading} />
+
       <ScrollView style={styles.scrollContent}>
-        {payments.map((payment) => (
-          <View key={payment.id} style={styles.card}>
-            <Text style={styles.cardTitle}>{payment.label}</Text>
-            <Text style={styles.cardSubtitle}>{formatType(payment.type)}</Text>
-            {payment.type === "boleto" && payment.details?.boleto_expires_after_days ? (
-              <Text style={styles.cardSubtitle}>
-                Vencimento: {formatBoletoDays(payment.details.boleto_expires_after_days)}
-              </Text>
-            ) : null}
-            <View style={styles.actionsRow}>
-              {!payment.is_default && (
-                <Pressable onPress={() => handleSetDefault(payment.id)} style={styles.secondaryButton}>
-                  <Text style={styles.secondaryButtonText}>Tornar padrão</Text>
-                </Pressable>
-              )}
-              <Pressable onPress={() => handleRemove(payment.id)} style={styles.destructiveButton}>
-                <Text style={styles.destructiveButtonText}>Remover</Text>
-              </Pressable>
-            </View>
-          </View>
-        ))}
-        {payments.length === 0 && (
+        {isLoading
+          ? Array.from({ length: 3 }).map((_, index) => (
+              <View key={`payment-skeleton-${index}`} style={styles.skeletonCard}>
+                <Skeleton style={styles.skeletonLine} />
+                <Skeleton style={styles.skeletonLineShort} />
+                <View style={styles.skeletonActions}>
+                  <Skeleton style={styles.skeletonButton} />
+                  <Skeleton style={styles.skeletonButton} />
+                </View>
+              </View>
+            ))
+          : payments.map((payment) => (
+              <View key={payment.id} style={styles.card}>
+                <Text style={styles.cardTitle}>{payment.label}</Text>
+                <Text style={styles.cardSubtitle}>{formatType(payment.type)}</Text>
+                {payment.type === "boleto" && payment.details?.boleto_expires_after_days ? (
+                  <Text style={styles.cardSubtitle}>
+                    Vencimento: {formatBoletoDays(payment.details.boleto_expires_after_days)}
+                  </Text>
+                ) : null}
+                <View style={styles.actionsRow}>
+                  {!payment.is_default && (
+                    <Pressable onPress={() => handleSetDefault(payment.id)} style={styles.secondaryButton}>
+                      <Text style={styles.secondaryButtonText}>Tornar padrão</Text>
+                    </Pressable>
+                  )}
+                  <Pressable onPress={() => handleRemove(payment.id)} style={styles.destructiveButton}>
+                    <Text style={styles.destructiveButtonText}>Remover</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+        {!isLoading && payments.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>Nenhuma forma de pagamento salva.</Text>
           </View>
@@ -153,5 +182,31 @@ const styles = StyleSheet.create({
   emptyText: {
     color: "#8C98A8",
     fontSize: 13,
+  },
+  skeletonCard: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    gap: 10,
+  },
+  skeletonLine: {
+    height: 12,
+    borderRadius: 8,
+  },
+  skeletonLineShort: {
+    height: 10,
+    width: "55%",
+    borderRadius: 8,
+  },
+  skeletonActions: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 6,
+  },
+  skeletonButton: {
+    flex: 1,
+    height: 32,
+    borderRadius: 12,
   },
 });

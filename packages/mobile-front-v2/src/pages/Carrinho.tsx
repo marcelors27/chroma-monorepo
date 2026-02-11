@@ -16,13 +16,16 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
 import { useCart } from "@/contexts/CartContext";
 import { useCondo } from "@/contexts/CondoContext";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { Skeleton } from "@/components/ui/skeleton";
+import { suspendGlobalLoading } from "@/lib/global-loading";
 import {
   createRecurrence,
   fetchSavedPaymentMethodsFromBackend,
   formatMoney,
   getCustomerMe,
   listShippingOptions,
+  retrieveCart,
   SavedPaymentMethod,
   setCartShippingAddress,
   upsertSavedPaymentMethod,
@@ -169,6 +172,12 @@ export default function Carrinho() {
       setShippingLoading(true);
       setShippingError(null);
       try {
+        const cartSnapshot = await retrieveCart(cartId);
+        if ((cartSnapshot as any)?.completed_at || (cartSnapshot as any)?.status === "completed") {
+          await refreshCart();
+          setShippingLoading(false);
+          return;
+        }
         const shippingAddress = {
           first_name: "Condomínio",
           last_name: "Compras",
@@ -311,21 +320,16 @@ export default function Carrinho() {
     }
   };
 
+  useEffect(() => {
+    if (!isProcessing) return;
+    return suspendGlobalLoading();
+  }, [isProcessing]);
+
   return (
     <AuthenticatedLayout>
       <Header title="Carrinho" subtitle={`${items.length} itens`} showNotification={false} showCondoSelector />
 
-      {isProcessing && (selectedPayment === "boleto" || selectedPayment === "pix") && (
-        <View style={styles.processingOverlay} pointerEvents="auto">
-          <View style={styles.processingCard}>
-            <LoadingSpinner size={64} />
-            <Text style={styles.processingTitle}>
-              {selectedPayment === "pix" ? "Gerando PIX..." : "Gerando boleto..."}
-            </Text>
-            <Text style={styles.processingSubtitle}>Isso pode levar alguns segundos.</Text>
-          </View>
-        </View>
-      )}
+      <LoadingOverlay visible={isProcessing} />
 
       <ScrollView style={styles.scrollContent} scrollEnabled={!isProcessing}>
         {items.map((item) => (
@@ -393,9 +397,17 @@ export default function Carrinho() {
         <Text style={styles.sectionTitle}>Método de entrega</Text>
         {shippingError && <Text style={styles.errorText}>{shippingError}</Text>}
         {shippingLoading ? (
-          <View style={styles.loadingRow}>
-            <LoadingSpinner size={24} />
-            <Text style={styles.helperText}>Carregando opções...</Text>
+          <View style={styles.sectionList}>
+            {Array.from({ length: 2 }).map((_, index) => (
+              <View key={`shipping-skeleton-${index}`} style={styles.shippingSkeletonCard}>
+                <Skeleton style={styles.shippingSkeletonIcon} />
+                <View style={styles.shippingSkeletonContent}>
+                  <Skeleton style={styles.shippingSkeletonLine} />
+                  <Skeleton style={styles.shippingSkeletonLineShort} />
+                </View>
+                <Skeleton style={styles.shippingSkeletonRadio} />
+              </View>
+            ))}
           </View>
         ) : shippingOptions.length === 0 ? (
           <Text style={styles.helperText}>
@@ -532,19 +544,8 @@ export default function Carrinho() {
             <Text style={styles.summaryTotalValue}>{formattedTotal}</Text>
           </View>
           <Pressable onPress={handleCheckout} style={styles.checkoutButton} disabled={isProcessing}>
-            {isProcessing && (selectedPayment === "boleto" || selectedPayment === "pix") ? (
-              <>
-                <LoadingSpinner size={20} />
-                <Text style={styles.checkoutButtonText}>
-                  {selectedPayment === "pix" ? "Gerando PIX..." : "Gerando boleto..."}
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.checkoutButtonText}>Finalizar Compra</Text>
-                <ChevronRight color="#E6E8EA" size={18} />
-              </>
-            )}
+            <Text style={styles.checkoutButtonText}>Finalizar Compra</Text>
+            <ChevronRight color="#E6E8EA" size={18} />
           </Pressable>
         </View>
       </ScrollView>
@@ -633,12 +634,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
   },
-  loadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 8,
-  },
   sectionTitle: {
     color: "#E6E8EA",
     fontSize: 18,
@@ -684,6 +679,40 @@ const styles = StyleSheet.create({
   sectionList: {
     marginTop: 16,
     gap: 12,
+  },
+  shippingSkeletonCard: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    borderWidth: 1,
+    borderColor: "rgba(46, 54, 68, 0.6)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  shippingSkeletonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+  },
+  shippingSkeletonContent: {
+    flex: 1,
+    gap: 8,
+  },
+  shippingSkeletonLine: {
+    height: 12,
+    borderRadius: 8,
+  },
+  shippingSkeletonLineShort: {
+    height: 10,
+    width: "55%",
+    borderRadius: 8,
+  },
+  shippingSkeletonRadio: {
+    width: 24,
+    height: 24,
+    borderRadius: 999,
   },
   paymentCard: {
     backgroundColor: "rgba(24, 28, 36, 0.95)",
@@ -880,37 +909,5 @@ const styles = StyleSheet.create({
     color: "#E6E8EA",
     fontSize: 15,
     fontWeight: "600",
-  },
-  processingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(7, 10, 16, 0.7)",
-    zIndex: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-  },
-  processingCard: {
-    width: "100%",
-    maxWidth: 320,
-    backgroundColor: "rgba(24, 28, 36, 0.98)",
-    borderRadius: 22,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    borderWidth: 1,
-    borderColor: "rgba(93, 162, 230, 0.4)",
-    alignItems: "center",
-    gap: 10,
-  },
-  processingTitle: {
-    color: "#E6E8EA",
-    fontSize: 16,
-    fontWeight: "600",
-    marginTop: 6,
-    textAlign: "center",
-  },
-  processingSubtitle: {
-    color: "#8C98A8",
-    fontSize: 12,
-    textAlign: "center",
   },
 });

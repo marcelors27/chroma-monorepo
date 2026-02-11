@@ -1,4 +1,4 @@
-const { PaymentActions, isPresent } = require("@medusajs/framework/utils")
+const { PaymentActions, PaymentSessionStatus, isPresent } = require("@medusajs/framework/utils")
 
 const StripeBase =
   require("@medusajs/payment-stripe/dist/core/stripe-base")?.default ||
@@ -14,6 +14,21 @@ class StripeProviderService extends StripeBase {
 
   get paymentIntentOptions() {
     return {}
+  }
+
+  async authorizePayment(input) {
+    const status = await this.getPaymentStatus(input)
+    if (status?.status !== PaymentSessionStatus.REQUIRES_MORE) {
+      return status
+    }
+
+    const paymentIntent = status?.data
+    const types = paymentIntent?.payment_method_types || []
+    if (types.includes("boleto") || types.includes("pix")) {
+      return { status: PaymentSessionStatus.AUTHORIZED, data: paymentIntent }
+    }
+
+    return status
   }
 
   async initiatePayment({ currency_code, amount, data, context }) {

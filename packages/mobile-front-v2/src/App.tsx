@@ -36,6 +36,7 @@ import AccessPending from "./pages/AccessPending";
 import { useCondo } from "@/contexts/CondoContext";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StripeProvider } from "@stripe/stripe-react-native";
+import { subscribeGlobalLoading } from "@/lib/global-loading";
 
 const queryClient = new QueryClient();
 
@@ -47,7 +48,6 @@ function LoadingScreen() {
   return (
     <View style={styles.loading}>
       <LoadingSpinner size={90} style={styles.loadingIcon} />
-      <Text style={styles.loadingText}>Carregando...</Text>
     </View>
   );
 }
@@ -353,6 +353,22 @@ function CondoProviderWithAuth({ children }: { children: React.ReactNode }) {
   return <CondoProvider isAuthenticated={isAuthenticated}>{children}</CondoProvider>;
 }
 
+function GlobalLoadingOverlay() {
+  const [visible, setVisible] = React.useState(false);
+
+  useEffect(() => {
+    return subscribeGlobalLoading(setVisible);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <View style={styles.globalLoadingOverlay} pointerEvents="auto">
+      <LoadingSpinner size={96} />
+    </View>
+  );
+}
+
 const stripePublishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
 if (!stripePublishableKey) {
   console.warn("[stripe] EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY não configurada.");
@@ -370,6 +386,7 @@ const App = () => (
                   <CartProvider>
                     <NavigationContainer>
                       <RootNavigator />
+                      <GlobalLoadingOverlay />
                     </NavigationContainer>
                   </CartProvider>
                 </CondoProviderWithAuth>
@@ -391,14 +408,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#0B0F14",
   },
-  loadingText: {
-    color: "#E6E8EA",
-    fontSize: 16,
-    fontWeight: "600",
-    marginTop: 12,
-  },
   loadingIcon: {
     opacity: 0.7,
+  },
+  globalLoadingOverlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(11, 15, 20, 0.78)",
+    zIndex: 999,
   },
   errorContainer: {
     flex: 1,

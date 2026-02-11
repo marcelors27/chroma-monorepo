@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
+import { Animated, ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
@@ -6,7 +6,7 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { toast } from "@/lib/toast";
 import { listOrders, type MedusaOrder } from "@/lib/medusa";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const buildTrackingSteps = (order?: MedusaOrder | null) => {
   const createdAt = order?.created_at ? new Date(order.created_at) : null;
@@ -23,6 +23,24 @@ const buildTrackingSteps = (order?: MedusaOrder | null) => {
   ];
 };
 
+const resolveCurrentStepIndex = (order?: MedusaOrder | null) => {
+  if (!order) return 0;
+  if (order.status === "canceled" || order.fulfillment_status === "canceled") return 0;
+  switch (order.fulfillment_status) {
+    case "not_fulfilled":
+    case "fulfilled":
+    case "partially_fulfilled":
+      return 1;
+    case "shipped":
+    case "partially_shipped":
+      return 2;
+    case "delivered":
+      return 3;
+    default:
+      return 0;
+  }
+};
+
 export default function Rastreamento() {
   const route = useRoute();
   const id = (route.params as { id?: string } | undefined)?.id ?? "#1297";
@@ -34,12 +52,26 @@ export default function Rastreamento() {
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const pullThreshold = 80;
-  const order = (data?.orders || []).find((item) => item.id === id || item.display_id === id);
+  const order = (data?.orders || []).find((item) => item.id === id || String(item.display_id) === id);
+  const displayId = order?.display_id ? `#${order.display_id}` : String(id);
   const condoName =
     order?.shipping_address?.metadata?.company_name ||
     order?.shipping_address?.address_1 ||
     "Condomínio";
-  const trackingSteps = buildTrackingSteps(order);
+  const trackingSteps = useMemo(() => buildTrackingSteps(order), [order]);
+  const currentStepIndex = useMemo(() => resolveCurrentStepIndex(order), [order]);
+  const pulseOpacity = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseOpacity, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulseOpacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [pulseOpacity]);
 
   const handleRefresh = async () => {
     if (refreshing) return;
@@ -94,7 +126,7 @@ export default function Rastreamento() {
         </View>
         <View style={styles.card}>
           <Text style={styles.cardLabel}>Pedido</Text>
-          <Text style={styles.cardTitle}>{id}</Text>
+          <Text style={styles.cardTitle}>{displayId}</Text>
           <Text style={styles.cardCondo}>Condomínio: {condoName}</Text>
           <Text style={styles.cardSubtitle}>Código de rastreio: BR123456789</Text>
           <Pressable onPress={() => toast.success("Código de rastreio copiado!")} style={styles.copyButton}>
@@ -103,12 +135,24 @@ export default function Rastreamento() {
         </View>
 
         <View style={styles.timeline}>
-          {trackingSteps.map((step) => (
-            <View key={step.id} style={styles.stepCard}>
-              <Text style={styles.stepTitle}>{step.title}</Text>
-              <Text style={styles.stepDate}>{step.date}</Text>
-            </View>
-          ))}
+          {trackingSteps.map((step, index) => {
+            const isCurrent = index === currentStepIndex;
+            const isLast = index === trackingSteps.length - 1;
+            return (
+              <View key={step.id} style={styles.timelineItem}>
+                <View style={styles.timelineRail}>
+                  <Animated.View
+                    style={[styles.timelineDot, isCurrent && styles.timelineDotActive, isCurrent && { opacity: pulseOpacity }]}
+                  />
+                  {!isLast && <View style={styles.timelineLine} />}
+                </View>
+                <View style={[styles.stepContent, isCurrent && styles.stepContentActive]}>
+                  <Text style={styles.stepTitle}>{step.title}</Text>
+                  <Text style={styles.stepDate}>{step.date}</Text>
+                </View>
+              </View>
+            );
+          })}
         </View>
       </ScrollView>
     </AuthenticatedLayout>
@@ -178,21 +222,58 @@ const styles = StyleSheet.create({
   },
   timeline: {
     marginTop: 16,
+    alignItems: "center",
   },
-  stepCard: {
-    backgroundColor: "rgba(24, 28, 36, 0.95)",
-    borderRadius: 20,
-    padding: 16,
+  timelineItem: {
+    flexDirection: "row",
+    gap: 12,
     marginBottom: 12,
+  },
+  timelineRail: {
+    width: 20,
+    alignItems: "center",
+  },
+  timelineDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 999,
+    backgroundColor: "rgba(124, 135, 150, 0.7)",
+    borderWidth: 2,
+    borderColor: "rgba(24, 28, 36, 0.95)",
+    marginTop: 4,
+  },
+  timelineDotActive: {
+    backgroundColor: "#5DA2E6",
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    marginTop: 8,
+    backgroundColor: "rgba(124, 135, 150, 0.4)",
+  },
+  stepContent: {
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignSelf: "center",
+    width: "62%",
+    maxWidth: 240,
+  },
+  stepContentActive: {
+    borderWidth: 1,
+    borderColor: "rgba(93, 162, 230, 0.6)",
   },
   stepTitle: {
     color: "#E6E8EA",
     fontSize: 13,
     fontWeight: "600",
+    textAlign: "center",
   },
   stepDate: {
     color: "#8C98A8",
     fontSize: 11,
     marginTop: 4,
+    textAlign: "center",
   },
 });

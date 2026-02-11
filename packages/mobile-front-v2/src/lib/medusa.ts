@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Buffer } from "buffer";
 import { TextEncoder } from "util";
+import { beginGlobalLoading } from "./global-loading";
 
 const MEDUSA_URL = process.env.EXPO_PUBLIC_MEDUSA_URL || "http://localhost:9000";
 const PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_MEDUSA_PUBLISHABLE_KEY;
@@ -473,33 +474,38 @@ const handleAccessPending = () => {
 };
 
 const apiFetch = async <T>(path: string, init?: FetchInit): Promise<T> => {
+  const endLoading = beginGlobalLoading();
   if (DEBUG) {
     console.debug("[medusa] request", { path, method: init?.method || "GET", body: init?.body });
   }
-  const res = await fetch(`${MEDUSA_URL}${path}`, {
-    ...init,
-    headers: await buildHeaders(init),
-  });
-
-  if (!res.ok) {
-    if (DEBUG) {
-      console.debug("[medusa] response error", { path, status: res.status, statusText: res.statusText });
-    }
-    if (res.status === 403) {
-      handleAccessPending();
-    }
-    const message = await parseError(res);
-    throw new Error(message);
-  }
-
-  if (DEBUG) {
-    console.debug("[medusa] response ok", { path, status: res.status });
-  }
-
   try {
-    return (await res.json()) as T;
-  } catch {
-    return undefined as T;
+    const res = await fetch(`${MEDUSA_URL}${path}`, {
+      ...init,
+      headers: await buildHeaders(init),
+    });
+
+    if (!res.ok) {
+      if (DEBUG) {
+        console.debug("[medusa] response error", { path, status: res.status, statusText: res.statusText });
+      }
+      if (res.status === 403) {
+        handleAccessPending();
+      }
+      const message = await parseError(res);
+      throw new Error(message);
+    }
+
+    if (DEBUG) {
+      console.debug("[medusa] response ok", { path, status: res.status });
+    }
+
+    try {
+      return (await res.json()) as T;
+    } catch {
+      return undefined as T;
+    }
+  } finally {
+    endLoading();
   }
 };
 
@@ -701,6 +707,7 @@ export const updateCompany = async (
   }
 ) => {
   const doRequest = async (method: "PATCH" | "PUT") => {
+    const endLoading = beginGlobalLoading();
     if (DEBUG) {
       console.debug("[medusa] request", {
         path: `/store/companies/${companyId}`,
@@ -708,34 +715,38 @@ export const updateCompany = async (
         body: JSON.stringify(payload),
       });
     }
-    const res = await fetch(`${MEDUSA_URL}/store/companies/${companyId}`, {
-      method,
-      headers: await buildHeaders({}),
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
+    try {
+      const res = await fetch(`${MEDUSA_URL}/store/companies/${companyId}`, {
+        method,
+        headers: await buildHeaders({}),
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        if (DEBUG) {
+          console.debug("[medusa] response error", {
+            path: `/store/companies/${companyId}`,
+            status: res.status,
+            statusText: res.statusText,
+          });
+        }
+        if (res.status === 403) {
+          handleAccessPending();
+        }
+        const message = await parseError(res);
+        const error: any = new Error(message);
+        error.status = res.status;
+        throw error;
+      }
       if (DEBUG) {
-        console.debug("[medusa] response error", {
+        console.debug("[medusa] response ok", {
           path: `/store/companies/${companyId}`,
           status: res.status,
-          statusText: res.statusText,
         });
       }
-      if (res.status === 403) {
-        handleAccessPending();
-      }
-      const message = await parseError(res);
-      const error: any = new Error(message);
-      error.status = res.status;
-      throw error;
+      return (await res.json()) as { company: any };
+    } finally {
+      endLoading();
     }
-    if (DEBUG) {
-      console.debug("[medusa] response ok", {
-        path: `/store/companies/${companyId}`,
-        status: res.status,
-      });
-    }
-    return (await res.json()) as { company: any };
   };
 
   try {
@@ -969,7 +980,13 @@ export const ensureCart = async () => {
   if (cartId) {
     try {
       const cart = await retrieveCart(cartId);
-      if (cart?.id) return cart;
+      if (cart?.id) {
+        if ((cart as any)?.completed_at || (cart as any)?.status === "completed") {
+          await setCartId(null);
+          return createCart();
+        }
+        return cart;
+      }
     } catch {
       await setCartId(null);
     }
