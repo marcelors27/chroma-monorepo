@@ -561,54 +561,55 @@ const Orders = () => {
             {activeTab !== "pending" && (
               <div className="space-y-4">
                 {(activeTab === "progress" ? inProgressOrders : historyOrders).map((order) => {
-                const status = resolveStatus(order);
-                const cfg = statusConfig[status];
-                const itemsCount = order.items?.length || 0;
-                const total = order.total || 0;
+                  const status = resolveStatus(order);
+                  const cfg = statusConfig[status];
+                  const itemsCount = order.items?.length || 0;
+                  const total = order.total || 0;
 
-                return (
-                  <div
-                    key={order.id}
-                    className="border-2 border-border p-6 bg-card hover:border-primary transition-colors"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-start gap-4">
-                        <div className="p-3 bg-secondary border-2 border-border">
-                          <Package className="h-6 w-6 text-primary" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-3 mb-1">
-                            <h3 className="font-bold text-lg">Pedido {order.display_id || order.id}</h3>
-                            <Badge variant={cfg.variant} className="gap-1">
-                              {cfg.icon}
-                              {cfg.label}
-                            </Badge>
+                  return (
+                    <div
+                      key={order.id}
+                      className="border-2 border-border p-6 bg-card hover:border-primary transition-colors"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="p-3 bg-secondary border-2 border-border">
+                            <Package className="h-6 w-6 text-primary" />
                           </div>
-                          <p className="text-muted-foreground text-sm">
-                            {formatDate(order.created_at)} • {itemsCount} {itemsCount === 1 ? "item" : "itens"}
-                          </p>
-                          <p className="text-muted-foreground text-sm">
-                            Condomínio: {resolveOrderCondo(order)}
-                          </p>
-                          <p className="text-primary font-bold text-lg mt-2">
-                            {formatMoney(total)}
-                          </p>
+                          <div>
+                            <div className="flex items-center gap-3 mb-1">
+                              <h3 className="font-bold text-lg">Pedido {order.display_id || order.id}</h3>
+                              <Badge variant={cfg.variant} className="gap-1">
+                                {cfg.icon}
+                                {cfg.label}
+                              </Badge>
+                            </div>
+                            <p className="text-muted-foreground text-sm">
+                              {formatDate(order.created_at)} • {itemsCount} {itemsCount === 1 ? "item" : "itens"}
+                            </p>
+                            <p className="text-muted-foreground text-sm">
+                              Condomínio: {resolveOrderCondo(order)}
+                            </p>
+                            <p className="text-primary font-bold text-lg mt-2">
+                              {formatMoney(total)}
+                            </p>
+                          </div>
                         </div>
+                        <Button
+                          variant="outline"
+                          className="gap-2 border-2"
+                          onClick={() => setSelectedOrder(order)}
+                          data-testid="orders-details"
+                        >
+                          <Eye className="h-4 w-4" />
+                          Ver detalhes
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        className="gap-2 border-2"
-                        onClick={() => setSelectedOrder(order)}
-                        data-testid="orders-details"
-                      >
-                        <Eye className="h-4 w-4" />
-                        Ver detalhes
-                      </Button>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
 
             {activeTab === "progress" && inProgressOrders.length === 0 && (
               <div className="border-2 border-border p-12 bg-card text-center">
