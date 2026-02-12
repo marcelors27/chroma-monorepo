@@ -2,7 +2,9 @@
   "expo": {
     "name": "Chroma Mobile Store",
     "slug": "chroma-mobile-front-v2",
-    "version": "0.2.27",
+    "scheme": "chroma-mobile",
+    "version": "0.2.28",
+    "orientation": "portrait",
     "platforms": [
       "ios",
       "android",
@@ -10,6 +12,37 @@
     ],
     "assetBundlePatterns": [
       "**/*"
+    ],
+    "android": {
+      "package": "com.chroma.mobilestore",
+      "googleServicesFile": "../../keys/mobile-front-v2/google-services.json"
+    },
+    "ios": {
+      "bundleIdentifier": "com.chroma.mobilestore",
+      "buildNumber": "32",
+      "appleTeamId": "BMZ7XQ54J3",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Usamos a camera para permitir que voce tire fotos para o seu perfil e envio de conteudos no app.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIStatusBarStyle": "UIStatusBarStyleLightContent",
+        "UIViewControllerBasedStatusBarAppearance": false
+      }
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font",
+      "expo-notifications",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "scopes": [
+            "profile",
+            "email"
+          ],
+          "iosUrlScheme": "com.googleusercontent.apps.633351241832-2t9hj3ptto4pdrk5akbmsi2f7otb2k9b"
+        }
+      ]
     ],
     "owner": "marcelors27",
     "extra": {
