@@ -451,17 +451,9 @@ export default function App() {
           const json = await allCompaniesRes.json()
           const items = json.companies ?? []
           setCompanies(items)
-          const nextEdits: Record<string, string> = {}
-          items.forEach((company: AdminCompany) => {
-            const raw = company?.metadata?.billing_emails
-            const value = Array.isArray(raw) ? raw.join(", ") : raw || ""
-            nextEdits[company.id] = value
-          })
-          setCompanyEmailEdits(nextEdits)
-          setCompaniesError(null)
         } else {
           const body = await allCompaniesRes.text()
-          setCompaniesError(body || "Não foi possível buscar empresas")
+          setCatalogError(body || "Não foi possível buscar empresas")
         }
 
         if (priceListsRes.ok) {
@@ -515,7 +507,6 @@ export default function App() {
         setPendingCompaniesError("Erro ao buscar empresas pendentes")
         setNewsError("Erro ao buscar notícias")
         setMarketingError("Erro ao buscar banners")
-        setCompaniesError("Erro ao buscar empresas")
         setPriceListsError("Erro ao buscar promoções")
         setStoreUsersError("Erro ao buscar usuários")
         setCatalogError("Erro ao buscar dados de catálogo")

@@ -72,7 +72,9 @@ export type News = {
   id: string
   title: string
   summary: string
+  content?: string | null
   category?: string | null
+  image_url?: string | null
   author?: string | null
   source?: string | null
   read_time?: number | null

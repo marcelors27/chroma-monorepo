@@ -19,6 +19,7 @@ export default function ChannelsSection({
   salesChannels,
   setSalesChannels,
   mode = "list",
+  channelId,
 }: ChannelsSectionProps) {
   const navigate = useNavigate()
   const params = useParams()
