@@ -369,7 +369,6 @@ export default function MarketingSection({
   }
 
   if (isCreateMode || isEditMode) {
-    if (isCreateMode || isEditMode) {
     return (
       <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
         <header className="page-header">
@@ -779,7 +778,5 @@ export default function MarketingSection({
         )}
       </section>
     </div>
-  )
-
   )
 }
