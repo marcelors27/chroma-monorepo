@@ -1,11 +1,11 @@
 const {
   ContainerRegistrationKeys,
-  Modules,
   remoteQueryObjectFromString,
   MedusaError,
 } = require("@medusajs/framework/utils")
+const { updateOrderWorkflow } = require("@medusajs/core-flows")
 
-const updateOrderStatus = async (scope, id, payload, metadata) => {
+const updateOrderStatus = async (scope, id, payload, metadata, actorId) => {
   const cleanPayload = {}
   if (payload?.status) cleanPayload.status = payload.status
   if (payload?.fulfillment_status) cleanPayload.fulfillment_status = payload.fulfillment_status
@@ -16,23 +16,17 @@ const updateOrderStatus = async (scope, id, payload, metadata) => {
   }
 
   try {
-    const orderModuleService = scope.resolve(Modules.ORDER)
-    if (orderModuleService?.updateOrders) {
-      await orderModuleService.updateOrders([{ id, ...cleanPayload }])
-      return
-    }
-    if (orderModuleService?.update) {
-      await orderModuleService.update(id, cleanPayload)
-      return
-    }
-  } catch {
-    // fallback below
+    await updateOrderWorkflow(scope).run({
+      input: {
+        id,
+        user_id: actorId,
+        ...cleanPayload,
+      },
+    })
+    return
+  } catch (err) {
+    throw err
   }
-
-  throw new MedusaError(
-    MedusaError.Types.NOT_FOUND,
-    "Módulo de pedidos indisponível. Verifique se o módulo ORDER está carregado."
-  )
 }
 
 const fetchOrder = async (scope, id) => {
@@ -84,7 +78,13 @@ const POST = async (req, res) => {
       status_history: nextHistory,
     }
 
-    await updateOrderStatus(req.scope, orderId, req.body || {}, nextMetadata)
+    await updateOrderStatus(
+      req.scope,
+      orderId,
+      req.body || {},
+      nextMetadata,
+      req.auth_context?.actor_id || "admin"
+    )
     const order = await fetchOrder(req.scope, orderId)
     return res.status(200).json({ order })
   } catch (err) {
