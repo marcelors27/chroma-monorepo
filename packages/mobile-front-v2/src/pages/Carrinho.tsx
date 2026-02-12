@@ -310,7 +310,6 @@ export default function Carrinho() {
         await clearCart();
         toast.success(`Pedido realizado com sucesso! ${checkoutResult.orderId ? `#${checkoutResult.orderId}` : ""}`.trim());
       } else {
-        toast.info("Pagamento pendente. Consulte seus pedidos para acompanhar.");
         navigation.navigate("Pedidos" as never);
       }
     } catch (err: any) {

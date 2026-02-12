@@ -37,6 +37,7 @@ import { useCondo } from "@/contexts/CondoContext";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { subscribeGlobalLoading } from "@/lib/global-loading";
+import { LOGO_SIZE } from "@/constants/ui";
 
 const queryClient = new QueryClient();
 
@@ -47,7 +48,7 @@ const ProductsStack = createNativeStackNavigator();
 function LoadingScreen() {
   return (
     <View style={styles.loading}>
-      <LoadingSpinner size={90} style={styles.loadingIcon} />
+      <LoadingSpinner size={LOGO_SIZE} style={styles.loadingIcon} />
     </View>
   );
 }

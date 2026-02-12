@@ -17,6 +17,7 @@ import { toast } from "@/lib/toast";
 import logo from "@/assets/logo.png";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { suspendGlobalLoading } from "@/lib/global-loading";
+import { LOGO_SIZE } from "@/constants/ui";
 
 const AUTH_BG = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&auto=format&fit=crop&q=80";
 
@@ -295,8 +296,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   brandLogo: {
-    width: 56,
-    height: 56,
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
     resizeMode: "contain",
     marginBottom: 12,
   },

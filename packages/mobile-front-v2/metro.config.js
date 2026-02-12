@@ -11,11 +11,16 @@ config.resolver.sourceExts = Array.from(
   new Set([...(config.resolver.sourceExts || []), "ts", "tsx", "cjs", "mjs"])
 );
 
-config.watchFolders = [workspaceRoot];
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, "node_modules"),
-  path.resolve(workspaceRoot, "node_modules"),
-];
+config.watchFolders = Array.from(
+  new Set([...(config.watchFolders || []), workspaceRoot])
+);
+config.resolver.nodeModulesPaths = Array.from(
+  new Set([
+    ...(config.resolver.nodeModulesPaths || []),
+    path.resolve(projectRoot, "node_modules"),
+    path.resolve(workspaceRoot, "node_modules"),
+  ])
+);
 
 module.exports = withTamagui(config, {
   config: "./tamagui.config.ts",

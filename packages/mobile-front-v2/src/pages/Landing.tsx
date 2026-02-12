@@ -2,6 +2,7 @@ import { Dimensions, Image, ImageBackground, Pressable, ScrollView, StyleSheet, 
 import { useNavigation } from "@react-navigation/native";
 import { Package, Shield, Truck, CreditCard, ChevronRight, Star } from "lucide-react-native";
 import logo from "@/assets/logo.png";
+import { LOGO_SIZE } from "@/constants/ui";
 
 const features = [
   {
@@ -177,8 +178,8 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   brandLogo: {
-    width: 64,
-    height: 64,
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
     resizeMode: "contain",
   },
   heroPill: {

@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import logo from "@/assets/logo.png";
+import { LOGO_SIZE } from "@/constants/ui";
 
 interface HeaderProps {
   title?: string;
@@ -151,8 +152,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   brandLogo: {
-    width: 22,
-    height: 22,
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
     resizeMode: "contain",
   },
   titleAccent: {

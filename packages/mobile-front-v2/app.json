@@ -10,21 +10,13 @@
       "android",
       "web"
     ],
-    "statusBar": {
-      "style": "light",
-      "backgroundColor": "#000000"
-    },
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
       "**/*"
     ],
     "android": {
       "package": "com.chroma.mobilestore",
-      "googleServicesFile": "../../keys/mobile-front-v2/google-services.json",
-      "statusBar": {
-        "barStyle": "light-content",
-        "backgroundColor": "#000000"
-      }
+      "googleServicesFile": "../../keys/mobile-front-v2/google-services.json"
     },
     "ios": {
       "bundleIdentifier": "com.chroma.mobilestore",
