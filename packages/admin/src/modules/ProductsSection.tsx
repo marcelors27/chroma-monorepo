@@ -12,7 +12,14 @@ import {
 } from "@fortawesome/free-solid-svg-icons"
 import type { Dispatch, SetStateAction } from "react"
 
-import { MediaPayload, Product, SalesChannel, ShippingOption, StockLocation } from "../types"
+import {
+  MediaPayload,
+  Product,
+  SalesChannel,
+  ShippingOption,
+  ShippingProfile,
+  StockLocation,
+} from "../types"
 import { formatMoney } from "../utils/format"
 
 type VariantLocation = { id: string; name: string; stocked?: number | null }
@@ -25,6 +32,7 @@ type ProductsSectionProps = {
   setProducts: Dispatch<SetStateAction<Product[]>>
   salesChannels: SalesChannel[]
   shippingOptions: ShippingOption[]
+  shippingProfiles: ShippingProfile[]
   stockLocations: StockLocation[]
   openOrders: number
 }
@@ -37,6 +45,7 @@ export default function ProductsSection({
   setProducts,
   salesChannels,
   shippingOptions,
+  shippingProfiles,
   stockLocations,
   openOrders,
 }: ProductsSectionProps) {
@@ -76,6 +85,7 @@ export default function ProductsSection({
     stock_location_id: "",
     stock_quantity: "",
     allowed_shipping_option_ids: [] as string[],
+    shipping_profile_id: "",
   })
   const [productOptions, setProductOptions] = useState<
     { id: string; title: string; values: string }[]
@@ -107,6 +117,7 @@ export default function ProductsSection({
     media_youtube: "",
     featured: false,
     allowed_shipping_option_ids: [] as string[],
+    shipping_profile_id: "",
   })
 
   const totalInventory = useMemo(() => {
@@ -121,6 +132,21 @@ export default function ProductsSection({
     () => effectiveShippingOptions.map((option) => option.id).filter(Boolean),
     [effectiveShippingOptions]
   )
+  const shippingOptionsByProfile = useMemo(() => {
+    const map = new Map<string, ShippingOption[]>()
+    effectiveShippingOptions.forEach((option) => {
+      const profileId =
+        option.shipping_profile?.id || (option as any).shipping_profile_id || "unknown"
+      if (profileId === "unknown") return
+      if (!map.has(profileId)) map.set(profileId, [])
+      map.get(profileId)?.push(option)
+    })
+    return map
+  }, [effectiveShippingOptions])
+  const selectedProfileOptions = useMemo(() => {
+    if (!productForm.shipping_profile_id) return []
+    return shippingOptionsByProfile.get(productForm.shipping_profile_id) || []
+  }, [productForm.shipping_profile_id, effectiveShippingOptions, shippingOptionsByProfile])
 
   useEffect(() => {
     if (!showCreateModal && !editingProductId) return
@@ -132,7 +158,7 @@ export default function ProductsSection({
       try {
         const res = await fetch(
           `${medusaUrl}/admin/shipping-options?limit=200&fields=${encodeURIComponent(
-            "+name,+shipping_profile.name,+service_zone.name"
+            "+name,+shipping_profile.name,+shipping_profile_id,+service_zone.name"
           )}`,
           { headers }
         )
@@ -183,6 +209,26 @@ export default function ProductsSection({
       return { ...prev, allowed_shipping_option_ids: allShippingOptionIds }
     })
   }, [showCreateModal, allShippingOptionIds])
+
+  useEffect(() => {
+    if (!showCreateModal) return
+    if (productForm.shipping_profile_id) return
+    if (!shippingProfiles.length) return
+    setProductForm((prev) => ({
+      ...prev,
+      shipping_profile_id: shippingProfiles[0]?.id || "",
+    }))
+  }, [showCreateModal, productForm.shipping_profile_id, shippingProfiles])
+
+  useEffect(() => {
+    if (!showCreateModal) return
+    if (!productForm.shipping_profile_id) return
+    setProductForm((prev) => {
+      if (prev.allowed_shipping_option_ids?.length) return prev
+      const ids = selectedProfileOptions.map((option) => option.id).filter(Boolean)
+      return { ...prev, allowed_shipping_option_ids: ids }
+    })
+  }, [showCreateModal, productForm.shipping_profile_id, selectedProfileOptions])
 
   const toggleProductExpanded = (productId: string) => {
     setExpandedProducts((prev) => {
@@ -257,7 +303,8 @@ export default function ProductsSection({
   }
 
   const selectAllShippingOptions = () => {
-    setProductForm((prev) => ({ ...prev, allowed_shipping_option_ids: allShippingOptionIds }))
+    const ids = selectedProfileOptions.map((option) => option.id).filter(Boolean)
+    setProductForm((prev) => ({ ...prev, allowed_shipping_option_ids: ids }))
   }
 
   const clearShippingOptions = () => {
@@ -281,6 +328,7 @@ export default function ProductsSection({
       stock_location_id: "",
       stock_quantity: "",
       allowed_shipping_option_ids: allShippingOptionIds,
+      shipping_profile_id: shippingProfiles[0]?.id || "",
     })
     setProductOptions([])
     setProductVariants([
@@ -718,6 +766,11 @@ export default function ProductsSection({
         setProductSaving(false)
         return
       }
+      if (!productForm.shipping_profile_id) {
+        setProductError("Selecione um shipping profile.")
+        setProductSaving(false)
+        return
+      }
       const mediaValidation = validateMedia({
         images: mediaImages,
         videos: mediaVideos,
@@ -820,6 +873,7 @@ export default function ProductsSection({
         status: "published",
         thumbnail: productForm.thumbnail || null,
         images: productForm.image_url ? [{ url: productForm.image_url }] : undefined,
+        shipping_profile_id: productForm.shipping_profile_id,
         options: optionsPayload.map(({ title, values }) => ({
           title,
           values,
@@ -957,6 +1011,8 @@ export default function ProductsSection({
     const storedShippingOptions = Array.isArray(metadata?.allowed_shipping_option_ids)
       ? (metadata?.allowed_shipping_option_ids as string[])
       : []
+    const storedProfileId =
+      product.shipping_profile_id || (metadata?.shipping_profile_id as string | undefined) || ""
     setEditingProductId(product.id)
     setProductEditMediaUploadError(null)
     setProductEditForm({
@@ -967,8 +1023,20 @@ export default function ProductsSection({
       allowed_shipping_option_ids: storedShippingOptions.length
         ? storedShippingOptions
         : allShippingOptionIds,
+      shipping_profile_id: storedProfileId || shippingProfiles[0]?.id || "",
     })
   }
+
+  useEffect(() => {
+    if (!editingProductId) return
+    if (!productEditForm.shipping_profile_id) return
+    setProductEditForm((prev) => {
+      if (prev.allowed_shipping_option_ids?.length) return prev
+      const options = shippingOptionsByProfile.get(productEditForm.shipping_profile_id) || []
+      const ids = options.map((option) => option.id).filter(Boolean)
+      return { ...prev, allowed_shipping_option_ids: ids }
+    })
+  }, [editingProductId, productEditForm.shipping_profile_id, shippingOptionsByProfile])
 
   const cancelEditProductMedia = () => {
     setEditingProductId(null)
@@ -993,7 +1061,11 @@ export default function ProductsSection({
   }
 
   const selectAllEditShippingOptions = () => {
-    setProductEditForm((prev) => ({ ...prev, allowed_shipping_option_ids: allShippingOptionIds }))
+    const options = productEditForm.shipping_profile_id
+      ? shippingOptionsByProfile.get(productEditForm.shipping_profile_id) || []
+      : effectiveShippingOptions
+    const ids = options.map((option) => option.id).filter(Boolean)
+    setProductEditForm((prev) => ({ ...prev, allowed_shipping_option_ids: ids }))
   }
 
   const clearEditShippingOptions = () => {
@@ -1017,14 +1089,20 @@ export default function ProductsSection({
       setProductEditError("Selecione ao menos uma forma de entrega.")
       return
     }
+    if (!productEditForm.shipping_profile_id) {
+      setProductEditError("Selecione um shipping profile.")
+      return
+    }
     setProductEditSaving(true)
     setProductEditError(null)
     try {
       const payload = {
+        shipping_profile_id: productEditForm.shipping_profile_id,
         metadata: {
           ...(product.metadata || {}),
           featured: productEditForm.featured === true,
           allowed_shipping_option_ids: productEditForm.allowed_shipping_option_ids,
+          shipping_profile_id: productEditForm.shipping_profile_id,
           media: {
             images: mediaImages,
             videos: mediaVideos,
@@ -1149,6 +1227,28 @@ export default function ProductsSection({
                 ))}
               </select>
             </label>
+
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Shipping profile</span>
+              <select
+                value={productForm.shipping_profile_id}
+                onChange={(e) => {
+                  handleProductChange("shipping_profile_id", e.target.value)
+                  setProductForm((prev) => ({
+                    ...prev,
+                    allowed_shipping_option_ids: [],
+                  }))
+                }}
+                className="field-input"
+              >
+                <option value="">Selecionar</option>
+                {shippingProfiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name || profile.id}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <div className="panel grid" style={{ gap: "0.75rem" }}>
@@ -1193,6 +1293,12 @@ export default function ProductsSection({
                   ? "Carregando formas de entrega..."
                   : shippingOptionsError || "Nenhuma forma de entrega cadastrada."}
               </p>
+            ) : !productForm.shipping_profile_id ? (
+              <p className="muted">Selecione um shipping profile para listar as opções.</p>
+            ) : selectedProfileOptions.length === 0 ? (
+              <p className="muted" style={{ color: "#F87171" }}>
+                Este shipping profile não possui formas de entrega vinculadas.
+              </p>
             ) : (
               <div
                 className="grid"
@@ -1201,7 +1307,7 @@ export default function ProductsSection({
                   gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
                 }}
               >
-                {effectiveShippingOptions.map((option) => {
+                {selectedProfileOptions.map((option) => {
                   const checked = productForm.allowed_shipping_option_ids.includes(option.id)
                   const region =
                     option.region?.name ||
@@ -1768,6 +1874,27 @@ export default function ProductsSection({
                               />
                               <span className="muted">Produto em destaque</span>
                             </label>
+                            <label className="grid" style={{ gap: "0.35rem" }}>
+                              <span className="muted">Shipping profile</span>
+                              <select
+                                value={productEditForm.shipping_profile_id}
+                                onChange={(e) => {
+                                  updateProductEditField("shipping_profile_id", e.target.value)
+                                  setProductEditForm((prev) => ({
+                                    ...prev,
+                                    allowed_shipping_option_ids: [],
+                                  }))
+                                }}
+                                className="field-input"
+                              >
+                                <option value="">Selecionar</option>
+                                {shippingProfiles.map((profile) => (
+                                  <option key={profile.id} value={profile.id}>
+                                    {profile.name || profile.id}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
                             <div className="panel grid" style={{ gap: "0.5rem" }}>
                               <div
                                 style={{
@@ -1804,54 +1931,74 @@ export default function ProductsSection({
                                     ? "Carregando formas de entrega..."
                                     : shippingOptionsError || "Nenhuma forma de entrega cadastrada."}
                                 </span>
+                              ) : !productEditForm.shipping_profile_id ? (
+                                <span className="muted">
+                                  Selecione um shipping profile para listar as opções.
+                                </span>
                               ) : (
-                                <div
-                                  className="grid"
-                                  style={{
-                                    gap: "0.5rem",
-                                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                                  }}
-                                >
-                                  {effectiveShippingOptions.map((option) => {
-                                    const checked =
-                                      productEditForm.allowed_shipping_option_ids.includes(option.id)
-                                    const region =
-                                      option.region?.name ||
-                                      option.service_zone?.region?.name ||
-                                      option.service_zone?.name
-                                    const profile = option.shipping_profile?.name
-                                    const meta = [
-                                      region ? `Região: ${region}` : null,
-                                      profile ? `Perfil: ${profile}` : null,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" · ")
+                                (() => {
+                                  const options =
+                                    shippingOptionsByProfile.get(productEditForm.shipping_profile_id) ||
+                                    []
+                                  if (!options.length) {
                                     return (
-                                      <label
-                                        key={option.id}
-                                        style={{
-                                          display: "flex",
-                                          gap: "0.5rem",
-                                          alignItems: "flex-start",
-                                          padding: "0.4rem 0.55rem",
-                                          border: "1px solid rgba(255,255,255,0.08)",
-                                          borderRadius: "0.5rem",
-                                        }}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={checked}
-                                          onChange={() => toggleEditShippingOption(option.id)}
-                                          className="checkbox"
-                                        />
-                                        <div className="grid" style={{ gap: "0.2rem" }}>
-                                          <span>{option.name || option.id}</span>
-                                          {meta && <span className="muted">{meta}</span>}
-                                        </div>
-                                      </label>
+                                      <span className="muted" style={{ color: "#F87171" }}>
+                                        Este shipping profile não possui formas de entrega vinculadas.
+                                      </span>
                                     )
-                                  })}
-                                </div>
+                                  }
+                                  return (
+                                    <div
+                                      className="grid"
+                                      style={{
+                                        gap: "0.5rem",
+                                        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                                      }}
+                                    >
+                                      {options.map((option) => {
+                                        const checked =
+                                          productEditForm.allowed_shipping_option_ids.includes(
+                                            option.id
+                                          )
+                                        const region =
+                                          option.region?.name ||
+                                          option.service_zone?.region?.name ||
+                                          option.service_zone?.name
+                                        const profile = option.shipping_profile?.name
+                                        const meta = [
+                                          region ? `Região: ${region}` : null,
+                                          profile ? `Perfil: ${profile}` : null,
+                                        ]
+                                          .filter(Boolean)
+                                          .join(" · ")
+                                        return (
+                                          <label
+                                            key={option.id}
+                                            style={{
+                                              display: "flex",
+                                              gap: "0.5rem",
+                                              alignItems: "flex-start",
+                                              padding: "0.4rem 0.55rem",
+                                              border: "1px solid rgba(255,255,255,0.08)",
+                                              borderRadius: "0.5rem",
+                                            }}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={checked}
+                                              onChange={() => toggleEditShippingOption(option.id)}
+                                              className="checkbox"
+                                            />
+                                            <div className="grid" style={{ gap: "0.2rem" }}>
+                                              <span>{option.name || option.id}</span>
+                                              {meta && <span className="muted">{meta}</span>}
+                                            </div>
+                                          </label>
+                                        )
+                                      })}
+                                    </div>
+                                  )
+                                })()
                               )}
                             </div>
                             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>

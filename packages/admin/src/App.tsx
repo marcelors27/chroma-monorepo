@@ -34,6 +34,7 @@ import {
   Product,
   Region,
   SalesChannel,
+  ShippingProfile,
   ShippingOption,
   StoreUser,
   StockLocation,
@@ -75,6 +76,7 @@ export default function App() {
   const [regions, setRegions] = useState<Region[]>([])
   const [stockLocations, setStockLocations] = useState<StockLocation[]>([])
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([])
+  const [shippingProfiles, setShippingProfiles] = useState<ShippingProfile[]>([])
   const [deliveryMethodsCount, setDeliveryMethodsCount] = useState(0)
   const [serviceZonesCount, setServiceZonesCount] = useState(0)
   const [catalogError, setCatalogError] = useState<string | null>(null)
@@ -214,7 +216,7 @@ export default function App() {
           "+items.quantity,+items.title,+items.product_id,+created_at,+total,+currency_code,+status,+payment_status,+fulfillment_status,+display_id,+metadata"
         )
         const productFields = encodeURIComponent(
-          "+variants.inventory_quantity,+variants.prices,+variants.title,+variants.id,+variants.sku,+metadata"
+          "+variants.inventory_quantity,+variants.prices,+variants.title,+variants.id,+variants.sku,+metadata,+shipping_profile_id"
         )
         const [
           productsRes,
@@ -229,6 +231,7 @@ export default function App() {
           regionsRes,
           stockLocationsRes,
           shippingOptionsRes,
+          shippingProfilesRes,
         ] = await Promise.all([
           fetch(`${MEDUSA_URL}/admin/products?limit=50&fields=${productFields}`, { headers }),
           fetch(`${MEDUSA_URL}/admin/orders?limit=50&fields=${ordersFields}`, { headers }),
@@ -243,10 +246,11 @@ export default function App() {
           fetch(stockLocationsUrl, { headers }),
           fetch(
             `${MEDUSA_URL}/admin/shipping-options?limit=200&fields=${encodeURIComponent(
-              "+name,+shipping_profile.name,+service_zone.name"
+              "+name,+shipping_profile.name,+shipping_profile_id,+service_zone.name"
             )}`,
             { headers }
           ),
+          fetch(`${MEDUSA_URL}/admin/shipping-profiles?limit=200`, { headers }),
         ])
 
         if (productsRes.ok) {
@@ -343,6 +347,10 @@ export default function App() {
           const options = json.shipping_options ?? []
           setShippingOptions(options)
           setDeliveryMethodsCount(options.length)
+        }
+        if (shippingProfilesRes.ok) {
+          const json = await shippingProfilesRes.json()
+          setShippingProfiles(json.shipping_profiles ?? [])
         }
       } catch (err) {
         console.error("Erro ao buscar dados", err)
@@ -694,6 +702,7 @@ export default function App() {
                       setProducts={setProducts}
                       salesChannels={salesChannels}
                       shippingOptions={shippingOptions}
+                      shippingProfiles={shippingProfiles}
                       stockLocations={stockLocations}
                       openOrders={openOrders}
                     />

@@ -2,6 +2,7 @@ export type Product = {
   id: string
   title: string
   status?: string
+  shipping_profile_id?: string | null
   variants?: {
     id?: string
     inventory_quantity?: number
