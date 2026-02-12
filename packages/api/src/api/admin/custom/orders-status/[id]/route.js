@@ -29,21 +29,10 @@ const updateOrderStatus = async (scope, id, payload, metadata) => {
     // fallback below
   }
 
-  try {
-    const orderService = scope.resolve("orderService")
-    if (orderService?.update) {
-      await orderService.update(id, cleanPayload)
-      return
-    }
-    if (orderService?.updateOrder) {
-      await orderService.updateOrder(id, cleanPayload)
-      return
-    }
-  } catch (err) {
-    throw err
-  }
-
-  throw new MedusaError(MedusaError.Types.NOT_FOUND, "Service de pedidos indisponível.")
+  throw new MedusaError(
+    MedusaError.Types.NOT_FOUND,
+    "Módulo de pedidos indisponível. Verifique se o módulo ORDER está carregado."
+  )
 }
 
 const fetchOrder = async (scope, id) => {
