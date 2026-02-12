@@ -1,4 +1,5 @@
 import { FormEvent, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import type { Dispatch, SetStateAction } from "react"
 
 import { PriceList, Product, Region, SalesChannel, StockLocation } from "../types"
@@ -14,6 +15,7 @@ type PromotionsSectionProps = {
   setPriceLists: Dispatch<SetStateAction<PriceList[]>>
   stockLocations: StockLocation[]
   setStockLocations: Dispatch<SetStateAction<StockLocation[]>>
+  mode?: "list" | "create" | "link"
 }
 
 export default function PromotionsSection({
@@ -27,7 +29,11 @@ export default function PromotionsSection({
   setPriceLists,
   stockLocations,
   setStockLocations,
+  mode = "list",
 }: PromotionsSectionProps) {
+  const navigate = useNavigate()
+  const isCreateMode = mode === "create"
+  const isLinkMode = mode === "link"
   const [promoError, setPromoError] = useState<string | null>(null)
   const [promoSaving, setPromoSaving] = useState(false)
   const [promoForm, setPromoForm] = useState({
@@ -174,6 +180,7 @@ export default function PromotionsSection({
         setPriceLists((prev) => [json.price_list, ...prev])
       }
       resetPromoForm()
+      navigate("/promocoes")
     } catch (err: any) {
       setPromoError(err?.message || "Erro ao criar promoção")
     } finally {
@@ -230,33 +237,28 @@ export default function PromotionsSection({
     }
   }
 
-  return (
-    <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
-      <header className="grid" style={{ gap: "0.5rem" }}>
-        <h1 style={{ fontSize: "2rem" }}>Promoções</h1>
-        <p className="muted">Crie preços promocionais simples para aparecerem como ofertas na vitrine.</p>
-      </header>
+  if (isCreateMode) {
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Nova promoção</h1>
+          <p className="page-subtitle">Informe a variante e o preço promocional.</p>
+        </header>
 
-      <section className="panel">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "0.75rem",
-          }}
-        >
-          <div>
-            <h3>Nova promoção</h3>
-            <p className="muted" style={{ marginTop: "0.25rem" }}>
-              Informe o ID da variante e o preço promocional em reais.
-            </p>
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/promocoes")}>
+            Voltar
+          </button>
+          <div className="action-bar-group">
+            <button className="btn" type="submit" form="promo-create-form" disabled={promoSaving}>
+              {promoSaving ? "Criando..." : "Criar promoção"}
+            </button>
           </div>
         </div>
 
         {promoError && <div className="muted">Erro: {promoError}</div>}
 
-        <form className="panel grid" onSubmit={createPromotion} style={{ gap: "0.85rem" }}>
+        <form id="promo-create-form" className="panel grid" onSubmit={createPromotion} style={{ gap: "0.85rem" }}>
           <label className="grid" style={{ gap: "0.35rem" }}>
             <span className="muted">Título</span>
             <input
@@ -383,30 +385,44 @@ export default function PromotionsSection({
           </div>
 
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <button className="btn" type="submit" disabled={promoSaving}>
-              {promoSaving ? "Criando..." : "Criar promoção"}
-            </button>
             <button className="btn btn-secondary" type="button" onClick={resetPromoForm}>
               Limpar
             </button>
           </div>
         </form>
-      </section>
+      </div>
+    )
+  }
 
-      <section className="panel">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "0.75rem",
-          }}
-        >
-          <div>
-            <h3>Vincular canais a estoques</h3>
-            <p className="muted" style={{ marginTop: "0.25rem" }}>
-              Associe canais aos locais de estoque para segmentar disponibilidade.
-            </p>
+  if (isLinkMode) {
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Vincular canais a estoques</h1>
+          <p className="page-subtitle">Associe canais aos locais de estoque.</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/promocoes")}>
+            Voltar
+          </button>
+          <div className="action-bar-group">
+            <button
+              className="btn"
+              type="button"
+              disabled={linkSaving}
+              onClick={() => linkSalesChannel("add")}
+            >
+              {linkSaving ? "Salvando..." : "Vincular"}
+            </button>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              disabled={linkSaving}
+              onClick={() => linkSalesChannel("remove")}
+            >
+              Remover vínculo
+            </button>
           </div>
         </div>
 
@@ -452,26 +468,29 @@ export default function PromotionsSection({
             </label>
           </div>
 
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <button
-              className="btn"
-              type="button"
-              disabled={linkSaving}
-              onClick={() => linkSalesChannel("add")}
-            >
-              {linkSaving ? "Salvando..." : "Vincular"}
-            </button>
-            <button
-              className="btn btn-secondary"
-              type="button"
-              disabled={linkSaving}
-              onClick={() => linkSalesChannel("remove")}
-            >
-              Remover vínculo
-            </button>
+          <div className="muted" style={{ fontSize: "0.85rem" }}>
+            Selecione o local e o canal para atualizar o vínculo.
           </div>
         </div>
-      </section>
+      </div>
+    )
+  }
+
+  return (
+    <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+      <header className="grid" style={{ gap: "0.5rem" }}>
+        <h1 style={{ fontSize: "2rem" }}>Promoções</h1>
+        <p className="muted">Crie preços promocionais simples para aparecerem como ofertas na vitrine.</p>
+      </header>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+        <button className="btn btn-secondary" type="button" onClick={() => navigate("/promocoes/nova")}>
+          Nova promoção
+        </button>
+        <button className="btn btn-secondary" type="button" onClick={() => navigate("/promocoes/vinculos")}>
+          Vincular canais
+        </button>
+      </div>
 
       <section className="panel">
         <div

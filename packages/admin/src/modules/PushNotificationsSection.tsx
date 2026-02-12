@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import type { AdminCompany, StoreUser } from "../types"
 
 type ToastInput = { title: string; description?: string; variant?: "success" | "error" }
@@ -9,9 +10,11 @@ type PushNotificationsSectionProps = {
   users: StoreUser[]
   companies: AdminCompany[]
   pushToast: (toast: ToastInput) => void
+  mode?: "list" | "create" | "resend"
 }
 
 type TargetType = "all" | "companies" | "users"
+
 type PushNotification = {
   id: string
   title: string
@@ -26,13 +29,20 @@ type PushNotification = {
   created_at?: string | null
 }
 
+type PushResendState = { notification?: PushNotification }
+
 export default function PushNotificationsSection({
   medusaUrl,
   headers,
   users,
   companies,
   pushToast,
+  mode = "list",
 }: PushNotificationsSectionProps) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isCreateMode = mode === "create"
+  const isResendMode = mode === "resend"
   const [title, setTitle] = useState("")
   const [message, setMessage] = useState("")
   const [targetType, setTargetType] = useState<TargetType>("all")
@@ -45,6 +55,7 @@ export default function PushNotificationsSection({
   const [error, setError] = useState<string | null>(null)
   const [history, setHistory] = useState<PushNotification[]>([])
   const [resendingId, setResendingId] = useState<string | null>(null)
+  const [resendTarget, setResendTarget] = useState<PushNotification | null>(null)
 
   const sortedCompanies = useMemo(
     () => [...companies].sort((a, b) => (a.trade_name || a.fantasy_name || "").localeCompare(b.trade_name || b.fantasy_name || "")),
@@ -141,20 +152,29 @@ export default function PushNotificationsSection({
         description: "A notificação voltou para a fila de envio.",
         variant: "success",
       })
+      return true
     } catch (err: any) {
       pushToast({
         title: "Erro ao reenviar",
         description: err?.message || "Tente novamente.",
         variant: "error",
       })
+      return false
     } finally {
       setResendingId(null)
     }
   }
 
   useEffect(() => {
+    if (isCreateMode || isResendMode) return
     loadHistory()
-  }, [])
+  }, [isCreateMode, isResendMode])
+
+  useEffect(() => {
+    if (!isResendMode) return
+    const state = (location.state || {}) as PushResendState
+    setResendTarget(state.notification || null)
+  }, [isResendMode, location.state])
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -198,13 +218,13 @@ export default function PushNotificationsSection({
         const body = await res.text()
         throw new Error(body || "Não foi possível agendar a notificação.")
       }
-      await loadHistory()
       resetForm()
       pushToast({
         title: "Notificação agendada",
         description: sendAtIso ? "Envio programado com sucesso." : "Envio iniciado.",
         variant: "success",
       })
+      navigate("/push")
     } catch (err: any) {
       setError(err?.message || "Erro ao enviar notificação.")
       pushToast({
@@ -217,157 +237,244 @@ export default function PushNotificationsSection({
     }
   }
 
+  if (isResendMode) {
+    if (!resendTarget) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+          <header className="page-header">
+            <h1 className="page-title">Reenviar notificação</h1>
+            <p className="page-subtitle">Selecione uma notificação no histórico para reenviar.</p>
+          </header>
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/push")}>
+            Voltar
+          </button>
+        </div>
+      )
+    }
+
+    const targetLabel =
+      resendTarget.target_type === "all"
+        ? "Todos"
+        : resendTarget.target_type === "companies"
+        ? `Empresas (${resendTarget.target_company_ids?.length || 0})`
+        : `Usuários (${resendTarget.target_user_ids?.length || 0})`
+
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Reenviar notificação</h1>
+          <p className="page-subtitle">Confirme o reenvio para a mesma audiência.</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/push")}>
+            Voltar
+          </button>
+          <button
+            className="btn"
+            type="button"
+            onClick={async () => {
+              const ok = await resendNotification(resendTarget.id)
+              if (ok) navigate("/push")
+            }}
+            disabled={resendingId === resendTarget.id}
+          >
+            {resendingId === resendTarget.id ? "Reenviando..." : "Confirmar reenvio"}
+          </button>
+        </div>
+
+        <section className="panel" style={{ maxWidth: "720px" }}>
+          <div className="grid" style={{ gap: "0.35rem" }}>
+            <span className="muted">Título</span>
+            <strong>{resendTarget.title}</strong>
+          </div>
+          <div className="grid" style={{ gap: "0.35rem", marginTop: "0.75rem" }}>
+            <span className="muted">Mensagem</span>
+            <span>{resendTarget.message}</span>
+          </div>
+          <div className="grid" style={{ gap: "0.35rem", marginTop: "0.75rem" }}>
+            <span className="muted">Destino</span>
+            <span>{targetLabel}</span>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
+  if (isCreateMode) {
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Nova notificação</h1>
+          <p className="page-subtitle">
+            Envie mensagens para usuários específicos ou grupos. Agende o envio para uma data futura.
+          </p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/push")}>
+            Voltar
+          </button>
+          <button className="btn" type="submit" form="push-form" disabled={isSending}>
+            {isSending ? "Enviando..." : "Agendar envio"}
+          </button>
+        </div>
+
+        <form
+          id="push-form"
+          className="panel grid"
+          onSubmit={handleSubmit}
+          style={{ gap: "0.9rem", maxWidth: "920px" }}
+        >
+          <label className="grid" style={{ gap: "0.35rem" }}>
+            <span className="muted">Título</span>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="field-input"
+              required
+            />
+          </label>
+
+          <label className="grid" style={{ gap: "0.35rem" }}>
+            <span className="muted">Mensagem</span>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={4}
+              className="field-input"
+              required
+            />
+          </label>
+
+          <div className="grid" style={{ gap: "0.35rem" }}>
+            <span className="muted">Destinatários</span>
+            <select
+              value={targetType}
+              onChange={(e) => setTargetType(e.target.value as TargetType)}
+              className="field-input"
+            >
+              <option value="all">Todos os usuários</option>
+              <option value="companies">Empresas específicas</option>
+              <option value="users">Usuários específicos</option>
+            </select>
+          </div>
+
+          {targetType === "companies" && (
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Empresas</span>
+              <div className="panel" style={{ maxHeight: "220px", overflowY: "auto" }}>
+                {sortedCompanies.length === 0 ? (
+                  <span className="muted">Nenhuma empresa disponível.</span>
+                ) : (
+                  <div className="grid" style={{ gap: "0.45rem" }}>
+                    {sortedCompanies.map((company) => {
+                      const name = company.trade_name || company.fantasy_name || company.id
+                      const checked = selectedCompanies.includes(company.id)
+                      return (
+                        <label key={company.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              toggleSelection(company.id, selectedCompanies, setSelectedCompanies)
+                            }
+                            className="checkbox"
+                          />
+                          <span>{name}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {targetType === "users" && (
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Usuários</span>
+              <div className="panel" style={{ maxHeight: "220px", overflowY: "auto" }}>
+                {sortedUsers.length === 0 ? (
+                  <span className="muted">Nenhum usuário disponível.</span>
+                ) : (
+                  <div className="grid" style={{ gap: "0.45rem" }}>
+                    {sortedUsers.map((user) => {
+                      const label = user.email || user.id
+                      const checked = selectedUsers.includes(user.id)
+                      return (
+                        <label key={user.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleSelection(user.id, selectedUsers, setSelectedUsers)}
+                            className="checkbox"
+                          />
+                          <span>{label}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <label className="grid" style={{ gap: "0.35rem" }}>
+            <span className="muted">Data de envio (opcional)</span>
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              className="field-input"
+            />
+            <span className="muted" style={{ fontSize: "0.85rem" }}>
+              Se vazio, o envio é imediato.
+            </span>
+          </label>
+
+          {error && <div className="muted">Erro: {error}</div>}
+
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <button className="btn btn-secondary" type="button" onClick={resetForm} disabled={isSending}>
+              Limpar
+            </button>
+          </div>
+        </form>
+      </div>
+    )
+  }
+
   return (
     <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
       <header className="grid" style={{ gap: "0.5rem" }}>
         <h1 style={{ fontSize: "2rem" }}>Push notifications</h1>
-        <p className="muted">
-          Envie mensagens para usuários específicos ou grupos. Agende o envio para uma data futura.
-        </p>
+        <p className="muted">Histórico de envios e processamento da fila.</p>
       </header>
 
-      <form className="panel grid" onSubmit={handleSubmit} style={{ gap: "0.9rem", maxWidth: "920px" }}>
-        <label className="grid" style={{ gap: "0.35rem" }}>
-          <span className="muted">Título</span>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="field-input"
-            required
-          />
-        </label>
+      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+        <button className="btn" type="button" onClick={() => navigate("/push/nova")}>
+          Nova notificação
+        </button>
+        <button
+          className="btn btn-secondary"
+          type="button"
+          onClick={processQueue}
+          disabled={isProcessing}
+        >
+          {isProcessing ? "Processando..." : "Processar fila"}
+        </button>
+        <button
+          className="btn btn-secondary"
+          type="button"
+          onClick={loadHistory}
+          disabled={isLoadingHistory}
+        >
+          {isLoadingHistory ? "Atualizando..." : "Atualizar histórico"}
+        </button>
+      </div>
 
-        <label className="grid" style={{ gap: "0.35rem" }}>
-          <span className="muted">Mensagem</span>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            rows={4}
-            className="field-input"
-            required
-          />
-        </label>
-
-        <div className="grid" style={{ gap: "0.35rem" }}>
-          <span className="muted">Destinatários</span>
-          <select
-            value={targetType}
-            onChange={(e) => setTargetType(e.target.value as TargetType)}
-            className="field-input"
-          >
-            <option value="all">Todos os usuários</option>
-            <option value="companies">Empresas específicas</option>
-            <option value="users">Usuários específicos</option>
-          </select>
-        </div>
-
-        {targetType === "companies" && (
-          <div className="grid" style={{ gap: "0.35rem" }}>
-            <span className="muted">Empresas</span>
-            <div className="panel" style={{ maxHeight: "220px", overflowY: "auto" }}>
-              {sortedCompanies.length === 0 ? (
-                <span className="muted">Nenhuma empresa disponível.</span>
-              ) : (
-                <div className="grid" style={{ gap: "0.45rem" }}>
-                  {sortedCompanies.map((company) => {
-                    const name = company.trade_name || company.fantasy_name || company.id
-                    const checked = selectedCompanies.includes(company.id)
-                    return (
-                      <label key={company.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() =>
-                            toggleSelection(company.id, selectedCompanies, setSelectedCompanies)
-                          }
-                          className="checkbox"
-                        />
-                        <span>{name}</span>
-                      </label>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {targetType === "users" && (
-          <div className="grid" style={{ gap: "0.35rem" }}>
-            <span className="muted">Usuários</span>
-            <div className="panel" style={{ maxHeight: "220px", overflowY: "auto" }}>
-              {sortedUsers.length === 0 ? (
-                <span className="muted">Nenhum usuário disponível.</span>
-              ) : (
-                <div className="grid" style={{ gap: "0.45rem" }}>
-                  {sortedUsers.map((user) => {
-                    const label = user.email || user.id
-                    const checked = selectedUsers.includes(user.id)
-                    return (
-                      <label key={user.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleSelection(user.id, selectedUsers, setSelectedUsers)}
-                          className="checkbox"
-                        />
-                        <span>{label}</span>
-                      </label>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        <label className="grid" style={{ gap: "0.35rem" }}>
-          <span className="muted">Data de envio (opcional)</span>
-          <input
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
-            className="field-input"
-          />
-          <span className="muted" style={{ fontSize: "0.85rem" }}>
-            Se vazio, o envio é imediato.
-          </span>
-        </label>
-
-        {error && <div className="muted">Erro: {error}</div>}
-
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          <button className="btn" type="submit" disabled={isSending}>
-            {isSending ? "Enviando..." : "Agendar envio"}
-          </button>
-          <button
-            className="btn btn-secondary"
-            type="button"
-            onClick={resetForm}
-            disabled={isSending}
-          >
-            Limpar
-          </button>
-          <button
-            className="btn btn-secondary"
-            type="button"
-            onClick={processQueue}
-            disabled={isProcessing}
-          >
-            {isProcessing ? "Processando..." : "Processar fila"}
-          </button>
-          <button
-            className="btn btn-secondary"
-            type="button"
-            onClick={loadHistory}
-            disabled={isLoadingHistory}
-          >
-            {isLoadingHistory ? "Atualizando..." : "Atualizar histórico"}
-          </button>
-        </div>
-      </form>
-
-      <div className="panel" style={{ marginTop: "1.5rem" }}>
+      <div className="panel">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h3>Histórico recente</h3>
           <span className="muted">{history.length} registros</span>
@@ -436,10 +543,9 @@ export default function PushNotificationsSection({
                         <button
                           className="btn btn-secondary"
                           type="button"
-                          onClick={() => resendNotification(item.id)}
-                          disabled={resendingId === item.id}
+                          onClick={() => navigate("/push/reenviar", { state: { notification: item } })}
                         >
-                          {resendingId === item.id ? "Reenviando..." : "Reenviar"}
+                          Reenviar
                         </button>
                       </td>
                     </tr>

@@ -1,8 +1,10 @@
 import { FormEvent, Fragment, useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import {
   faBroom,
   faChevronDown,
+  faChevronLeft,
   faChevronRight,
   faFloppyDisk,
   faPen,
@@ -35,6 +37,8 @@ type ProductsSectionProps = {
   shippingProfiles: ShippingProfile[]
   stockLocations: StockLocation[]
   openOrders: number
+  mode?: "list" | "create" | "edit" | "delete"
+  productId?: string
 }
 
 export default function ProductsSection({
@@ -48,7 +52,15 @@ export default function ProductsSection({
   shippingProfiles,
   stockLocations,
   openOrders,
+  mode = "list",
+  productId,
 }: ProductsSectionProps) {
+  const navigate = useNavigate()
+  const isCreateMode = mode === "create"
+  const isEditMode = mode === "edit"
+  const isDeleteMode = mode === "delete"
+  const activeProduct =
+    (isEditMode || isDeleteMode) && productId ? products.find((p) => p.id === productId) : null
   const [productError, setProductError] = useState<string | null>(null)
   const [productSaving, setProductSaving] = useState(false)
   const [productEditError, setProductEditError] = useState<string | null>(null)
@@ -65,7 +77,6 @@ export default function ProductsSection({
   const [shippingOptionsFallback, setShippingOptionsFallback] = useState<ShippingOption[]>([])
   const [shippingOptionsLoading, setShippingOptionsLoading] = useState(false)
   const [shippingOptionsError, setShippingOptionsError] = useState<string | null>(null)
-  const [showCreateModal, setShowCreateModal] = useState(false)
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set())
   const [variantLocations, setVariantLocations] = useState<Record<string, VariantLocation[]>>({})
@@ -149,7 +160,7 @@ export default function ProductsSection({
   }, [productForm.shipping_profile_id, effectiveShippingOptions, shippingOptionsByProfile])
 
   useEffect(() => {
-    if (!showCreateModal && !editingProductId) return
+    if (!isCreateMode && !editingProductId && !isEditMode) return
     if (shippingOptionsLoading) return
     if (effectiveShippingOptions.length) return
     const load = async () => {
@@ -177,7 +188,8 @@ export default function ProductsSection({
     }
     load()
   }, [
-    showCreateModal,
+    isCreateMode,
+    isEditMode,
     editingProductId,
     effectiveShippingOptions.length,
     medusaUrl,
@@ -202,33 +214,33 @@ export default function ProductsSection({
   }, [products])
 
   useEffect(() => {
-    if (!showCreateModal) return
+    if (!isCreateMode) return
     if (!allShippingOptionIds.length) return
     setProductForm((prev) => {
       if (prev.allowed_shipping_option_ids?.length) return prev
       return { ...prev, allowed_shipping_option_ids: allShippingOptionIds }
     })
-  }, [showCreateModal, allShippingOptionIds])
+  }, [isCreateMode, allShippingOptionIds])
 
   useEffect(() => {
-    if (!showCreateModal) return
+    if (!isCreateMode) return
     if (productForm.shipping_profile_id) return
     if (!shippingProfiles.length) return
     setProductForm((prev) => ({
       ...prev,
       shipping_profile_id: shippingProfiles[0]?.id || "",
     }))
-  }, [showCreateModal, productForm.shipping_profile_id, shippingProfiles])
+  }, [isCreateMode, productForm.shipping_profile_id, shippingProfiles])
 
   useEffect(() => {
-    if (!showCreateModal) return
+    if (!isCreateMode) return
     if (!productForm.shipping_profile_id) return
     setProductForm((prev) => {
       if (prev.allowed_shipping_option_ids?.length) return prev
       const ids = selectedProfileOptions.map((option) => option.id).filter(Boolean)
       return { ...prev, allowed_shipping_option_ids: ids }
     })
-  }, [showCreateModal, productForm.shipping_profile_id, selectedProfileOptions])
+  }, [isCreateMode, productForm.shipping_profile_id, selectedProfileOptions])
 
   const toggleProductExpanded = (productId: string) => {
     setExpandedProducts((prev) => {
@@ -672,11 +684,6 @@ export default function ProductsSection({
   }
 
   const deleteProduct = async (productId: string) => {
-    const confirmed = window.confirm(
-      "Tem certeza que deseja excluir este produto? Essa ação não pode ser desfeita."
-    )
-    if (!confirmed) return
-
     setDeletingProductId(productId)
     try {
       const res = await fetch(`${medusaUrl}/admin/products/${productId}`, {
@@ -688,8 +695,10 @@ export default function ProductsSection({
         throw new Error(body || "Não foi possível excluir o produto.")
       }
       setProducts((prev) => prev.filter((item) => item.id !== productId))
+      return true
     } catch (err: any) {
       setProductEditError(err?.message || "Erro ao excluir produto.")
+      return false
     } finally {
       setDeletingProductId(null)
     }
@@ -992,7 +1001,7 @@ export default function ProductsSection({
       }
 
       resetProductForm()
-      setShowCreateModal(false)
+      navigate("/produtos")
     } catch (err: any) {
       setProductError(err?.message || "Erro ao criar produto")
     } finally {
@@ -1037,6 +1046,12 @@ export default function ProductsSection({
       return { ...prev, allowed_shipping_option_ids: ids }
     })
   }, [editingProductId, productEditForm.shipping_profile_id, shippingOptionsByProfile])
+
+  useEffect(() => {
+    if (!isEditMode) return
+    if (!activeProduct) return
+    startEditProductMedia(activeProduct)
+  }, [isEditMode, activeProduct?.id])
 
   const cancelEditProductMedia = () => {
     setEditingProductId(null)
@@ -1131,37 +1146,86 @@ export default function ProductsSection({
     }
   }
 
-  return (
-    <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
-      <header className="grid" style={{ gap: "0.5rem" }}>
-        <h1 style={{ fontSize: "2rem" }}>Produtos</h1>
-        <p className="muted">Acompanhe catálogo, estoque e preços médios.</p>
-      </header>
+  if (isDeleteMode) {
+    if (!activeProduct) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Excluir produto</h1>
+          <p className="page-subtitle">Produto não encontrado.</p>
+        </header>
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/produtos")}>
+            Voltar
+          </button>
+        </div>
+      )
+    }
 
-      {productError && <div className="panel muted">Erro: {productError}</div>}
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Excluir produto</h1>
+          <p className="page-subtitle">{activeProduct.title || "Produto"}</p>
+        </header>
 
-      {showCreateModal && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal" style={{ maxHeight: "90vh", overflowY: "auto", maxWidth: "1120px" }}>
-            <div className="modal-header">
-              <div>
-                <h3>Adicionar produto</h3>
-                <p className="muted" style={{ marginTop: "0.25rem" }}>
-                  Cadastre os dados, variações e estoque inicial.
-                </p>
-              </div>
-              <button
-                className="btn btn-secondary btn-sm btn-icon"
-                type="button"
-                onClick={() => setShowCreateModal(false)}
-                title="Fechar"
-                aria-label="Fechar"
-              >
-                <FontAwesomeIcon icon={faTimes} />
-              </button>
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/produtos")}>
+            Voltar
+          </button>
+          <button
+            className="btn"
+            type="button"
+            disabled={deletingProductId === activeProduct.id}
+            onClick={async () => {
+              const ok = await deleteProduct(activeProduct.id)
+              if (ok) navigate("/produtos")
+            }}
+          >
+            {deletingProductId === activeProduct.id ? "Excluindo..." : "Confirmar exclusão"}
+          </button>
+        </div>
+
+        {productEditError && <div className="panel muted">Erro: {productEditError}</div>}
+
+        <section className="panel" style={{ maxWidth: "820px" }}>
+          <h3>Resumo</h3>
+          <div className="grid" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Status</span>
+              <span>{activeProduct.status || "—"}</span>
             </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Variações</span>
+              <span>{activeProduct.variants?.length || 0}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
 
-            <form className="grid" onSubmit={createProduct} style={{ gap: "0.85rem" }}>
+  if (isCreateMode) {
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Adicionar produto</h1>
+          <p className="page-subtitle">Cadastre os dados, variações e estoque inicial.</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/produtos")}>
+            Voltar
+          </button>
+          <div className="action-bar-group">
+            <button className="btn" type="submit" form="product-create-form" disabled={productSaving}>
+              {productSaving ? "Criando..." : "Adicionar produto"}
+            </button>
+          </div>
+        </div>
+
+        {productError && <div className="panel muted">Erro: {productError}</div>}
+
+        <form id="product-create-form" className="grid" onSubmit={createProduct} style={{ gap: "0.85rem" }}>
           <label className="grid" style={{ gap: "0.35rem" }}>
             <span className="muted">Título</span>
             <input
@@ -1705,15 +1769,6 @@ export default function ProductsSection({
 
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
             <button
-              className="btn btn-icon"
-              type="submit"
-              disabled={productSaving}
-              title={productSaving ? "Criando..." : "Adicionar produto"}
-              aria-label={productSaving ? "Criando..." : "Adicionar produto"}
-            >
-              <FontAwesomeIcon icon={faFloppyDisk} />
-            </button>
-            <button
               className="btn btn-secondary btn-icon"
               type="button"
               onClick={resetProductForm}
@@ -1723,10 +1778,231 @@ export default function ProductsSection({
               <FontAwesomeIcon icon={faBroom} />
             </button>
           </div>
-            </form>
+        </form>
+      </div>
+    )
+  }
+
+  if (isEditMode) {
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Editar produto</h1>
+          <p className="page-subtitle">{activeProduct?.title || "Produto"}</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/produtos")}>
+            Voltar
+          </button>
+          <div className="action-bar-group">
+            <button
+              className="btn"
+              type="button"
+              disabled={productEditSaving}
+              onClick={() => activeProduct && saveProductMedia(activeProduct)}
+            >
+              {productEditSaving ? "Salvando..." : "Salvar alterações"}
+            </button>
           </div>
         </div>
-      )}
+
+        {productEditError && <div className="panel muted">Erro: {productEditError}</div>}
+
+        {!activeProduct ? (
+          <div className="panel muted">Produto não encontrado.</div>
+        ) : (
+          <div className="panel grid" style={{ gap: "0.75rem", maxWidth: "980px" }}>
+            <textarea
+              value={productEditForm.media_images}
+              onChange={(e) => updateProductEditField("media_images", e.target.value)}
+              rows={2}
+              placeholder="Imagens (URLs)"
+              className="field-input"
+            />
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="field-input"
+              disabled={productEditMediaUploading}
+              onChange={(e) => uploadProductMedia(e.target.files, "images", "edit")}
+            />
+            <textarea
+              value={productEditForm.media_videos}
+              onChange={(e) => updateProductEditField("media_videos", e.target.value)}
+              rows={2}
+              placeholder="Vídeos (URLs MP4)"
+              className="field-input"
+            />
+            <input
+              type="file"
+              accept="video/*"
+              multiple
+              className="field-input"
+              disabled={productEditMediaUploading}
+              onChange={(e) => uploadProductMedia(e.target.files, "videos", "edit")}
+            />
+            <textarea
+              value={productEditForm.media_youtube}
+              onChange={(e) => updateProductEditField("media_youtube", e.target.value)}
+              rows={2}
+              placeholder="YouTube (links)"
+              className="field-input"
+            />
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <input
+                type="checkbox"
+                checked={productEditForm.featured}
+                onChange={(e) => updateProductEditField("featured", e.target.checked)}
+                className="checkbox"
+              />
+              <span className="muted">Produto em destaque</span>
+            </label>
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Shipping profile</span>
+              <select
+                value={productEditForm.shipping_profile_id}
+                onChange={(e) => {
+                  updateProductEditField("shipping_profile_id", e.target.value)
+                  setProductEditForm((prev) => ({
+                    ...prev,
+                    allowed_shipping_option_ids: [],
+                  }))
+                }}
+                className="field-input"
+              >
+                <option value="">Selecionar</option>
+                {shippingProfiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name || profile.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="panel grid" style={{ gap: "0.5rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  flexWrap: "wrap",
+                }}
+              >
+                <span className="muted">Formas de entrega permitidas</span>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    type="button"
+                    onClick={selectAllEditShippingOptions}
+                    disabled={!effectiveShippingOptions.length}
+                  >
+                    Selecionar tudo
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    type="button"
+                    onClick={clearEditShippingOptions}
+                    disabled={!effectiveShippingOptions.length}
+                  >
+                    Limpar
+                  </button>
+                </div>
+              </div>
+              {effectiveShippingOptions.length === 0 ? (
+                <span className="muted">
+                  {shippingOptionsLoading
+                    ? "Carregando formas de entrega..."
+                    : shippingOptionsError || "Nenhuma forma de entrega cadastrada."}
+                </span>
+              ) : !productEditForm.shipping_profile_id ? (
+                <span className="muted">
+                  Selecione um shipping profile para listar as opções.
+                </span>
+              ) : (() => {
+                  const options =
+                    shippingOptionsByProfile.get(productEditForm.shipping_profile_id) || []
+                  if (!options.length) {
+                    return (
+                      <span className="muted" style={{ color: "#F87171" }}>
+                        Este shipping profile não possui formas de entrega vinculadas.
+                      </span>
+                    )
+                  }
+                  return (
+                    <div
+                      className="grid"
+                      style={{
+                        gap: "0.5rem",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                      }}
+                    >
+                      {options.map((option) => {
+                        const checked = productEditForm.allowed_shipping_option_ids.includes(
+                          option.id
+                        )
+                        const region =
+                          option.region?.name ||
+                          option.service_zone?.region?.name ||
+                          option.service_zone?.name
+                        const profile = option.shipping_profile?.name
+                        const meta = [
+                          region ? `Região: ${region}` : null,
+                          profile ? `Perfil: ${profile}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")
+                        return (
+                          <label
+                            key={option.id}
+                            style={{
+                              display: "flex",
+                              gap: "0.5rem",
+                              alignItems: "flex-start",
+                              padding: "0.4rem 0.55rem",
+                              border: "1px solid rgba(255,255,255,0.08)",
+                              borderRadius: "0.5rem",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleEditShippingOption(option.id)}
+                              className="checkbox"
+                            />
+                            <div className="grid" style={{ gap: "0.2rem" }}>
+                              <span>{option.name || option.id}</span>
+                              {meta && <span className="muted">{meta}</span>}
+                            </div>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              <div className="muted" style={{ fontSize: "0.85rem" }}>
+                Atualize mídias e formas de entrega e salve as alterações.
+              </div>
+              {productEditMediaUploading && <span className="muted">Enviando midia...</span>}
+              {productEditMediaUploadError && (
+                <span className="muted">Erro no upload: {productEditMediaUploadError}</span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+      <header className="grid" style={{ gap: "0.5rem" }}>
+        <h1 style={{ fontSize: "2rem" }}>Produtos</h1>
+        <p className="muted">Acompanhe catálogo, estoque e preços médios.</p>
+      </header>
+
+      {productError && <div className="panel muted">Erro: {productError}</div>}
 
       <section className="grid grid-3">
         <div className="panel grid" style={{ gap: "0.35rem" }}>
@@ -1761,7 +2037,7 @@ export default function ProductsSection({
             <button
               className="btn btn-secondary btn-sm btn-icon"
               type="button"
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => navigate("/produtos/novo")}
               title="Adicionar produto"
               aria-label="Adicionar produto"
             >
@@ -1818,239 +2094,23 @@ export default function ProductsSection({
                       <td>{hasStockData ? totalStock : "—"}</td>
                       <td>{formatMoney(price?.amount, price?.currency_code)}</td>
                       <td>
-                        {editingProductId === p.id ? (
-                          <div className="grid" style={{ gap: "0.5rem", minWidth: "260px" }}>
-                            <textarea
-                              value={productEditForm.media_images}
-                              onChange={(e) =>
-                                updateProductEditField("media_images", e.target.value)
-                              }
-                              rows={2}
-                              placeholder="Imagens (URLs)"
-                              className="field-input"
-                            />
-                            <input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              className="field-input"
-                              disabled={productEditMediaUploading}
-                              onChange={(e) => uploadProductMedia(e.target.files, "images", "edit")}
-                            />
-                            <textarea
-                              value={productEditForm.media_videos}
-                              onChange={(e) =>
-                                updateProductEditField("media_videos", e.target.value)
-                              }
-                              rows={2}
-                              placeholder="Vídeos (URLs MP4)"
-                              className="field-input"
-                            />
-                            <input
-                              type="file"
-                              accept="video/*"
-                              multiple
-                              className="field-input"
-                              disabled={productEditMediaUploading}
-                              onChange={(e) => uploadProductMedia(e.target.files, "videos", "edit")}
-                            />
-                            <textarea
-                              value={productEditForm.media_youtube}
-                              onChange={(e) =>
-                                updateProductEditField("media_youtube", e.target.value)
-                              }
-                              rows={2}
-                              placeholder="YouTube (links)"
-                              className="field-input"
-                            />
-                            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                              <input
-                                type="checkbox"
-                                checked={productEditForm.featured}
-                                onChange={(e) =>
-                                  updateProductEditField("featured", e.target.checked)
-                                }
-                                className="checkbox"
-                              />
-                              <span className="muted">Produto em destaque</span>
-                            </label>
-                            <label className="grid" style={{ gap: "0.35rem" }}>
-                              <span className="muted">Shipping profile</span>
-                              <select
-                                value={productEditForm.shipping_profile_id}
-                                onChange={(e) => {
-                                  updateProductEditField("shipping_profile_id", e.target.value)
-                                  setProductEditForm((prev) => ({
-                                    ...prev,
-                                    allowed_shipping_option_ids: [],
-                                  }))
-                                }}
-                                className="field-input"
-                              >
-                                <option value="">Selecionar</option>
-                                {shippingProfiles.map((profile) => (
-                                  <option key={profile.id} value={profile.id}>
-                                    {profile.name || profile.id}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                            <div className="panel grid" style={{ gap: "0.5rem" }}>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  alignItems: "center",
-                                  gap: "0.5rem",
-                                  flexWrap: "wrap",
-                                }}
-                              >
-                                <span className="muted">Formas de entrega permitidas</span>
-                                <div style={{ display: "flex", gap: "0.5rem" }}>
-                                  <button
-                                    className="btn btn-secondary btn-sm"
-                                    type="button"
-                                    onClick={selectAllEditShippingOptions}
-                                  disabled={!effectiveShippingOptions.length}
-                                  >
-                                    Selecionar tudo
-                                  </button>
-                                  <button
-                                    className="btn btn-secondary btn-sm"
-                                    type="button"
-                                    onClick={clearEditShippingOptions}
-                                  disabled={!effectiveShippingOptions.length}
-                                  >
-                                    Limpar
-                                  </button>
-                                </div>
-                              </div>
-                              {effectiveShippingOptions.length === 0 ? (
-                                <span className="muted">
-                                  {shippingOptionsLoading
-                                    ? "Carregando formas de entrega..."
-                                    : shippingOptionsError || "Nenhuma forma de entrega cadastrada."}
-                                </span>
-                              ) : !productEditForm.shipping_profile_id ? (
-                                <span className="muted">
-                                  Selecione um shipping profile para listar as opções.
-                                </span>
-                              ) : (
-                                (() => {
-                                  const options =
-                                    shippingOptionsByProfile.get(productEditForm.shipping_profile_id) ||
-                                    []
-                                  if (!options.length) {
-                                    return (
-                                      <span className="muted" style={{ color: "#F87171" }}>
-                                        Este shipping profile não possui formas de entrega vinculadas.
-                                      </span>
-                                    )
-                                  }
-                                  return (
-                                    <div
-                                      className="grid"
-                                      style={{
-                                        gap: "0.5rem",
-                                        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                                      }}
-                                    >
-                                      {options.map((option) => {
-                                        const checked =
-                                          productEditForm.allowed_shipping_option_ids.includes(
-                                            option.id
-                                          )
-                                        const region =
-                                          option.region?.name ||
-                                          option.service_zone?.region?.name ||
-                                          option.service_zone?.name
-                                        const profile = option.shipping_profile?.name
-                                        const meta = [
-                                          region ? `Região: ${region}` : null,
-                                          profile ? `Perfil: ${profile}` : null,
-                                        ]
-                                          .filter(Boolean)
-                                          .join(" · ")
-                                        return (
-                                          <label
-                                            key={option.id}
-                                            style={{
-                                              display: "flex",
-                                              gap: "0.5rem",
-                                              alignItems: "flex-start",
-                                              padding: "0.4rem 0.55rem",
-                                              border: "1px solid rgba(255,255,255,0.08)",
-                                              borderRadius: "0.5rem",
-                                            }}
-                                          >
-                                            <input
-                                              type="checkbox"
-                                              checked={checked}
-                                              onChange={() => toggleEditShippingOption(option.id)}
-                                              className="checkbox"
-                                            />
-                                            <div className="grid" style={{ gap: "0.2rem" }}>
-                                              <span>{option.name || option.id}</span>
-                                              {meta && <span className="muted">{meta}</span>}
-                                            </div>
-                                          </label>
-                                        )
-                                      })}
-                                    </div>
-                                  )
-                                })()
-                              )}
-                            </div>
-                            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                              <button
-                                className="btn btn-sm btn-icon"
-                                type="button"
-                                disabled={productEditSaving}
-                                onClick={() => saveProductMedia(p)}
-                                title={productEditSaving ? "Salvando..." : "Salvar"}
-                                aria-label={productEditSaving ? "Salvando..." : "Salvar"}
-                              >
-                                <FontAwesomeIcon icon={faFloppyDisk} />
-                              </button>
-                              <button
-                                className="btn btn-secondary btn-sm btn-icon"
-                                type="button"
-                                onClick={cancelEditProductMedia}
-                                title="Cancelar"
-                                aria-label="Cancelar"
-                              >
-                                <FontAwesomeIcon icon={faTimes} />
-                              </button>
-                            </div>
-                            {productEditMediaUploading && (
-                              <span className="muted">Enviando midia...</span>
-                            )}
-                            {productEditMediaUploadError && (
-                              <span className="muted">
-                                Erro no upload: {productEditMediaUploadError}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <button
-                            className="btn btn-secondary btn-sm btn-icon"
-                            type="button"
-                            onClick={() => startEditProductMedia(p)}
-                            title="Editar mídias"
-                            aria-label="Editar mídias"
-                          >
-                            <FontAwesomeIcon icon={faPen} />
-                          </button>
-                        )}
+                        <button
+                          className="btn btn-secondary btn-sm btn-icon"
+                          type="button"
+                          onClick={() => navigate(`/produtos/${p.id}`)}
+                          title="Editar produto"
+                          aria-label="Editar produto"
+                        >
+                          <FontAwesomeIcon icon={faPen} />
+                        </button>
                       </td>
                       <td>
                         <button
                           className="btn btn-secondary btn-sm btn-icon"
                           type="button"
-                          onClick={() => deleteProduct(p.id)}
+                          onClick={() => navigate(`/produtos/${p.id}/excluir`)}
                           title="Excluir produto"
                           aria-label="Excluir produto"
-                          disabled={deletingProductId === p.id}
                         >
                           <FontAwesomeIcon icon={faTrash} />
                         </button>

@@ -1,10 +1,10 @@
 import { FormEvent, useEffect, useMemo, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import {
   faPenToSquare,
   faTrash,
   faPaperPlane,
-  faSpinner,
   faPlus,
 } from "@fortawesome/free-solid-svg-icons"
 
@@ -16,6 +16,8 @@ type EmailTemplatesSectionProps = {
   medusaUrl: string
   headers: Record<string, string>
   pushToast: (toast: ToastInput) => void
+  mode?: "list" | "create" | "edit" | "publish" | "delete" | "bootstrap"
+  templateId?: string
 }
 
 const initialForm = {
@@ -25,15 +27,29 @@ const initialForm = {
   variables: "",
 }
 
-export default function EmailTemplatesSection({ medusaUrl, headers, pushToast }: EmailTemplatesSectionProps) {
+export default function EmailTemplatesSection({
+  medusaUrl,
+  headers,
+  pushToast,
+  mode = "list",
+  templateId,
+}: EmailTemplatesSectionProps) {
+  const navigate = useNavigate()
+  const params = useParams()
+  const resolvedTemplateId = params.templateId || templateId
+  const isCreateMode = mode === "create"
+  const isEditMode = mode === "edit"
+  const isPublishMode = mode === "publish"
+  const isDeleteMode = mode === "delete"
+  const isBootstrapMode = mode === "bootstrap"
   const [templates, setTemplates] = useState<EmailTemplate[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isPublishingId, setIsPublishingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(initialForm)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const templatesSorted = useMemo(
     () => [...templates].sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""))),
@@ -132,6 +148,14 @@ export default function EmailTemplatesSection({ medusaUrl, headers, pushToast }:
     }
   }
 
+  useEffect(() => {
+    if (!isEditMode) return
+    if (!resolvedTemplateId) return
+    const template = templates.find((item) => item.id === resolvedTemplateId)
+    if (!template) return
+    applyTemplate(template)
+  }, [isEditMode, resolvedTemplateId, templates])
+
   const resetForm = () => {
     setForm(initialForm)
     setEditingId(null)
@@ -190,6 +214,7 @@ export default function EmailTemplatesSection({ medusaUrl, headers, pushToast }:
         variant: "success",
       })
       resetForm()
+      navigate("/emails")
     } catch (err: any) {
       setError(normalizeError(err?.message || "Erro ao salvar template"))
     } finally {
@@ -209,16 +234,18 @@ export default function EmailTemplatesSection({ medusaUrl, headers, pushToast }:
         const body = await res.text()
         throw new Error(normalizeError(body) || "Falha ao publicar template")
       }
+      await loadTemplates()
       pushToast({ title: "Template publicado", variant: "success" })
+      return true
     } catch (err: any) {
       setError(normalizeError(err?.message || "Erro ao publicar template"))
+      return false
     } finally {
       setIsPublishingId(null)
     }
   }
 
   const handleDelete = async (templateId: string) => {
-    if (!confirm("Deseja remover este template?")) return
     setDeletingId(templateId)
     setError(null)
     try {
@@ -233,11 +260,94 @@ export default function EmailTemplatesSection({ medusaUrl, headers, pushToast }:
       await loadTemplates()
       if (editingId === templateId) resetForm()
       pushToast({ title: "Template removido", variant: "success" })
+      return true
     } catch (err: any) {
       setError(normalizeError(err?.message || "Erro ao remover template"))
+      return false
     } finally {
       setDeletingId(null)
     }
+  }
+
+  if (isPublishMode || isDeleteMode) {
+    const template = templates.find((item) => item.id === resolvedTemplateId) || null
+    const title = isPublishMode ? "Publicar template" : "Excluir template"
+    const actionId = resolvedTemplateId || ""
+
+    if (isLoading && !template) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+          <header className="page-header">
+            <h1 className="page-title">{title}</h1>
+            <p className="page-subtitle">Carregando template...</p>
+          </header>
+        </div>
+      )
+    }
+
+    if (!template) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+          <header className="page-header">
+            <h1 className="page-title">{title}</h1>
+            <p className="page-subtitle">Template não encontrado.</p>
+          </header>
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/emails")}>
+            Voltar
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">{title}</h1>
+          <p className="page-subtitle">{template.name || template.id}</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/emails")}>
+            Voltar
+          </button>
+          <button
+            className="btn"
+            type="button"
+            disabled={isPublishMode ? isPublishingId === actionId : deletingId === actionId}
+            onClick={async () => {
+              const ok = isPublishMode
+                ? await handlePublish(actionId)
+                : await handleDelete(actionId)
+              if (ok) navigate("/emails")
+            }}
+          >
+            {isPublishMode
+              ? isPublishingId === actionId
+                ? "Publicando..."
+                : "Confirmar publicação"
+              : deletingId === actionId
+              ? "Removendo..."
+              : "Confirmar exclusão"}
+          </button>
+        </div>
+
+        {error && <div className="panel muted">Erro: {error}</div>}
+
+        <section className="panel" style={{ maxWidth: "820px" }}>
+          <h3>Resumo</h3>
+          <div className="grid" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Assunto</span>
+              <span>{template.subject || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Status</span>
+              <span>{template.status || "—"}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
   }
 
   const handleBootstrap = async () => {
@@ -253,112 +363,69 @@ export default function EmailTemplatesSection({ medusaUrl, headers, pushToast }:
       }
       await loadTemplates()
       pushToast({ title: "Templates padrao criados", variant: "success" })
+      return true
     } catch (err: any) {
       setError(normalizeError(err?.message || "Erro ao criar templates padrao"))
+      return false
     }
   }
 
-  return (
-    <div className="panel">
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
-        <div>
-          <h2 data-testid="admin-email-templates-title">Templates de email</h2>
-          <p className="muted">Gerencie os templates do Resend usados nas notificacoes.</p>
+  if (isBootstrapMode) {
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Criar templates padrão</h1>
+          <p className="page-subtitle">Gera os templates base do Resend para o catálogo.</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/emails")}>
+            Voltar
+          </button>
+          <button
+            className="btn"
+            type="button"
+            onClick={async () => {
+              const ok = await handleBootstrap()
+              if (ok) navigate("/emails")
+            }}
+          >
+            Confirmar criação
+          </button>
         </div>
-        <button className="btn btn-secondary" type="button" onClick={handleBootstrap}>
-          <FontAwesomeIcon icon={faPlus} /> Criar templates padrao
-        </button>
+
+        {error && <div className="panel muted">Erro: {error}</div>}
       </div>
+    )
+  }
 
-      {error && (
-        <div className="muted" style={{ marginTop: "0.75rem" }}>
-          Erro: {error}
-        </div>
-      )}
+  if (isCreateMode || isEditMode) {
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">{isEditMode ? "Editar template" : "Novo template"}</h1>
+          <p className="page-subtitle">Gerencie templates do Resend usados nas notificacoes.</p>
+        </header>
 
-      <div
-        className="grid"
-        style={{
-          marginTop: "1.5rem",
-          gap: "1.5rem",
-          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-          alignItems: "start",
-        }}
-      >
-        <div className="panel">
-          <h3 style={{ marginBottom: "0.75rem" }}>Templates cadastrados</h3>
-          {isLoading ? (
-            <div className="muted">Carregando...</div>
-          ) : templatesSorted.length === 0 ? (
-            <div className="panel" style={{ display: "grid", gap: "0.5rem" }}>
-              <strong>Nenhum template encontrado</strong>
-              <span className="muted">
-                Crie um template manualmente ou gere os modelos padrao para comecar.
-              </span>
-              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-                <button className="btn" type="button" onClick={handleBootstrap}>
-                  <FontAwesomeIcon icon={faPlus} /> Criar templates padrao
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  type="button"
-                  onClick={() => {
-                    resetForm()
-                    document.querySelector("input.field-input")?.scrollIntoView({ behavior: "smooth" })
-                  }}
-                >
-                  Criar manualmente
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="list">
-              {templatesSorted.map((template) => (
-                <div key={template.id} className="list-item">
-                  <div>
-                    <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-                      <strong>{template.name}</strong>
-                      {renderStatusChip(template.status)}
-                    </div>
-                    <div className="muted">{template.id}</div>
-                  </div>
-                  <div className="list-actions">
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      type="button"
-                      onClick={() => applyTemplate(template)}
-                      title="Editar"
-                    >
-                      <FontAwesomeIcon icon={faPenToSquare} />
-                    </button>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      type="button"
-                      onClick={() => handlePublish(template.id)}
-                      title="Publicar"
-                      disabled={isPublishingId === template.id}
-                    >
-                      <FontAwesomeIcon icon={isPublishingId === template.id ? faSpinner : faPaperPlane} />
-                    </button>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      type="button"
-                      onClick={() => handleDelete(template.id)}
-                      title="Remover"
-                      disabled={deletingId === template.id}
-                    >
-                      <FontAwesomeIcon icon={faTrash} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/emails")}>
+            Voltar
+          </button>
+          <div className="action-bar-group">
+            <button className="btn" type="submit" form="email-template-form" disabled={isSaving}>
+              {isSaving ? "Salvando..." : isEditMode ? "Atualizar" : "Criar"}
+            </button>
+          </div>
         </div>
 
+        {error && (
+          <div className="muted" style={{ marginTop: "0.75rem" }}>
+            Erro: {error}
+          </div>
+        )}
+
         <div className="panel">
-          <h3 style={{ marginBottom: "0.75rem" }}>{editingId ? "Editar template" : "Novo template"}</h3>
-          <form onSubmit={handleSave} className="grid" style={{ gap: "0.85rem" }}>
+          <form id="email-template-form" onSubmit={handleSave} className="grid" style={{ gap: "0.85rem" }}>
             <label className="grid" style={{ gap: "0.35rem" }}>
               <span className="muted">Nome</span>
               <input
@@ -396,15 +463,8 @@ export default function EmailTemplatesSection({ medusaUrl, headers, pushToast }:
                 onChange={(e) => setForm((prev) => ({ ...prev, variables: e.target.value }))}
               />
             </label>
-            <div style={{ display: "flex", gap: "0.75rem" }}>
-              <button className="btn" type="submit" disabled={isSaving}>
-                {isSaving ? "Salvando..." : editingId ? "Atualizar" : "Criar"}
-              </button>
-              {editingId && (
-                <button className="btn btn-secondary" type="button" onClick={resetForm}>
-                  Cancelar
-                </button>
-              )}
+            <div className="muted" style={{ fontSize: "0.85rem" }}>
+              Revise o HTML e as variáveis antes de salvar.
             </div>
           </form>
 
@@ -426,6 +486,108 @@ export default function EmailTemplatesSection({ medusaUrl, headers, pushToast }:
               <div className="muted">Adicione HTML para visualizar o preview.</div>
             )}
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="panel">
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+        <div>
+          <h2 data-testid="admin-email-templates-title">Templates de email</h2>
+          <p className="muted">Gerencie os templates do Resend usados nas notificacoes.</p>
+        </div>
+        <button className="btn btn-secondary" type="button" onClick={() => navigate("/emails/bootstrap")}>
+          <FontAwesomeIcon icon={faPlus} /> Criar templates padrao
+        </button>
+      </div>
+
+      {error && (
+        <div className="muted" style={{ marginTop: "0.75rem" }}>
+          Erro: {error}
+        </div>
+      )}
+
+      <div
+        className="grid"
+        style={{
+          marginTop: "1.5rem",
+          gap: "1.5rem",
+          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          alignItems: "start",
+        }}
+      >
+        <div className="panel">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3 style={{ marginBottom: "0.75rem" }}>Templates cadastrados</h3>
+            <button className="btn btn-secondary btn-sm" type="button" onClick={() => navigate("/emails/novo")}>
+              Novo template
+            </button>
+          </div>
+          {isLoading ? (
+            <div className="muted">Carregando...</div>
+          ) : templatesSorted.length === 0 ? (
+            <div className="panel" style={{ display: "grid", gap: "0.5rem" }}>
+              <strong>Nenhum template encontrado</strong>
+              <span className="muted">
+                Crie um template manualmente ou gere os modelos padrao para comecar.
+              </span>
+              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                <button className="btn" type="button" onClick={() => navigate("/emails/bootstrap")}>
+                  <FontAwesomeIcon icon={faPlus} /> Criar templates padrao
+                </button>
+                <button className="btn btn-secondary" type="button" onClick={() => navigate("/emails/novo")}>
+                  Criar manualmente
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="list">
+              {templatesSorted.map((template) => (
+                <div key={template.id} className="list-item">
+                  <div>
+                    <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+                      <strong>{template.name}</strong>
+                      {renderStatusChip(template.status)}
+                    </div>
+                    <div className="muted">{template.id}</div>
+                  </div>
+                  <div className="list-actions">
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      type="button"
+                      onClick={() => navigate(`/emails/${template.id}`)}
+                      title="Editar"
+                    >
+                      <FontAwesomeIcon icon={faPenToSquare} />
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      type="button"
+                      onClick={() => navigate(`/emails/${template.id}/publicar`)}
+                      title="Publicar"
+                    >
+                      <FontAwesomeIcon icon={faPaperPlane} />
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      type="button"
+                      onClick={() => navigate(`/emails/${template.id}/excluir`)}
+                      title="Remover"
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="panel">
+          <h3 style={{ marginBottom: "0.75rem" }}>Preview</h3>
+          <div className="muted">Selecione um template para editar.</div>
         </div>
       </div>
     </div>

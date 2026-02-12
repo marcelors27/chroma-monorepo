@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 
 import type { AdminCompany, EmailLog, StoreUser } from "../types"
 
@@ -10,6 +11,7 @@ type EmailLogsSectionProps = {
   users: StoreUser[]
   companies: AdminCompany[]
   pushToast: (toast: ToastInput) => void
+  mode?: "list" | "resend"
 }
 
 export default function EmailLogsSection({
@@ -18,7 +20,11 @@ export default function EmailLogsSection({
   users,
   companies,
   pushToast,
+  mode = "list",
 }: EmailLogsSectionProps) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isResendMode = mode === "resend"
   const [logs, setLogs] = useState<EmailLog[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [limit, setLimit] = useState(50)
@@ -29,6 +35,7 @@ export default function EmailLogsSection({
   const [type, setType] = useState("")
   const [status, setStatus] = useState("")
   const [resendLoadingId, setResendLoadingId] = useState<string | null>(null)
+  const [resendTarget, setResendTarget] = useState<EmailLog | null>(null)
 
   const filteredCompanies = useMemo(() => {
     if (!userId) return companies
@@ -62,8 +69,9 @@ export default function EmailLogsSection({
   }
 
   useEffect(() => {
+    if (isResendMode) return
     loadLogs()
-  }, [userId, companyId, type, status, limit, offset])
+  }, [userId, companyId, type, status, limit, offset, isResendMode])
 
   const totalPages = Math.max(1, Math.ceil(total / limit))
   const page = Math.min(Math.floor(offset / limit) + 1, totalPages)
@@ -79,7 +87,6 @@ export default function EmailLogsSection({
       pushToast({ title: "Log sem dados suficientes para reenvio.", variant: "error" })
       return
     }
-    if (!confirm("Deseja reenviar esta cobrança?")) return
     setResendLoadingId(`${log.user_id}-${log.sent_at}`)
     try {
       const res = await fetch(`${medusaUrl}/admin/notifications/pending-payment`, {
@@ -98,11 +105,85 @@ export default function EmailLogsSection({
         throw new Error(body || "Erro ao reenviar cobrança")
       }
       pushToast({ title: "Cobrança reenviada", variant: "success" })
+      return true
     } catch (err: any) {
       pushToast({ title: err?.message || "Erro ao reenviar cobrança", variant: "error" })
+      return false
     } finally {
       setResendLoadingId(null)
     }
+  }
+
+  useEffect(() => {
+    if (!isResendMode) return
+    const state = (location.state || {}) as { log?: EmailLog }
+    setResendTarget(state.log || null)
+  }, [isResendMode, location.state])
+
+  if (isResendMode) {
+    if (!resendTarget) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+          <header className="page-header">
+            <h1 className="page-title">Reenviar cobrança</h1>
+            <p className="page-subtitle">Selecione um log para reenviar.</p>
+          </header>
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/email-logs")}>
+            Voltar
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Reenviar cobrança</h1>
+          <p className="page-subtitle">{resendTarget.user_email || resendTarget.user_name || "Usuário"}</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/email-logs")}>
+            Voltar
+          </button>
+          <button
+            className="btn"
+            type="button"
+            onClick={async () => {
+              const ok = await handleResend(resendTarget)
+              if (ok) navigate("/email-logs")
+            }}
+            disabled={resendLoadingId === `${resendTarget.user_id}-${resendTarget.sent_at}`}
+          >
+            {resendLoadingId === `${resendTarget.user_id}-${resendTarget.sent_at}`
+              ? "Enviando..."
+              : "Confirmar reenvio"}
+          </button>
+        </div>
+
+        <section className="panel" style={{ maxWidth: "820px" }}>
+          <h3>Resumo do log</h3>
+          <div className="grid" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Tipo</span>
+              <span>{resendTarget.type || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Condomínio</span>
+              <span>{resendTarget.company_id || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Payment collection</span>
+              <span>{resendTarget.payment_collection_id || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Método</span>
+              <span>{resendTarget.method || "—"}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
   }
 
   return (
@@ -198,10 +279,9 @@ export default function EmailLogsSection({
                         <button
                           className="btn btn-secondary btn-sm"
                           type="button"
-                          onClick={() => handleResend(log)}
-                          disabled={resendLoadingId === `${log.user_id}-${log.sent_at}`}
+                          onClick={() => navigate("/email-logs/reenviar", { state: { log } })}
                         >
-                          {resendLoadingId === `${log.user_id}-${log.sent_at}` ? "Enviando..." : "Reenviar"}
+                          Reenviar
                         </button>
                         <button
                           className="btn btn-secondary btn-sm"

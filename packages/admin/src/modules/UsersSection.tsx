@@ -1,5 +1,6 @@
 import type { Dispatch, FormEvent, SetStateAction } from "react"
 import { Fragment, useMemo, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
 
 import type { StoreUser } from "../types"
 import { formatCnpj } from "../utils/format"
@@ -11,6 +12,8 @@ type UsersSectionProps = {
   setUsers: Dispatch<SetStateAction<StoreUser[]>>
   usersError: string | null
   setUsersError: Dispatch<SetStateAction<string | null>>
+  mode?: "list" | "create" | "reset" | "status"
+  userId?: string
 }
 
 export default function UsersSection({
@@ -20,7 +23,15 @@ export default function UsersSection({
   setUsers,
   usersError,
   setUsersError,
+  mode = "list",
+  userId,
 }: UsersSectionProps) {
+  const navigate = useNavigate()
+  const params = useParams()
+  const resolvedUserId = params.userId || userId
+  const isCreateMode = mode === "create"
+  const isResetMode = mode === "reset"
+  const isStatusMode = mode === "status"
   const [createForm, setCreateForm] = useState({
     email: "",
     first_name: "",
@@ -28,8 +39,6 @@ export default function UsersSection({
     phone: "",
   })
   const [creating, setCreating] = useState(false)
-  const [resettingId, setResettingId] = useState<string | null>(null)
-  const [statusChangingId, setStatusChangingId] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [showIdentityUsers, setShowIdentityUsers] = useState(true)
   const [usersNotice, setUsersNotice] = useState<string | null>(null)
@@ -101,7 +110,6 @@ export default function UsersSection({
   }
 
   const toggleUserStatus = async (user: StoreUser) => {
-    setStatusChangingId(user.id)
     setUsersError(null)
     setUsersNotice(null)
     try {
@@ -117,10 +125,10 @@ export default function UsersSection({
       setUsers((prev) =>
         prev.map((item) => (item.id === user.id ? { ...item, disabled: !user.disabled } : item))
       )
+      return true
     } catch (err: any) {
       setUsersError(err?.message || "Erro ao atualizar usuário")
-    } finally {
-      setStatusChangingId(null)
+      return false
     }
   }
 
@@ -194,6 +202,7 @@ export default function UsersSection({
       setCreateForm({ email: "", first_name: "", last_name: "", phone: "" })
       setUsersNotice("Senha provisória enviada por e-mail.")
       await refreshUsers()
+      navigate("/usuarios")
     } catch (err: any) {
       setUsersError(err?.message || "Erro ao criar usuário")
     } finally {
@@ -202,7 +211,6 @@ export default function UsersSection({
   }
 
   const handleResetPassword = async (userId: string) => {
-    setResettingId(userId)
     setUsersError(null)
     setUsersNotice(null)
     try {
@@ -215,11 +223,171 @@ export default function UsersSection({
         throw new Error(body || "Não foi possível resetar a senha")
       }
       setUsersNotice("Senha resetada e enviada por e-mail.")
+      return true
     } catch (err: any) {
       setUsersError(err?.message || "Erro ao resetar a senha")
-    } finally {
-      setResettingId(null)
+      return false
     }
+  }
+
+  if (isResetMode || isStatusMode) {
+    const user = users.find((item) => item.id === resolvedUserId) || null
+    const title = isResetMode ? "Resetar senha" : "Status do usuário"
+
+    if (!user) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+          <header className="page-header">
+            <h1 className="page-title">{title}</h1>
+            <p className="page-subtitle">Usuário não encontrado.</p>
+          </header>
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/usuarios")}>
+            Voltar
+          </button>
+        </div>
+      )
+    }
+
+    const name = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "—"
+
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">{title}</h1>
+          <p className="page-subtitle">{name}</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/usuarios")}>
+            Voltar
+          </button>
+          {isResetMode ? (
+            <button
+              className="btn"
+              type="button"
+              onClick={async () => {
+                const ok = await handleResetPassword(user.id)
+                if (ok) navigate("/usuarios")
+              }}
+            >
+              Enviar nova senha
+            </button>
+          ) : (
+            <button
+              className="btn"
+              type="button"
+              onClick={async () => {
+                const ok = await toggleUserStatus(user)
+                if (ok) navigate("/usuarios")
+              }}
+            >
+              {user.disabled ? "Ativar usuário" : "Desativar usuário"}
+            </button>
+          )}
+        </div>
+
+        {usersError && <div className="panel muted">Erro: {usersError}</div>}
+        {usersNotice && <div className="panel muted">{usersNotice}</div>}
+
+        <section className="panel" style={{ maxWidth: "720px" }}>
+          <h3>Resumo</h3>
+          <div className="grid" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Nome</span>
+              <span>{name}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">E-mail</span>
+              <span>{user.email || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Status</span>
+              <span>{user.disabled ? "Desativado" : "Ativo"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Criado em</span>
+              <span>
+                {user.created_at
+                  ? new Date(user.created_at).toLocaleDateString("pt-BR")
+                  : "—"}
+              </span>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
+  if (isCreateMode) {
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Criar usuário</h1>
+          <p className="page-subtitle">Envie convite com senha provisória.</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/usuarios")}>
+            Voltar
+          </button>
+          <div className="action-bar-group">
+            <button className="btn" type="submit" form="user-create-form" disabled={creating}>
+              {creating ? "Criando..." : "Criar"}
+            </button>
+          </div>
+        </div>
+
+        {usersError && <div className="muted">Erro: {usersError}</div>}
+        {usersNotice && <div className="muted">{usersNotice}</div>}
+
+        <section className="panel">
+          <form id="user-create-form" onSubmit={handleCreateUser} className="grid" style={{ gap: "0.75rem" }}>
+            <div
+              className="grid"
+              style={{ gap: "0.5rem", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr auto" }}
+            >
+              <input
+                className="field-input"
+                type="email"
+                placeholder="email@exemplo.com"
+                value={createForm.email}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, email: event.target.value }))
+                }
+                required
+              />
+              <input
+                className="field-input"
+                placeholder="Nome"
+                value={createForm.first_name}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, first_name: event.target.value }))
+                }
+              />
+              <input
+                className="field-input"
+                placeholder="Sobrenome"
+                value={createForm.last_name}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, last_name: event.target.value }))
+                }
+              />
+              <input
+                className="field-input"
+                placeholder="Telefone"
+                value={createForm.phone}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, phone: event.target.value }))
+                }
+              />
+            </div>
+            <span className="muted" style={{ fontSize: "0.85rem" }}>
+              Uma senha provisória será gerada automaticamente e enviada por e-mail.
+            </span>
+          </form>
+        </section>
+      </div>
+    )
   }
 
   return (
@@ -259,76 +427,17 @@ export default function UsersSection({
           }}
         >
           <div>
-            <h3>Criar usuário</h3>
-            <p className="muted" style={{ marginTop: "0.25rem" }}>
-              Envie um convite com senha provisória para o usuário acessar o front-store.
-            </p>
-          </div>
-        </div>
-
-        <form onSubmit={handleCreateUser} className="grid" style={{ gap: "0.75rem" }}>
-          <div
-            className="grid"
-            style={{ gap: "0.5rem", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr auto" }}
-          >
-            <input
-              className="field-input"
-              type="email"
-              placeholder="email@exemplo.com"
-              value={createForm.email}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, email: event.target.value }))}
-              required
-            />
-            <input
-              className="field-input"
-              placeholder="Nome"
-              value={createForm.first_name}
-              onChange={(event) =>
-                setCreateForm((prev) => ({ ...prev, first_name: event.target.value }))
-              }
-            />
-            <input
-              className="field-input"
-              placeholder="Sobrenome"
-              value={createForm.last_name}
-              onChange={(event) =>
-                setCreateForm((prev) => ({ ...prev, last_name: event.target.value }))
-              }
-            />
-            <input
-              className="field-input"
-              placeholder="Telefone"
-              value={createForm.phone}
-              onChange={(event) =>
-                setCreateForm((prev) => ({ ...prev, phone: event.target.value }))
-              }
-            />
-            <button className="btn" type="submit" disabled={creating}>
-              {creating ? "Criando..." : "Criar"}
-            </button>
-          </div>
-          <span className="muted" style={{ fontSize: "0.85rem" }}>
-            Uma senha provisória será gerada automaticamente e enviada por e-mail.
-          </span>
-        </form>
-      </section>
-
-      <section className="panel">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "0.75rem",
-          }}
-        >
-          <div>
             <h3>Usuários cadastrados</h3>
             <p className="muted" style={{ marginTop: "0.25rem" }}>
               Veja os condomínios por usuário e resete senhas quando necessário.
             </p>
           </div>
-          <span className="pill">{visibleUsers.length} registros</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span className="pill">{visibleUsers.length} registros</span>
+            <button className="btn btn-secondary btn-sm" type="button" onClick={() => navigate("/usuarios/novo")}>
+              Novo usuário
+            </button>
+          </div>
         </div>
 
         {usersError && <div className="muted">Erro: {usersError}</div>}
@@ -409,22 +518,16 @@ export default function UsersSection({
                             <button
                               className="btn btn-sm"
                               type="button"
-                              disabled={resettingId === user.id}
-                              onClick={() => handleResetPassword(user.id)}
+                              onClick={() => navigate(`/usuarios/${user.id}/resetar-senha`)}
                             >
-                              {resettingId === user.id ? "Resetando..." : "Resetar"}
+                              Resetar
                             </button>
                             <button
                               className="btn btn-secondary btn-sm"
                               type="button"
-                              disabled={statusChangingId === user.id}
-                              onClick={() => toggleUserStatus(user)}
+                              onClick={() => navigate(`/usuarios/${user.id}/status`)}
                             >
-                              {statusChangingId === user.id
-                                ? "Salvando..."
-                                : user.disabled
-                                ? "Ativar"
-                                : "Desativar"}
+                              {user.disabled ? "Ativar" : "Desativar"}
                             </button>
                           </div>
                         </td>

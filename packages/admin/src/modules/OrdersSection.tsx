@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Order } from "../types"
 import { formatMoney } from "../utils/format"
 
@@ -6,6 +7,8 @@ type OrdersSectionProps = {
   orders: Order[]
   medusaUrl: string
   headers: Record<string, string>
+  mode?: "list" | "edit"
+  orderId?: string
 }
 
 const getOrderStatusClass = (status?: string) => {
@@ -59,90 +62,218 @@ const withCurrentOption = (options: { value: string; label: string }[], value?: 
   return [...options, { value, label: value }]
 }
 
-export default function OrdersSection({ orders, medusaUrl, headers }: OrdersSectionProps) {
-  const [localOrders, setLocalOrders] = useState<Order[]>(orders)
-  const [draftById, setDraftById] = useState<Record<string, Partial<Order>>>({})
-  const [savingById, setSavingById] = useState<Record<string, boolean>>({})
-  const [errorById, setErrorById] = useState<Record<string, string | null>>({})
-  const [historyOrder, setHistoryOrder] = useState<Order | null>(null)
+const getOptionLabel = (options: { value: string; label: string }[], value?: string) => {
+  if (!value) return "—"
+  return options.find((opt) => opt.value === value)?.label || value
+}
+
+export default function OrdersSection({
+  orders,
+  medusaUrl,
+  headers,
+  mode = "list",
+  orderId,
+}: OrdersSectionProps) {
+  const isEditMode = mode === "edit"
+  const navigate = useNavigate()
   const [filters, setFilters] = useState({
     status: "",
     fulfillment: "",
     payment: "",
     query: "",
   })
-  const openOrders = localOrders.filter((o) => o.status !== "completed").length
+
+  const [activeOrder, setActiveOrder] = useState<Order | null>(null)
+  const [draft, setDraft] = useState<Partial<Order>>({})
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setLocalOrders(orders)
-  }, [orders])
+    if (!isEditMode) return
+    const found = orders.find((order) => order.id === orderId) || null
+    setActiveOrder(found)
+    setDraft({})
+    setError(null)
+  }, [isEditMode, orderId, orders])
 
-  const updateDraft = (id: string, patch: Partial<Order>) => {
-    setDraftById((current) => ({ ...current, [id]: { ...current[id], ...patch } }))
+  const openOrders = orders.filter((o) => o.status !== "completed").length
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      if (filters.status && order.status !== filters.status) return false
+      if (filters.fulfillment && order.fulfillment_status !== filters.fulfillment) return false
+      if (filters.payment && order.payment_status !== filters.payment) return false
+      if (filters.query) {
+        const query = filters.query.toLowerCase()
+        const displayId = order.display_id ? `#${order.display_id}` : ""
+        const idMatch = order.id?.toLowerCase().includes(query) || false
+        const displayMatch = displayId.toLowerCase().includes(query)
+        if (!idMatch && !displayMatch) return false
+      }
+      return true
+    })
+  }, [filters, orders])
+
+  const getDraftValue = (field: keyof Order) => {
+    if (!activeOrder) return ""
+    return (draft[field] as string | undefined) ?? (activeOrder[field] as string | undefined) ?? ""
   }
 
-  const getDraftValue = (order: Order, field: keyof Order) => {
-    return (draftById[order.id]?.[field] as string | undefined) ?? (order[field] as string | undefined) ?? ""
-  }
-
-  const hasChanges = (order: Order) => {
-    const draft = draftById[order.id]
-    if (!draft) return false
+  const hasChanges = () => {
+    if (!activeOrder) return false
     return (
-      (draft.status && draft.status !== order.status) ||
-      (draft.fulfillment_status && draft.fulfillment_status !== order.fulfillment_status)
+      (draft.status && draft.status !== activeOrder.status) ||
+      (draft.fulfillment_status && draft.fulfillment_status !== activeOrder.fulfillment_status)
     )
   }
 
-  const filteredOrders = localOrders.filter((order) => {
-    if (filters.status && order.status !== filters.status) return false
-    if (filters.fulfillment && order.fulfillment_status !== filters.fulfillment) return false
-    if (filters.payment && order.payment_status !== filters.payment) return false
-    if (filters.query) {
-      const query = filters.query.toLowerCase()
-      const displayId = order.display_id ? `#${order.display_id}` : ""
-      const idMatch = order.id?.toLowerCase().includes(query) || false
-      const displayMatch = displayId.toLowerCase().includes(query)
-      if (!idMatch && !displayMatch) return false
-    }
-    return true
-  })
-
-  const saveOrder = async (order: Order) => {
+  const saveOrder = async () => {
+    if (!activeOrder) return
     const payload = {
-      status: draftById[order.id]?.status ?? order.status,
-      fulfillment_status: draftById[order.id]?.fulfillment_status ?? order.fulfillment_status,
+      status: draft.status ?? activeOrder.status,
+      fulfillment_status: draft.fulfillment_status ?? activeOrder.fulfillment_status,
     }
-    setSavingById((current) => ({ ...current, [order.id]: true }))
-    setErrorById((current) => ({ ...current, [order.id]: null }))
+    setSaving(true)
+    setError(null)
     try {
-      const res = await fetch(`${medusaUrl}/admin/custom/orders-status/${order.id}`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      })
+      const res = await fetch(`${medusaUrl}/admin/custom/orders-status/${activeOrder.id}`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+        }
+      )
       if (!res.ok) {
         const body = await res.text()
         throw new Error(body || "Não foi possível atualizar o pedido.")
       }
       const json = await res.json().catch(() => null)
       const updated = json?.order
-      setLocalOrders((current) =>
-        current.map((item) => (item.id === order.id ? { ...item, ...updated } : item))
-      )
-      setDraftById((current) => {
-        const next = { ...current }
-        delete next[order.id]
-        return next
-      })
+      if (updated) {
+        setActiveOrder((current) => (current ? { ...current, ...updated } : updated))
+      }
+      setDraft({})
     } catch (err: any) {
-      setErrorById((current) => ({
-        ...current,
-        [order.id]: err?.message || "Erro ao atualizar status.",
-      }))
+      setError(err?.message || "Erro ao atualizar status.")
     } finally {
-      setSavingById((current) => ({ ...current, [order.id]: false }))
+      setSaving(false)
     }
+  }
+
+  if (isEditMode) {
+    if (!activeOrder) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+          <header className="page-header">
+            <h1 className="page-title">Editar pedido</h1>
+            <p className="page-subtitle">Pedido não encontrado.</p>
+          </header>
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/pedidos")}
+          >
+            Voltar para pedidos
+          </button>
+        </div>
+      )
+    }
+
+    const history = Array.isArray(activeOrder.metadata?.status_history)
+      ? activeOrder.metadata?.status_history
+      : []
+
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Editar pedido</h1>
+          <p className="page-subtitle">Pedido #{activeOrder.display_id ?? activeOrder.id.slice(0, 6)}</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/pedidos")}>
+            Voltar
+          </button>
+          <button className="btn" type="button" onClick={saveOrder} disabled={!hasChanges() || saving}>
+            {saving ? "Salvando..." : "Salvar alterações"}
+          </button>
+        </div>
+
+        {error && <div className="panel muted">Erro: {error}</div>}
+
+        <section className="panel" style={{ marginBottom: "1rem" }}>
+          <h3>Resumo</h3>
+          <div className="grid" style={{ gap: "0.75rem", maxWidth: "520px", marginTop: "0.75rem" }}>
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Status</span>
+              <select
+                className="field-input"
+                value={getDraftValue("status")}
+                onChange={(e) => setDraft((current) => ({ ...current, status: e.target.value }))}
+              >
+                <option value="">—</option>
+                {withCurrentOption(ORDER_STATUS_OPTIONS, activeOrder.status).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Entrega</span>
+              <select
+                className="field-input"
+                value={getDraftValue("fulfillment_status")}
+                onChange={(e) =>
+                  setDraft((current) => ({ ...current, fulfillment_status: e.target.value }))
+                }
+              >
+                <option value="">—</option>
+                {withCurrentOption(FULFILLMENT_STATUS_OPTIONS, activeOrder.fulfillment_status).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Pagamento</span>
+              <span className={`status-chip ${getPaymentStatusClass(activeOrder.payment_status)}`}>
+                {getPaymentStatusLabel(activeOrder.payment_status)}
+              </span>
+            </div>
+
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Total</span>
+              <span>{formatMoney(activeOrder.total, activeOrder.currency_code)}</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="panel">
+          <h3>Histórico</h3>
+          {history.length === 0 ? (
+            <p className="muted" style={{ marginTop: "0.75rem" }}>
+              Nenhum histórico encontrado.
+            </p>
+          ) : (
+            <div className="grid" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
+              {history
+                .slice()
+                .reverse()
+                .map((entry: any, idx: number) => (
+                  <div key={`history-${idx}`} className="panel grid" style={{ gap: "0.35rem" }}>
+                    <strong>{formatHistoryDate(entry?.at)}</strong>
+                    <span className="muted">
+                      Status: {entry?.status || "—"} • Entrega: {entry?.fulfillment_status || "—"}
+                    </span>
+                    {entry?.actor && <span className="muted">Por: {entry.actor}</span>}
+                  </div>
+                ))}
+            </div>
+          )}
+        </section>
+      </div>
+    )
   }
 
   return (
@@ -244,136 +375,44 @@ export default function OrdersSection({ orders, medusaUrl, headers }: OrdersSect
                 <th>Entrega</th>
                 <th>Pagamento</th>
                 <th>Total</th>
-                <th>Histórico</th>
-                <th>Atualização</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map((o) => {
-                const isSaving = savingById[o.id]
-                const history = Array.isArray(o.metadata?.status_history)
-                  ? o.metadata?.status_history
-                  : []
-                const recentHistory = history.slice(-2).reverse()
-                return (
-                  <tr key={o.id} className={hasChanges(o) ? "row-changed" : undefined}>
-                    <td>#{o.display_id ?? o.id.slice(0, 6)}</td>
-                    <td>
-                      <select
-                        className="field-input"
-                        value={getDraftValue(o, "status")}
-                        onChange={(e) => updateDraft(o.id, { status: e.target.value })}
-                      >
-                        <option value="">—</option>
-                        {withCurrentOption(ORDER_STATUS_OPTIONS, o.status).map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <select
-                        className="field-input"
-                        value={getDraftValue(o, "fulfillment_status")}
-                        onChange={(e) =>
-                          updateDraft(o.id, { fulfillment_status: e.target.value })
-                        }
-                      >
-                        <option value="">—</option>
-                        {withCurrentOption(FULFILLMENT_STATUS_OPTIONS, o.fulfillment_status).map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <span className={`status-chip ${getPaymentStatusClass(o.payment_status)}`}>
-                        {getPaymentStatusLabel(o.payment_status)}
-                      </span>
-                    </td>
-                    <td>{formatMoney(o.total, o.currency_code)}</td>
-                    <td>
-                      {recentHistory.length ? (
-                        <div className="grid" style={{ gap: "0.25rem" }}>
-                          {recentHistory.map((entry: any, idx: number) => (
-                            <span key={`${o.id}-history-${idx}`} className="muted">
-                              {formatHistoryDate(entry?.at)} • {entry?.status || "—"}/
-                              {entry?.fulfillment_status || "—"}
-                            </span>
-                          ))}
-                          <button
-                            className="btn btn-secondary"
-                            type="button"
-                            onClick={() => setHistoryOrder(o)}
-                          >
-                            Ver histórico
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="grid" style={{ gap: "0.35rem" }}>
-                        <button
-                          className="btn btn-secondary"
-                          type="button"
-                          onClick={() => saveOrder(o)}
-                          disabled={!hasChanges(o) || isSaving}
-                        >
-                          {isSaving ? "Salvando..." : "Atualizar"}
-                        </button>
-                        {errorById[o.id] && (
-                          <span className="muted">Erro: {errorById[o.id]}</span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
+              {filteredOrders.map((o) => (
+                <tr key={o.id}>
+                  <td>#{o.display_id ?? o.id.slice(0, 6)}</td>
+                  <td>
+                    <span className={`status-chip ${getOrderStatusClass(o.status)}`}>
+                      {getOptionLabel(ORDER_STATUS_OPTIONS, o.status)}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`status-chip ${getOrderStatusClass(o.fulfillment_status)}`}>
+                      {getOptionLabel(FULFILLMENT_STATUS_OPTIONS, o.fulfillment_status)}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`status-chip ${getPaymentStatusClass(o.payment_status)}`}>
+                      {getPaymentStatusLabel(o.payment_status)}
+                    </span>
+                  </td>
+                  <td>{formatMoney(o.total, o.currency_code)}</td>
+                  <td>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      type="button"
+                      onClick={() => navigate(`/pedidos/${o.id}`)}
+                    >
+                      Editar
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </section>
-
-      {historyOrder && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal">
-            <div className="modal-header">
-              <h3>Histórico do pedido</h3>
-              <button
-                className="btn btn-secondary"
-                type="button"
-                onClick={() => setHistoryOrder(null)}
-              >
-                Fechar
-              </button>
-            </div>
-            <div className="modal-body">
-              <p className="muted" style={{ marginBottom: "0.75rem" }}>
-                Pedido #{historyOrder.display_id ?? historyOrder.id.slice(0, 6)}
-              </p>
-              {(Array.isArray(historyOrder.metadata?.status_history)
-                ? historyOrder.metadata.status_history
-                : []
-              )
-                .slice()
-                .reverse()
-                .map((entry: any, idx: number) => (
-                  <div key={`history-${idx}`} className="panel grid" style={{ gap: "0.35rem" }}>
-                    <strong>{formatHistoryDate(entry?.at)}</strong>
-                    <span className="muted">
-                      Status: {entry?.status || "—"} • Entrega: {entry?.fulfillment_status || "—"}
-                    </span>
-                    {entry?.actor && <span className="muted">Por: {entry.actor}</span>}
-                  </div>
-                ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react"
-import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom"
 
 import ChannelsSection from "./modules/ChannelsSection"
 import DashboardSection from "./modules/DashboardSection"
@@ -60,9 +60,6 @@ export default function App() {
   const [pendingCompaniesError, setPendingCompaniesError] = useState<string | null>(null)
   const [pendingCompanyActionId, setPendingCompanyActionId] = useState<string | null>(null)
   const [companies, setCompanies] = useState<AdminCompany[]>([])
-  const [companiesError, setCompaniesError] = useState<string | null>(null)
-  const [companyEmailEdits, setCompanyEmailEdits] = useState<Record<string, string>>({})
-  const [companySavingId, setCompanySavingId] = useState<string | null>(null)
   const [news, setNews] = useState<News[]>([])
   const [marketingBanners, setMarketingBanners] = useState<MarketingBanner[]>([])
   const [newsError, setNewsError] = useState<string | null>(null)
@@ -83,6 +80,167 @@ export default function App() {
   const [dashboardDays, setDashboardDays] = useState<7 | 30 | 90>(7)
   const location = useLocation()
   const navigate = useNavigate()
+
+  const ProductCreateRoute = () => (
+    <ProductsSection
+      medusaUrl={MEDUSA_URL}
+      token={token}
+      headers={headers}
+      products={products}
+      setProducts={setProducts}
+      salesChannels={salesChannels}
+      shippingOptions={shippingOptions}
+      shippingProfiles={shippingProfiles}
+      stockLocations={stockLocations}
+      openOrders={openOrders}
+      mode="create"
+    />
+  )
+
+  const ProductEditRoute = () => {
+    const params = useParams()
+    return (
+      <ProductsSection
+        medusaUrl={MEDUSA_URL}
+        token={token}
+        headers={headers}
+        products={products}
+        setProducts={setProducts}
+        salesChannels={salesChannels}
+        shippingOptions={shippingOptions}
+        shippingProfiles={shippingProfiles}
+        stockLocations={stockLocations}
+        openOrders={openOrders}
+        mode="edit"
+        productId={params.productId}
+      />
+    )
+  }
+
+  const ProductDeleteRoute = () => {
+    const params = useParams()
+    return (
+      <ProductsSection
+        medusaUrl={MEDUSA_URL}
+        token={token}
+        headers={headers}
+        products={products}
+        setProducts={setProducts}
+        salesChannels={salesChannels}
+        shippingOptions={shippingOptions}
+        shippingProfiles={shippingProfiles}
+        stockLocations={stockLocations}
+        openOrders={openOrders}
+        mode="delete"
+        productId={params.productId}
+      />
+    )
+  }
+
+  const PaymentsEditRoute = () => {
+    const params = useParams()
+    return (
+      <PaymentsSection
+        medusaUrl={MEDUSA_URL}
+        headers={headers}
+        companies={companies}
+        setCompanies={setCompanies}
+        stockLocations={stockLocations}
+        mode="edit"
+        companyId={params.companyId}
+      />
+    )
+  }
+
+  const OrdersEditRoute = () => {
+    const params = useParams()
+    return (
+      <OrdersSection
+        orders={orders}
+        medusaUrl={MEDUSA_URL}
+        headers={headers}
+        mode="edit"
+        orderId={params.orderId}
+      />
+    )
+  }
+
+  const PendingCondosReviewRoute = () => {
+    const params = useParams()
+    return (
+      <PendingCondosSection
+        medusaUrl={MEDUSA_URL}
+        headers={headers}
+        pendingCompanies={pendingCompanies}
+        setPendingCompanies={setPendingCompanies}
+        pendingCompaniesError={pendingCompaniesError}
+        setPendingCompaniesError={setPendingCompaniesError}
+        pendingCompanyActionId={pendingCompanyActionId}
+        setPendingCompanyActionId={setPendingCompanyActionId}
+        mode="review"
+        companyId={params.companyId}
+      />
+    )
+  }
+
+  const UsersResetRoute = () => {
+    const params = useParams()
+    return (
+      <UsersSection
+        medusaUrl={MEDUSA_URL}
+        headers={headers}
+        users={storeUsers}
+        setUsers={setStoreUsers}
+        usersError={storeUsersError}
+        setUsersError={setStoreUsersError}
+        mode="reset"
+        userId={params.userId}
+      />
+    )
+  }
+
+  const UsersStatusRoute = () => {
+    const params = useParams()
+    return (
+      <UsersSection
+        medusaUrl={MEDUSA_URL}
+        headers={headers}
+        users={storeUsers}
+        setUsers={setStoreUsers}
+        usersError={storeUsersError}
+        setUsersError={setStoreUsersError}
+        mode="status"
+        userId={params.userId}
+      />
+    )
+  }
+
+  const DeliveryMethodDeleteRoute = () => {
+    const params = useParams()
+    return (
+      <DeliveryMethodsSection
+        medusaUrl={MEDUSA_URL}
+        headers={headers}
+        regions={regions}
+        onCountChange={setDeliveryMethodsCount}
+        mode="delete"
+        optionId={params.optionId}
+      />
+    )
+  }
+
+  const ServiceZoneDeleteRoute = () => {
+    const params = useParams()
+    return (
+      <ServiceZonesSection
+        medusaUrl={MEDUSA_URL}
+        headers={headers}
+        onCountChange={setServiceZonesCount}
+        mode="delete"
+        zoneId={params.zoneId}
+      />
+    )
+  }
 
   const sections = useMemo(
     () => [
@@ -580,16 +738,11 @@ export default function App() {
                       headers={headers}
                       companies={companies}
                       setCompanies={setCompanies}
-                      companiesError={companiesError}
-                      setCompaniesError={setCompaniesError}
-                      companyEmailEdits={companyEmailEdits}
-                      setCompanyEmailEdits={setCompanyEmailEdits}
-                      companySavingId={companySavingId}
-                      setCompanySavingId={setCompanySavingId}
                       stockLocations={stockLocations}
                     />
                   }
                 />
+                <Route path="/pagamentos/:companyId" element={<PaymentsEditRoute />} />
                 <Route
                   path="/condominios-pendentes"
                   element={
@@ -606,6 +759,10 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/condominios-pendentes/:companyId"
+                  element={<PendingCondosReviewRoute />}
+                />
+                <Route
                   path="/noticias"
                   element={
                     <NewsSection
@@ -616,6 +773,52 @@ export default function App() {
                       newsError={newsError}
                       setNewsError={setNewsError}
                       pushToast={pushToast}
+                      mode="list"
+                    />
+                  }
+                />
+                <Route
+                  path="/noticias/nova"
+                  element={
+                    <NewsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      news={news}
+                      setNews={setNews}
+                      newsError={newsError}
+                      setNewsError={setNewsError}
+                      pushToast={pushToast}
+                      mode="create"
+                    />
+                  }
+                />
+                <Route
+                  path="/noticias/:newsId"
+                  element={
+                    <NewsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      news={news}
+                      setNews={setNews}
+                      newsError={newsError}
+                      setNewsError={setNewsError}
+                      pushToast={pushToast}
+                      mode="edit"
+                    />
+                  }
+                />
+                <Route
+                  path="/noticias/:newsId/excluir"
+                  element={
+                    <NewsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      news={news}
+                      setNews={setNews}
+                      newsError={newsError}
+                      setNewsError={setNewsError}
+                      pushToast={pushToast}
+                      mode="delete"
                     />
                   }
                 />
@@ -631,6 +834,55 @@ export default function App() {
                       bannersError={marketingError}
                       setBannersError={setMarketingError}
                       pushToast={pushToast}
+                      mode="list"
+                    />
+                  }
+                />
+                <Route
+                  path="/marketing/novo"
+                  element={
+                    <MarketingSection
+                      medusaUrl={MEDUSA_URL}
+                      token={token}
+                      headers={headers}
+                      banners={marketingBanners}
+                      setBanners={setMarketingBanners}
+                      bannersError={marketingError}
+                      setBannersError={setMarketingError}
+                      pushToast={pushToast}
+                      mode="create"
+                    />
+                  }
+                />
+                <Route
+                  path="/marketing/:bannerId"
+                  element={
+                    <MarketingSection
+                      medusaUrl={MEDUSA_URL}
+                      token={token}
+                      headers={headers}
+                      banners={marketingBanners}
+                      setBanners={setMarketingBanners}
+                      bannersError={marketingError}
+                      setBannersError={setMarketingError}
+                      pushToast={pushToast}
+                      mode="edit"
+                    />
+                  }
+                />
+                <Route
+                  path="/marketing/:bannerId/excluir"
+                  element={
+                    <MarketingSection
+                      medusaUrl={MEDUSA_URL}
+                      token={token}
+                      headers={headers}
+                      banners={marketingBanners}
+                      setBanners={setMarketingBanners}
+                      bannersError={marketingError}
+                      setBannersError={setMarketingError}
+                      pushToast={pushToast}
+                      mode="delete"
                     />
                   }
                 />
@@ -641,6 +893,62 @@ export default function App() {
                       medusaUrl={MEDUSA_URL}
                       headers={headers}
                       pushToast={pushToast}
+                      mode="list"
+                    />
+                  }
+                />
+                <Route
+                  path="/emails/novo"
+                  element={
+                    <EmailTemplatesSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      pushToast={pushToast}
+                      mode="create"
+                    />
+                  }
+                />
+                <Route
+                  path="/emails/bootstrap"
+                  element={
+                    <EmailTemplatesSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      pushToast={pushToast}
+                      mode="bootstrap"
+                    />
+                  }
+                />
+                <Route
+                  path="/emails/:templateId"
+                  element={
+                    <EmailTemplatesSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      pushToast={pushToast}
+                      mode="edit"
+                    />
+                  }
+                />
+                <Route
+                  path="/emails/:templateId/publicar"
+                  element={
+                    <EmailTemplatesSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      pushToast={pushToast}
+                      mode="publish"
+                    />
+                  }
+                />
+                <Route
+                  path="/emails/:templateId/excluir"
+                  element={
+                    <EmailTemplatesSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      pushToast={pushToast}
+                      mode="delete"
                     />
                   }
                 />
@@ -669,6 +977,19 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/email-logs/reenviar"
+                  element={
+                    <EmailLogsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      users={storeUsers}
+                      companies={companies}
+                      pushToast={pushToast}
+                      mode="resend"
+                    />
+                  }
+                />
+                <Route
                   path="/test-payment-logs"
                   element={
                     <TestPaymentLogsSection
@@ -692,6 +1013,19 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/pix-manual/confirmar"
+                  element={
+                    <PixManualPaymentsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      users={storeUsers}
+                      companies={companies}
+                      pushToast={pushToast}
+                      mode="confirm"
+                    />
+                  }
+                />
+                <Route
                   path="/produtos"
                   element={
                     <ProductsSection
@@ -705,9 +1039,13 @@ export default function App() {
                       shippingProfiles={shippingProfiles}
                       stockLocations={stockLocations}
                       openOrders={openOrders}
+                      mode="list"
                     />
                   }
                 />
+                <Route path="/produtos/novo" element={<ProductCreateRoute />} />
+                <Route path="/produtos/:productId" element={<ProductEditRoute />} />
+                <Route path="/produtos/:productId/excluir" element={<ProductDeleteRoute />} />
                 <Route
                   path="/entregas"
                   element={
@@ -716,9 +1054,23 @@ export default function App() {
                       headers={headers}
                       regions={regions}
                       onCountChange={setDeliveryMethodsCount}
+                      mode="list"
                     />
                   }
                 />
+                <Route
+                  path="/entregas/nova"
+                  element={
+                    <DeliveryMethodsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      regions={regions}
+                      onCountChange={setDeliveryMethodsCount}
+                      mode="create"
+                    />
+                  }
+                />
+                <Route path="/entregas/:optionId/excluir" element={<DeliveryMethodDeleteRoute />} />
                 <Route
                   path="/zonas-servico"
                   element={
@@ -726,9 +1078,33 @@ export default function App() {
                       medusaUrl={MEDUSA_URL}
                       headers={headers}
                       onCountChange={setServiceZonesCount}
+                      mode="list"
                     />
                   }
                 />
+                <Route
+                  path="/zonas-servico/nova"
+                  element={
+                    <ServiceZonesSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      onCountChange={setServiceZonesCount}
+                      mode="zone"
+                    />
+                  }
+                />
+                <Route
+                  path="/zonas-servico/fulfillment"
+                  element={
+                    <ServiceZonesSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      onCountChange={setServiceZonesCount}
+                      mode="fulfillment"
+                    />
+                  }
+                />
+                <Route path="/zonas-servico/:zoneId/excluir" element={<ServiceZoneDeleteRoute />} />
                 <Route
                   path="/push"
                   element={
@@ -742,6 +1118,32 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/push/reenviar"
+                  element={
+                    <PushNotificationsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      users={storeUsers}
+                      companies={companies}
+                      pushToast={pushToast}
+                      mode="resend"
+                    />
+                  }
+                />
+                <Route
+                  path="/push/nova"
+                  element={
+                    <PushNotificationsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      users={storeUsers}
+                      companies={companies}
+                      pushToast={pushToast}
+                      mode="create"
+                    />
+                  }
+                />
+                <Route
                   path="/estoque"
                   element={
                     <StockSection
@@ -749,6 +1151,59 @@ export default function App() {
                       headers={headers}
                       products={products}
                       stockLocations={stockLocations}
+                      mode="list"
+                    />
+                  }
+                />
+                <Route
+                  path="/estoque/adicionar"
+                  element={
+                    <StockSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      products={products}
+                      stockLocations={stockLocations}
+                      mode="action"
+                      actionType="add"
+                    />
+                  }
+                />
+                <Route
+                  path="/estoque/remover"
+                  element={
+                    <StockSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      products={products}
+                      stockLocations={stockLocations}
+                      mode="action"
+                      actionType="remove"
+                    />
+                  }
+                />
+                <Route
+                  path="/estoque/transferir"
+                  element={
+                    <StockSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      products={products}
+                      stockLocations={stockLocations}
+                      mode="action"
+                      actionType="transfer"
+                    />
+                  }
+                />
+                <Route
+                  path="/estoque/excluir"
+                  element={
+                    <StockSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      products={products}
+                      stockLocations={stockLocations}
+                      mode="action"
+                      actionType="delete"
                     />
                   }
                 />
@@ -756,6 +1211,7 @@ export default function App() {
                   path="/pedidos"
                   element={<OrdersSection orders={orders} medusaUrl={MEDUSA_URL} headers={headers} />}
                 />
+                <Route path="/pedidos/:orderId" element={<OrdersEditRoute />} />
                 <Route
                   path="/promocoes"
                   element={
@@ -770,6 +1226,43 @@ export default function App() {
                       setPriceLists={setPriceLists}
                       stockLocations={stockLocations}
                       setStockLocations={setStockLocations}
+                      mode="list"
+                    />
+                  }
+                />
+                <Route
+                  path="/promocoes/nova"
+                  element={
+                    <PromotionsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      products={products}
+                      salesChannels={salesChannels}
+                      regions={regions}
+                      priceLists={priceLists}
+                      priceListsError={priceListsError}
+                      setPriceLists={setPriceLists}
+                      stockLocations={stockLocations}
+                      setStockLocations={setStockLocations}
+                      mode="create"
+                    />
+                  }
+                />
+                <Route
+                  path="/promocoes/vinculos"
+                  element={
+                    <PromotionsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      products={products}
+                      salesChannels={salesChannels}
+                      regions={regions}
+                      priceLists={priceLists}
+                      priceListsError={priceListsError}
+                      setPriceLists={setPriceLists}
+                      stockLocations={stockLocations}
+                      setStockLocations={setStockLocations}
+                      mode="link"
                     />
                   }
                 />
@@ -781,6 +1274,31 @@ export default function App() {
                       headers={headers}
                       salesChannels={salesChannels}
                       setSalesChannels={setSalesChannels}
+                      mode="list"
+                    />
+                  }
+                />
+                <Route
+                  path="/canais/novo"
+                  element={
+                    <ChannelsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      salesChannels={salesChannels}
+                      setSalesChannels={setSalesChannels}
+                      mode="create"
+                    />
+                  }
+                />
+                <Route
+                  path="/canais/:channelId"
+                  element={
+                    <ChannelsSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      salesChannels={salesChannels}
+                      setSalesChannels={setSalesChannels}
+                      mode="edit"
                     />
                   }
                 />
@@ -794,9 +1312,26 @@ export default function App() {
                       setUsers={setStoreUsers}
                       usersError={storeUsersError}
                       setUsersError={setStoreUsersError}
+                      mode="list"
                     />
                   }
                 />
+                <Route
+                  path="/usuarios/novo"
+                  element={
+                    <UsersSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      users={storeUsers}
+                      setUsers={setStoreUsers}
+                      usersError={storeUsersError}
+                      setUsersError={setStoreUsersError}
+                      mode="create"
+                    />
+                  }
+                />
+                <Route path="/usuarios/:userId/resetar-senha" element={<UsersResetRoute />} />
+                <Route path="/usuarios/:userId/status" element={<UsersStatusRoute />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </main>

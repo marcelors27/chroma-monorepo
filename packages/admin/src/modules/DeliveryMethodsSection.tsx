@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
 
 import { Region, ServiceZone, ShippingOption, ShippingProfile } from "../types"
 
@@ -7,6 +8,8 @@ type DeliveryMethodsSectionProps = {
   headers: Record<string, string>
   regions: Region[]
   onCountChange?: (count: number) => void
+  mode?: "list" | "create" | "delete"
+  optionId?: string
 }
 
 type FormState = {
@@ -36,7 +39,14 @@ export default function DeliveryMethodsSection({
   headers,
   regions,
   onCountChange,
+  mode = "list",
+  optionId,
 }: DeliveryMethodsSectionProps) {
+  const navigate = useNavigate()
+  const params = useParams()
+  const resolvedOptionId = params.optionId || optionId
+  const isCreateMode = mode === "create"
+  const isDeleteMode = mode === "delete"
   const [options, setOptions] = useState<ShippingOption[]>([])
   const [profiles, setProfiles] = useState<ShippingProfile[]>([])
   const [loading, setLoading] = useState(false)
@@ -447,6 +457,7 @@ export default function DeliveryMethodsSection({
       setSuccess("Opção criada com sucesso.")
       setForm((prev) => ({ ...prev, name: "", price: "" }))
       await loadOptions()
+      navigate("/entregas")
     } catch (err: any) {
       setError(err?.message || "Erro ao criar opção de entrega.")
     } finally {
@@ -469,11 +480,204 @@ export default function DeliveryMethodsSection({
       }
       setSuccess("Opção removida.")
       await loadOptions()
+      return true
     } catch (err: any) {
       setError(err?.message || "Erro ao remover opção.")
+      return false
     } finally {
       setSaving(false)
     }
+  }
+
+  if (isDeleteMode) {
+    const option = options.find((item) => item.id === resolvedOptionId) || null
+
+    if (loading && !option) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+          <header className="page-header">
+            <h1 className="page-title">Excluir forma de entrega</h1>
+            <p className="page-subtitle">Carregando opção...</p>
+          </header>
+        </div>
+      )
+    }
+
+    if (!option) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+          <header className="page-header">
+            <h1 className="page-title">Excluir forma de entrega</h1>
+            <p className="page-subtitle">Opção não encontrada.</p>
+          </header>
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/entregas")}>
+            Voltar
+          </button>
+        </div>
+      )
+    }
+
+    const price = option.prices?.[0]
+    const amount = price?.amount ?? 0
+    const formatted = (amount / 100).toFixed(2).replace(".", ",")
+
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Excluir forma de entrega</h1>
+          <p className="page-subtitle">{option.name || "Entrega"}</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/entregas")}>
+            Voltar
+          </button>
+          <button
+            className="btn"
+            type="button"
+            onClick={async () => {
+              const ok = await handleDelete(option.id)
+              if (ok) navigate("/entregas")
+            }}
+            disabled={saving}
+          >
+            {saving ? "Removendo..." : "Confirmar exclusão"}
+          </button>
+        </div>
+
+        {error && <div className="panel muted">Erro: {error}</div>}
+        {success && <div className="panel muted">{success}</div>}
+
+        <section className="panel" style={{ maxWidth: "820px" }}>
+          <h3>Resumo</h3>
+          <div className="grid" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Zona de serviço</span>
+              <span>
+                {option.service_zone?.name ||
+                  option.service_zone?.fulfillment_set?.location?.name ||
+                  option.service_zone?.id ||
+                  "—"}
+              </span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Perfil</span>
+              <span>{option.shipping_profile?.name || option.shipping_profile?.id || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Preço</span>
+              <span>R$ {formatted}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Provider</span>
+              <span>{option.provider_id || DEFAULT_PROVIDER}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
+  if (isCreateMode) {
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Nova forma de entrega</h1>
+          <p className="page-subtitle">Cadastre opções como “Receber em um dia”.</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/entregas")}>
+            Voltar
+          </button>
+          <div className="action-bar-group">
+            <button className="btn" type="button" onClick={handleCreate} disabled={saving}>
+              {saving ? "Salvando..." : "Adicionar opção"}
+            </button>
+          </div>
+        </div>
+
+        <section className="panel grid" style={{ gap: "1rem" }}>
+          <div className="grid" style={{ gap: "0.5rem" }}>
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Nome da opção</span>
+              <input
+                className="field-input"
+                value={form.name}
+                onChange={(e) => setFormField("name", e.target.value)}
+                placeholder="Receber em um dia"
+              />
+            </label>
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Preço (R$)</span>
+              <input
+                className="field-input"
+                value={form.price}
+                onChange={(e) => setFormField("price", e.target.value)}
+                placeholder="0,00"
+                inputMode="decimal"
+              />
+            </label>
+            <div className="grid grid-3">
+              <label className="grid" style={{ gap: "0.35rem" }}>
+                <span className="muted">Zona de serviço</span>
+                <select
+                  className="field-input"
+                  value={form.serviceZoneId}
+                  onChange={(e) => setFormField("serviceZoneId", e.target.value)}
+                >
+                  <option value="">Selecione</option>
+                  {serviceZones.map((zone) => {
+                    const locationName = zone.fulfillment_set?.location?.name
+                    const label = zone.name || locationName || zone.id
+                    return (
+                      <option key={zone.id} value={zone.id}>
+                        {label}
+                      </option>
+                    )
+                  })}
+                </select>
+              </label>
+              <label className="grid" style={{ gap: "0.35rem" }}>
+                <span className="muted">Shipping profile</span>
+                <select
+                  className="field-input"
+                  value={form.profileId}
+                  onChange={(e) => setFormField("profileId", e.target.value)}
+                >
+                  <option value="">Selecione</option>
+                  {profiles.map((profile) => (
+                    <option key={profile.id} value={profile.id}>
+                      {profile.name || profile.id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid" style={{ gap: "0.35rem" }}>
+                <span className="muted">Moeda</span>
+                <select
+                  className="field-input"
+                  value={form.currencyCode}
+                  onChange={(e) => setFormField("currencyCode", e.target.value)}
+                >
+                  {regions.map((region) => (
+                    <option key={region.id} value={region.currency_code || "brl"}>
+                      {(region.currency_code || "brl").toUpperCase()}
+                    </option>
+                  ))}
+                  {!regions.length && <option value="brl">BRL</option>}
+                </select>
+              </label>
+            </div>
+            <div className="muted" style={{ fontSize: "0.85rem" }}>
+              Revise a zona e o profile antes de salvar.
+            </div>
+            {error && <span className="muted">Erro: {error}</span>}
+            {success && <span className="muted">{success}</span>}
+          </div>
+        </section>
+      </div>
+    )
   }
 
   return (
@@ -485,86 +689,11 @@ export default function DeliveryMethodsSection({
           aparecem no checkout.
         </p>
       </header>
-
-      <section className="panel grid" style={{ gap: "1rem" }}>
-        <div className="grid" style={{ gap: "0.5rem" }}>
-          <label className="grid" style={{ gap: "0.35rem" }}>
-            <span className="muted">Nome da opção</span>
-            <input
-              className="field-input"
-              value={form.name}
-              onChange={(e) => setFormField("name", e.target.value)}
-              placeholder="Receber em um dia"
-            />
-          </label>
-          <label className="grid" style={{ gap: "0.35rem" }}>
-            <span className="muted">Preço (R$)</span>
-            <input
-              className="field-input"
-              value={form.price}
-              onChange={(e) => setFormField("price", e.target.value)}
-              placeholder="0,00"
-              inputMode="decimal"
-            />
-          </label>
-          <div className="grid grid-3">
-            <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Zona de serviço</span>
-              <select
-                className="field-input"
-                value={form.serviceZoneId}
-                onChange={(e) => setFormField("serviceZoneId", e.target.value)}
-              >
-                <option value="">Selecione</option>
-                {serviceZones.map((zone) => {
-                  const locationName = zone.fulfillment_set?.location?.name
-                  const label = zone.name || locationName || zone.id
-                  return (
-                    <option key={zone.id} value={zone.id}>
-                      {label}
-                    </option>
-                  )
-                })}
-              </select>
-            </label>
-            <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Shipping profile</span>
-              <select
-                className="field-input"
-                value={form.profileId}
-                onChange={(e) => setFormField("profileId", e.target.value)}
-              >
-                <option value="">Selecione</option>
-                {profiles.map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {profile.name || profile.id}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Moeda</span>
-              <select
-                className="field-input"
-                value={form.currencyCode}
-                onChange={(e) => setFormField("currencyCode", e.target.value)}
-              >
-                {regions.map((region) => (
-                  <option key={region.id} value={region.currency_code || "brl"}>
-                    {(region.currency_code || "brl").toUpperCase()}
-                  </option>
-                ))}
-                {!regions.length && <option value="brl">BRL</option>}
-              </select>
-            </label>
-          </div>
-          <button className="btn" type="button" onClick={handleCreate} disabled={saving}>
-            {saving ? "Salvando..." : "Adicionar opção"}
-          </button>
-          {error && <span className="muted">Erro: {error}</span>}
-          {success && <span className="muted">{success}</span>}
-        </div>
-      </section>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
+        <button className="btn btn-secondary" type="button" onClick={() => navigate("/entregas/nova")}>
+          Nova forma de entrega
+        </button>
+      </div>
 
       <section className="grid" style={{ gap: "1rem" }}>
         <div className="panel grid" style={{ gap: "0.5rem" }}>
@@ -594,8 +723,7 @@ export default function DeliveryMethodsSection({
                   <button
                     className="btn btn-secondary btn-sm"
                     type="button"
-                    onClick={() => handleDelete(option.id)}
-                    disabled={saving}
+                    onClick={() => navigate(`/entregas/${option.id}/excluir`)}
                   >
                     Remover
                   </button>

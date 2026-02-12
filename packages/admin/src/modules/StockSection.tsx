@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import {
   faArrowsRotate,
@@ -15,9 +16,12 @@ type StockSectionProps = {
   headers: Record<string, string>
   products: Product[]
   stockLocations: StockLocation[]
+  mode?: "list" | "action"
+  actionType?: "add" | "remove" | "transfer" | "delete"
 }
 
 type VariantOption = { sku: string; label: string; title: string }
+
 type InventoryItem = {
   id: string
   sku?: string | null
@@ -31,19 +35,30 @@ type InventoryItem = {
   }[]
 }
 
+type LocationState = { sku?: string; locationId?: string }
+
+const ACTION_LABELS: Record<string, string> = {
+  add: "Adicionar estoque",
+  remove: "Remover estoque",
+  transfer: "Transferir estoque",
+  delete: "Remover produto do estoque",
+}
+
 export default function StockSection({
   medusaUrl,
   headers,
   products,
   stockLocations,
+  mode = "list",
+  actionType,
 }: StockSectionProps) {
-  const [modal, setModal] = useState<{
-    type: "add" | "remove" | "transfer" | "delete"
-    sku: string
-    locationId: string
-  } | null>(null)
-  const [modalQuantity, setModalQuantity] = useState("")
-  const [modalToLocationId, setModalToLocationId] = useState("")
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isActionMode = mode === "action"
+  const [actionSku, setActionSku] = useState("")
+  const [actionLocationId, setActionLocationId] = useState("")
+  const [actionToLocationId, setActionToLocationId] = useState("")
+  const [actionQuantity, setActionQuantity] = useState("")
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionSuccess, setActionSuccess] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
@@ -51,10 +66,6 @@ export default function StockSection({
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
   const [inventoryLoading, setInventoryLoading] = useState(false)
   const [inventoryError, setInventoryError] = useState<string | null>(null)
-
-  const updateModal = (updates: Partial<NonNullable<typeof modal>>) => {
-    setModal((current) => (current ? { ...current, ...updates } : current))
-  }
 
   const variantOptions = useMemo<VariantOption[]>(() => {
     return products
@@ -176,7 +187,12 @@ export default function StockSection({
     }
   }
 
-  const createInventoryItem = async (sku: string, title: string, locationId: string, quantity: number) => {
+  const createInventoryItem = async (
+    sku: string,
+    title: string,
+    locationId: string,
+    quantity: number
+  ) => {
     const res = await fetch(`${medusaUrl}/admin/inventory-items`, {
       method: "POST",
       headers,
@@ -320,71 +336,52 @@ export default function StockSection({
     }
   }
 
-  const openModal = (
-    type: "add" | "remove" | "transfer" | "delete",
-    sku: string,
-    locationId: string
-  ) => {
-    setActionError(null)
-    setActionSuccess(null)
-    setModal({ type, sku, locationId })
-    setModalQuantity("")
-    setModalToLocationId("")
-  }
-
-  const closeModal = () => {
-    setModal(null)
-  }
-
-  const submitModal = () => {
-    if (!modal) return
-    const quantity = parseQuantity(modalQuantity)
-    if (modal.type !== "delete" && (!modal.sku || !modal.locationId)) {
+  const submitAction = () => {
+    if (!actionType) return
+    const quantity = parseQuantity(actionQuantity)
+    if (actionType !== "delete" && (!actionSku || !actionLocationId)) {
       setActionError("Selecione o SKU e o local de estoque.")
       return
     }
-    if (modal.type === "delete" && !modal.sku) {
+    if (actionType === "delete" && !actionSku) {
       setActionError("Selecione o SKU.")
       return
     }
-    if (modal.type !== "delete" && (!quantity || quantity <= 0)) {
+    if (actionType !== "delete" && (!quantity || quantity <= 0)) {
       setActionError("Informe uma quantidade válida.")
       return
     }
-    if (modal.type === "add") {
+    if (actionType === "add") {
       runAction(
-        () => addStock(modal.sku, modal.locationId, quantity ?? 0),
-        "Estoque adicionado com sucesso.",
-        closeModal
+        () => addStock(actionSku, actionLocationId, quantity ?? 0),
+        "Estoque adicionado com sucesso."
       )
       return
     }
-    if (modal.type === "remove") {
+    if (actionType === "remove") {
       runAction(
-        () => removeStock(modal.sku, modal.locationId, quantity ?? 0),
-        "Estoque removido com sucesso.",
-        closeModal
+        () => removeStock(actionSku, actionLocationId, quantity ?? 0),
+        "Estoque removido com sucesso."
       )
       return
     }
-    if (modal.type === "transfer") {
-      if (!modalToLocationId) {
+    if (actionType === "transfer") {
+      if (!actionToLocationId) {
         setActionError("Selecione o local de destino.")
         return
       }
-      if (modalToLocationId === modal.locationId) {
+      if (actionToLocationId === actionLocationId) {
         setActionError("Selecione um local diferente para o destino.")
         return
       }
       runAction(
-        () => transferStock(modal.sku, modal.locationId, modalToLocationId, quantity ?? 0),
-        "Transferência concluída.",
-        closeModal
+        () => transferStock(actionSku, actionLocationId, actionToLocationId, quantity ?? 0),
+        "Transferência concluída."
       )
       return
     }
-    if (modal.type === "delete") {
-      runAction(() => deleteInventoryItem(modal.sku), "Item removido do estoque.", closeModal)
+    if (actionType === "delete") {
+      runAction(() => deleteInventoryItem(actionSku), "Item removido do estoque.")
     }
   }
 
@@ -392,131 +389,146 @@ export default function StockSection({
     loadInventory()
   }, [])
 
+  useEffect(() => {
+    if (!isActionMode) return
+    const state = (location.state || {}) as LocationState
+    setActionSku(state.sku || "")
+    setActionLocationId(state.locationId || "")
+    setActionToLocationId("")
+    setActionQuantity("")
+    setActionError(null)
+    setActionSuccess(null)
+  }, [isActionMode, actionType, location.state])
+
+  if (isActionMode) {
+    const title = actionType ? ACTION_LABELS[actionType] : "Ação de estoque"
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">{title}</h1>
+          <p className="page-subtitle">Atualize as quantidades por SKU e local.</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/estoque")}>
+            Voltar
+          </button>
+          <button className="btn" type="button" disabled={actionLoading} onClick={submitAction}>
+            {actionLoading ? "Salvando..." : "Confirmar"}
+          </button>
+        </div>
+
+        {actionError && <div className="panel muted">Erro: {actionError}</div>}
+        {actionSuccess && <div className="panel muted">{actionSuccess}</div>}
+
+        <section className="panel" style={{ maxWidth: "720px", marginBottom: "1rem" }}>
+          <h3>Resumo da ação</h3>
+          <div className="grid" style={{ gap: "0.35rem", marginTop: "0.75rem" }}>
+            <span className="muted">Tipo</span>
+            <span>{title}</span>
+          </div>
+          {actionSku && (
+            <div className="grid" style={{ gap: "0.35rem", marginTop: "0.5rem" }}>
+              <span className="muted">SKU selecionado</span>
+              <span>{actionSku}</span>
+            </div>
+          )}
+          {actionLocationId && (
+            <div className="grid" style={{ gap: "0.35rem", marginTop: "0.5rem" }}>
+              <span className="muted">Local</span>
+              <span>{locationNameById.get(actionLocationId) || actionLocationId}</span>
+            </div>
+          )}
+        </section>
+
+        <section className="panel" style={{ maxWidth: "720px" }}>
+          <h3>Dados</h3>
+          <div className="grid" style={{ gap: "0.75rem", marginTop: "0.75rem" }}>
+          <label className="grid" style={{ gap: "0.35rem" }}>
+            <span className="muted">SKU</span>
+            <select
+              className="field-input"
+              value={actionSku}
+              onChange={(e) => setActionSku(e.target.value)}
+            >
+              <option value="">Selecionar</option>
+              {variantOptions.map((option) => (
+                <option key={option.sku} value={option.sku}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {actionType !== "delete" && (
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">{actionType === "transfer" ? "Origem" : "Local"}</span>
+              <select
+                className="field-input"
+                value={actionLocationId}
+                onChange={(e) => setActionLocationId(e.target.value)}
+              >
+                <option value="">Selecionar</option>
+                {stockLocations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.name || location.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {actionType !== "delete" && (
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Quantidade</span>
+              <input
+                type="number"
+                min={0}
+                className="field-input"
+                value={actionQuantity}
+                onChange={(e) => setActionQuantity(e.target.value)}
+              />
+            </label>
+          )}
+
+          {actionType === "transfer" && (
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Destino</span>
+              <select
+                className="field-input"
+                value={actionToLocationId}
+                onChange={(e) => setActionToLocationId(e.target.value)}
+              >
+                <option value="">Selecionar</option>
+                {stockLocations
+                  .filter((location) => location.id !== actionLocationId)
+                  .map((location) => (
+                    <option key={location.id} value={location.id}>
+                      {location.name || location.id}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
+
+          {actionType === "delete" && (
+            <p className="muted">
+              Essa ação remove o item de estoque e seus níveis. Não afeta o produto,
+              mas o SKU não terá mais saldo.
+            </p>
+          )}
+          </div>
+        </section>
+      </div>
+    )
+  }
+
   return (
     <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
       <header className="grid" style={{ gap: "0.5rem" }}>
         <h1 style={{ fontSize: "2rem" }}>Estoque</h1>
         <p className="muted">Adicione, remova ou transfira quantidades entre locais.</p>
       </header>
-
-      {actionError && <div className="panel muted">Erro: {actionError}</div>}
-      {actionSuccess && <div className="panel muted">{actionSuccess}</div>}
-
-      {modal && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal">
-            <div className="modal-header">
-              <div>
-                <h3>
-                  {modal.type === "add" && "Adicionar estoque"}
-                  {modal.type === "remove" && "Remover estoque"}
-                  {modal.type === "transfer" && "Transferir estoque"}
-                  {modal.type === "delete" && "Remover produto do estoque"}
-                </h3>
-                {(modal.sku || modal.locationId) && (
-                  <p className="muted" style={{ marginTop: "0.25rem" }}>
-                    {modal.sku ? `SKU: ${modal.sku}` : "SKU: selecione"}{" "}
-                    {modal.type !== "delete" && (
-                      <>
-                        • Local:{" "}
-                        {modal.locationId
-                          ? locationNameById.get(modal.locationId) || modal.locationId
-                          : "selecione"}
-                      </>
-                    )}
-                  </p>
-                )}
-              </div>
-              <button className="btn btn-secondary btn-sm" type="button" onClick={closeModal}>
-                Fechar
-              </button>
-            </div>
-
-            <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">SKU</span>
-              <select
-                className="field-input"
-                value={modal.sku}
-                onChange={(e) => updateModal({ sku: e.target.value })}
-              >
-                <option value="">Selecionar</option>
-                {variantOptions.map((option) => (
-                  <option key={option.sku} value={option.sku}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {modal.type !== "delete" && (
-              <label className="grid" style={{ gap: "0.35rem" }}>
-                <span className="muted">{modal.type === "transfer" ? "Origem" : "Local"}</span>
-                <select
-                  className="field-input"
-                  value={modal.locationId}
-                  onChange={(e) => updateModal({ locationId: e.target.value })}
-                >
-                  <option value="">Selecionar</option>
-                  {stockLocations.map((location) => (
-                    <option key={location.id} value={location.id}>
-                      {location.name || location.id}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            {modal.type !== "delete" && (
-              <label className="grid" style={{ gap: "0.35rem" }}>
-                <span className="muted">Quantidade</span>
-                <input
-                  type="number"
-                  min={0}
-                  className="field-input"
-                  value={modalQuantity}
-                  onChange={(e) => setModalQuantity(e.target.value)}
-                />
-              </label>
-            )}
-
-            {modal.type === "transfer" && (
-              <label className="grid" style={{ gap: "0.35rem" }}>
-                <span className="muted">Destino</span>
-                <select
-                  className="field-input"
-                  value={modalToLocationId}
-                  onChange={(e) => setModalToLocationId(e.target.value)}
-                >
-                  <option value="">Selecionar</option>
-                  {stockLocations
-                    .filter((location) => location.id !== modal.locationId)
-                    .map((location) => (
-                      <option key={location.id} value={location.id}>
-                        {location.name || location.id}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            )}
-
-            {modal.type === "delete" && (
-              <p className="muted">
-                Essa ação remove o item de estoque e seus níveis. Não afeta o produto,
-                mas o SKU não terá mais saldo.
-              </p>
-            )}
-
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              <button className="btn" type="button" disabled={actionLoading} onClick={submitModal}>
-                {actionLoading ? "Salvando..." : "Confirmar"}
-              </button>
-              <button className="btn btn-secondary" type="button" onClick={closeModal}>
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <section className="panel" style={{ marginTop: "1rem" }}>
         <div
@@ -544,13 +556,11 @@ export default function StockSection({
               style={{ minWidth: "240px" }}
             />
             <button
-              className="btn btn-secondary btn-sm"
+              className="btn"
               type="button"
-              title="Adicionar estoque"
-              aria-label="Adicionar estoque"
-              onClick={() => openModal("add", "", "")}
+              onClick={() => navigate("/estoque/adicionar")}
             >
-              <FontAwesomeIcon icon={faPlus} />
+              Adicionar estoque
             </button>
             <button
               className="btn btn-secondary"
@@ -607,7 +617,9 @@ export default function StockSection({
                           className="btn btn-sm"
                           type="button"
                           disabled={!row.sku}
-                          onClick={() => openModal("add", row.sku, row.locationId)}
+                          onClick={() =>
+                            navigate("/estoque/adicionar", { state: { sku: row.sku, locationId: row.locationId } })
+                          }
                           title="Adicionar"
                           aria-label="Adicionar"
                         >
@@ -617,7 +629,9 @@ export default function StockSection({
                           className="btn btn-secondary btn-sm"
                           type="button"
                           disabled={!row.sku}
-                          onClick={() => openModal("remove", row.sku, row.locationId)}
+                          onClick={() =>
+                            navigate("/estoque/remover", { state: { sku: row.sku, locationId: row.locationId } })
+                          }
                           title="Remover"
                           aria-label="Remover"
                         >
@@ -627,7 +641,9 @@ export default function StockSection({
                           className="btn btn-secondary btn-sm"
                           type="button"
                           disabled={!row.sku}
-                          onClick={() => openModal("transfer", row.sku, row.locationId)}
+                          onClick={() =>
+                            navigate("/estoque/transferir", { state: { sku: row.sku, locationId: row.locationId } })
+                          }
                           title="Transferir"
                           aria-label="Transferir"
                         >
@@ -637,7 +653,9 @@ export default function StockSection({
                           className="btn btn-secondary btn-sm"
                           type="button"
                           disabled={!row.sku}
-                          onClick={() => openModal("delete", row.sku, row.locationId)}
+                          onClick={() =>
+                            navigate("/estoque/excluir", { state: { sku: row.sku, locationId: row.locationId } })
+                          }
                           title="Excluir"
                           aria-label="Excluir"
                         >

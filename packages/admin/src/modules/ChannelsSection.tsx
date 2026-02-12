@@ -1,4 +1,5 @@
-import { FormEvent, useState } from "react"
+import { FormEvent, useEffect, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
 import type { Dispatch, SetStateAction } from "react"
 
 import { SalesChannel } from "../types"
@@ -8,6 +9,8 @@ type ChannelsSectionProps = {
   headers: Record<string, string>
   salesChannels: SalesChannel[]
   setSalesChannels: Dispatch<SetStateAction<SalesChannel[]>>
+  mode?: "list" | "create" | "edit"
+  channelId?: string
 }
 
 export default function ChannelsSection({
@@ -15,10 +18,13 @@ export default function ChannelsSection({
   headers,
   salesChannels,
   setSalesChannels,
+  mode = "list",
 }: ChannelsSectionProps) {
+  const navigate = useNavigate()
+  const params = useParams()
+  const routeChannelId = params.channelId
   const [channelError, setChannelError] = useState<string | null>(null)
   const [channelSaving, setChannelSaving] = useState(false)
-  const [editingChannelId, setEditingChannelId] = useState<string | null>(null)
   const [channelSavingId, setChannelSavingId] = useState<string | null>(null)
   const [channelForm, setChannelForm] = useState({
     name: "",
@@ -26,6 +32,24 @@ export default function ChannelsSection({
     is_disabled: false,
   })
   const [channelEdits, setChannelEdits] = useState<Record<string, typeof channelForm>>({})
+  const isCreateMode = mode === "create"
+  const isEditMode = mode === "edit"
+  const resolvedChannelId = routeChannelId || channelId
+  const activeChannel =
+    isEditMode && resolvedChannelId ? salesChannels.find((c) => c.id === resolvedChannelId) : null
+
+  useEffect(() => {
+    if (!isEditMode) return
+    if (!activeChannel) return
+    setChannelEdits((prev) => ({
+      ...prev,
+      [activeChannel.id]: {
+        name: activeChannel.name || "",
+        description: activeChannel.description || "",
+        is_disabled: Boolean(activeChannel.is_disabled),
+      },
+    }))
+  }, [isEditMode, activeChannel?.id])
 
   const handleChannelChange = (
     field: keyof typeof channelForm,
@@ -70,27 +94,12 @@ export default function ChannelsSection({
         setSalesChannels((prev) => [json.sales_channel, ...prev])
       }
       resetChannelForm()
+      navigate("/canais")
     } catch (err: any) {
       setChannelError(err?.message || "Erro ao criar canal")
     } finally {
       setChannelSaving(false)
     }
-  }
-
-  const startEditChannel = (channel: SalesChannel) => {
-    setEditingChannelId(channel.id)
-    setChannelEdits((prev) => ({
-      ...prev,
-      [channel.id]: {
-        name: channel.name || "",
-        description: channel.description || "",
-        is_disabled: Boolean(channel.is_disabled),
-      },
-    }))
-  }
-
-  const cancelEditChannel = () => {
-    setEditingChannelId(null)
   }
 
   const updateChannelEdit = (
@@ -135,7 +144,7 @@ export default function ChannelsSection({
           prev.map((item) => (item.id === channelId ? json.sales_channel : item))
         )
       }
-      setEditingChannelId(null)
+      navigate("/canais")
     } catch (err: any) {
       setChannelError(err?.message || "Erro ao atualizar canal")
     } finally {
@@ -143,33 +152,28 @@ export default function ChannelsSection({
     }
   }
 
-  return (
-    <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
-      <header className="grid" style={{ gap: "0.5rem" }}>
-        <h1 style={{ fontSize: "2rem" }}>Canais de vendas</h1>
-        <p className="muted">Crie e organize canais para separar vitrines e promoções.</p>
-      </header>
+  if (isCreateMode) {
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Novo canal</h1>
+          <p className="page-subtitle">Use canais para segmentar preços e disponibilidade.</p>
+        </header>
 
-      <section className="panel">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "0.75rem",
-          }}
-        >
-          <div>
-            <h3>Novo canal</h3>
-            <p className="muted" style={{ marginTop: "0.25rem" }}>
-              Use canais para segmentar preços e disponibilidade.
-            </p>
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/canais")}>
+            Voltar
+          </button>
+          <div className="action-bar-group">
+            <button className="btn" type="submit" form="channel-form" disabled={channelSaving}>
+              {channelSaving ? "Criando..." : "Criar canal"}
+            </button>
           </div>
         </div>
 
         {channelError && <div className="muted">Erro: {channelError}</div>}
 
-        <form className="panel grid" onSubmit={createSalesChannel} style={{ gap: "0.85rem" }}>
+        <form id="channel-form" className="panel grid" onSubmit={createSalesChannel} style={{ gap: "0.85rem" }}>
           <label className="grid" style={{ gap: "0.35rem" }}>
             <span className="muted">Nome</span>
             <input
@@ -200,15 +204,92 @@ export default function ChannelsSection({
           </label>
 
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <button className="btn" type="submit" disabled={channelSaving}>
-              {channelSaving ? "Criando..." : "Criar canal"}
-            </button>
             <button className="btn btn-secondary" type="button" onClick={resetChannelForm}>
               Limpar
             </button>
           </div>
         </form>
-      </section>
+      </div>
+    )
+  }
+
+  if (isEditMode) {
+    const edit = activeChannel ? channelEdits[activeChannel.id] : null
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Editar canal</h1>
+          <p className="page-subtitle">{activeChannel?.name || "Canal"}</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/canais")}>
+            Voltar
+          </button>
+          <div className="action-bar-group">
+            <button
+              className="btn"
+              type="button"
+              disabled={channelSavingId === activeChannel?.id}
+              onClick={() => activeChannel && saveChannelEdit(activeChannel.id)}
+            >
+              {channelSavingId === activeChannel?.id ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+
+        {channelError && <div className="muted">Erro: {channelError}</div>}
+
+        {!activeChannel ? (
+          <div className="panel muted">Canal não encontrado.</div>
+        ) : (
+          <div className="panel grid" style={{ gap: "0.85rem", maxWidth: "720px" }}>
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Nome</span>
+              <input
+                value={edit?.name || ""}
+                onChange={(e) => updateChannelEdit(activeChannel.id, "name", e.target.value)}
+                className="field-input"
+              />
+            </label>
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Descrição</span>
+              <input
+                value={edit?.description || ""}
+                onChange={(e) =>
+                  updateChannelEdit(activeChannel.id, "description", e.target.value)
+                }
+                className="field-input"
+              />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <input
+                type="checkbox"
+                className="checkbox"
+                checked={edit?.is_disabled || false}
+                onChange={(e) =>
+                  updateChannelEdit(activeChannel.id, "is_disabled", e.target.checked)
+                }
+              />
+              <span className="muted">Canal desativado</span>
+            </label>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <button className="btn btn-secondary" type="button" onClick={() => navigate("/canais")}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+      <header className="grid" style={{ gap: "0.5rem" }}>
+        <h1 style={{ fontSize: "2rem" }}>Canais de vendas</h1>
+        <p className="muted">Crie e organize canais para separar vitrines e promoções.</p>
+      </header>
 
       <section className="panel">
         <div
@@ -220,7 +301,16 @@ export default function ChannelsSection({
           }}
         >
           <h3>Canais existentes</h3>
-          <span className="pill">{salesChannels.length} registros</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span className="pill">{salesChannels.length} registros</span>
+            <button
+              className="btn btn-secondary btn-sm"
+              type="button"
+              onClick={() => navigate("/canais/novo")}
+            >
+              Novo canal
+            </button>
+          </div>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table className="table">
@@ -242,81 +332,24 @@ export default function ChannelsSection({
               ) : (
                 salesChannels.map((channel) => (
                   <tr key={channel.id}>
-                    {editingChannelId === channel.id ? (
-                      <>
-                        <td>
-                          <input
-                            value={channelEdits[channel.id]?.name || ""}
-                            onChange={(e) => updateChannelEdit(channel.id, "name", e.target.value)}
-                            className="field-input"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            value={channelEdits[channel.id]?.description || ""}
-                            onChange={(e) =>
-                              updateChannelEdit(channel.id, "description", e.target.value)
-                            }
-                            className="field-input"
-                          />
-                        </td>
-                        <td>
-                          <label
-                            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-                          >
-                            <input
-                              type="checkbox"
-                              className="checkbox"
-                              checked={channelEdits[channel.id]?.is_disabled || false}
-                              onChange={(e) =>
-                                updateChannelEdit(channel.id, "is_disabled", e.target.checked)
-                              }
-                            />
-                            <span className="muted">Desativado</span>
-                          </label>
-                        </td>
-                        <td>
-                          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                            <button
-                              className="btn btn-sm"
-                              type="button"
-                              disabled={channelSavingId === channel.id}
-                              onClick={() => saveChannelEdit(channel.id)}
-                            >
-                              {channelSavingId === channel.id ? "Salvando..." : "Salvar"}
-                            </button>
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              type="button"
-                              onClick={cancelEditChannel}
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td>{channel.name || channel.id}</td>
-                        <td>{channel.description || "—"}</td>
-                        <td>
-                          <span
-                            className={`status-chip ${channel.is_disabled ? "default" : "active"}`}
-                          >
-                            {channel.is_disabled ? "Desativado" : "Ativo"}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            type="button"
-                            onClick={() => startEditChannel(channel)}
-                          >
-                            Editar
-                          </button>
-                        </td>
-                      </>
-                    )}
+                    <td>{channel.name || channel.id}</td>
+                    <td>{channel.description || "—"}</td>
+                    <td>
+                      <span
+                        className={`status-chip ${channel.is_disabled ? "default" : "active"}`}
+                      >
+                        {channel.is_disabled ? "Desativado" : "Ativo"}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        onClick={() => navigate(`/canais/${channel.id}`)}
+                      >
+                        Editar
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}

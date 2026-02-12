@@ -1,4 +1,5 @@
-import { FormEvent, useMemo, useState } from "react"
+import { FormEvent, useEffect, useMemo, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
 import type { Dispatch, SetStateAction } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faImage, faPenToSquare, faSpinner, faTrash } from "@fortawesome/free-solid-svg-icons"
@@ -16,6 +17,8 @@ type MarketingSectionProps = {
   bannersError: string | null
   setBannersError: Dispatch<SetStateAction<string | null>>
   pushToast: (toast: ToastInput) => void
+  mode?: "list" | "create" | "edit" | "delete"
+  bannerId?: string
 }
 
 const areaOptions = [
@@ -82,9 +85,20 @@ export default function MarketingSection({
   bannersError,
   setBannersError,
   pushToast,
+  mode = "list",
+  bannerId,
 }: MarketingSectionProps) {
+  const navigate = useNavigate()
+  const params = useParams()
+  const resolvedBannerId = params.bannerId || bannerId
+  const isCreateMode = mode === "create"
+  const isEditMode = mode === "edit"
+  const isDeleteMode = mode === "delete"
+  const activeBanner =
+    (isEditMode || isDeleteMode) && resolvedBannerId
+      ? banners.find((b) => b.id === resolvedBannerId)
+      : null
   const [form, setForm] = useState(initialForm)
-  const [editingId, setEditingId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [uploadingField, setUploadingField] = useState<string | null>(null)
@@ -98,7 +112,6 @@ export default function MarketingSection({
 
   const resetForm = () => {
     setForm(initialForm)
-    setEditingId(null)
   }
 
   const handleChange = (field: keyof typeof form, value: string | boolean) => {
@@ -122,8 +135,13 @@ export default function MarketingSection({
       active_until: formatDateInput(banner.active_until),
       is_active: banner.is_active !== false,
     })
-    setEditingId(banner.id)
   }
+
+  useEffect(() => {
+    if (!isEditMode) return
+    if (!activeBanner) return
+    applyBannerToForm(activeBanner)
+  }, [isEditMode, activeBanner?.id])
 
   const uploadAsset = async (files: FileList | null, field: keyof typeof form) => {
     if (!files?.length) return
@@ -212,10 +230,10 @@ export default function MarketingSection({
         is_active: form.is_active,
       }
 
-      const isEditing = Boolean(editingId)
+      const isEditing = isEditMode && Boolean(activeBanner?.id)
       const res = await fetch(
         isEditing
-          ? `${medusaUrl}/admin/marketing-banners/${editingId}`
+          ? `${medusaUrl}/admin/marketing-banners/${activeBanner?.id}`
           : `${medusaUrl}/admin/marketing-banners`,
         {
           method: isEditing ? "PATCH" : "POST",
@@ -238,6 +256,7 @@ export default function MarketingSection({
         }
       }
       resetForm()
+      navigate("/marketing")
       pushToast({
         title: isEditing ? "Banner atualizado" : "Banner criado",
         description: "Campanha salva com sucesso.",
@@ -256,8 +275,6 @@ export default function MarketingSection({
   }
 
   const deleteBanner = async (id: string) => {
-    const confirmed = window.confirm("Tem certeza que deseja excluir este banner?")
-    if (!confirmed) return
     setDeletingId(id)
     setBannersError(null)
     try {
@@ -275,6 +292,7 @@ export default function MarketingSection({
         description: "O banner foi removido com sucesso.",
         variant: "success",
       })
+      return true
     } catch (err: any) {
       setBannersError(err?.message || "Erro ao excluir banner")
       pushToast({
@@ -282,9 +300,350 @@ export default function MarketingSection({
         description: err?.message || "Tente novamente.",
         variant: "error",
       })
+      return false
     } finally {
       setDeletingId(null)
     }
+  }
+
+  if (isDeleteMode) {
+    if (!activeBanner) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+          <header className="page-header">
+            <h1 className="page-title">Excluir banner</h1>
+            <p className="page-subtitle">Banner não encontrado.</p>
+          </header>
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/marketing")}>
+            Voltar
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Excluir banner</h1>
+          <p className="page-subtitle">{activeBanner.title || "Banner"}</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/marketing")}>
+            Voltar
+          </button>
+          <button
+            className="btn"
+            type="button"
+            disabled={deletingId === activeBanner.id}
+            onClick={async () => {
+              const ok = await deleteBanner(activeBanner.id)
+              if (ok) navigate("/marketing")
+            }}
+          >
+            {deletingId === activeBanner.id ? "Removendo..." : "Confirmar exclusão"}
+          </button>
+        </div>
+
+        {bannersError && <div className="panel muted">Erro: {bannersError}</div>}
+
+        <section className="panel" style={{ maxWidth: "820px" }}>
+          <h3>Resumo</h3>
+          <div className="grid" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Título</span>
+              <span>{activeBanner.title || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Status</span>
+              <span>{activeBanner.is_active ? "Ativo" : "Inativo"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Link</span>
+              <span>{activeBanner.link_value || "—"}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
+  if (isCreateMode || isEditMode) {
+    if (isCreateMode || isEditMode) {
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">{isEditMode ? "Editar banner" : "Novo banner"}</h1>
+          <p className="page-subtitle">Campanhas que aparecem na Home.</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/marketing")}>
+            Voltar
+          </button>
+          <div className="action-bar-group">
+            <button className="btn" type="submit" form="banner-form" disabled={isSaving}>
+              {isSaving ? "Salvando..." : isEditMode ? "Salvar alterações" : "Cadastrar banner"}
+            </button>
+          </div>
+        </div>
+
+        {!isCreateMode && !activeBanner ? (
+          <div className="panel muted">Banner não encontrado.</div>
+        ) : (
+          <section className="panel" style={{ marginTop: "1.5rem" }}>
+            <form id="banner-form" className="grid" style={{ gap: "1rem" }} onSubmit={saveBanner}>
+              <div className="grid" style={{ gap: "0.6rem" }}>
+                <label className="grid" style={{ gap: "0.35rem" }}>
+                  <span className="muted">Título</span>
+                  <input
+                    value={form.title}
+                    onChange={(e) => handleChange("title", e.target.value)}
+                    className="field-input"
+                    required
+                  />
+                </label>
+                <label className="grid" style={{ gap: "0.35rem" }}>
+                  <span className="muted">Subtítulo</span>
+                  <input
+                    value={form.subtitle}
+                    onChange={(e) => handleChange("subtitle", e.target.value)}
+                    className="field-input"
+                  />
+                </label>
+              </div>
+
+              <div className="grid" style={{ gap: "0.8rem" }}>
+                <div className="grid" style={{ gap: "0.4rem" }}>
+                  <strong>Imagens</strong>
+                  <span className="muted">
+                    Desktop recomendado: 1440 x 360px. Mobile recomendado: 1440 x 360px. Limite: imagens até {formatBytes(MAX_IMAGE_BYTES)}.
+                  </span>
+                </div>
+                <div className="grid" style={{ gap: "0.6rem" }}>
+                  <label className="grid" style={{ gap: "0.35rem" }}>
+                    <span className="muted">Imagem desktop</span>
+                    <input
+                      value={form.image_url}
+                      onChange={(e) => handleChange("image_url", e.target.value)}
+                      className="field-input"
+                      placeholder="https://..."
+                    />
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => uploadAsset(e.target.files, "image_url")}
+                  />
+                  <label className="grid" style={{ gap: "0.35rem" }}>
+                    <span className="muted">Imagem mobile</span>
+                    <input
+                      value={form.image_mobile_url}
+                      onChange={(e) => handleChange("image_mobile_url", e.target.value)}
+                      className="field-input"
+                      placeholder="https://..."
+                    />
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => uploadAsset(e.target.files, "image_mobile_url")}
+                  />
+                </div>
+              </div>
+
+              <div className="grid" style={{ gap: "0.8rem" }}>
+                <div className="grid" style={{ gap: "0.4rem" }}>
+                  <strong>Animações</strong>
+                  <span className="muted">
+                    Aceita GIF ou vídeo (MP4/WebM). Use o mesmo tamanho das imagens para manter o
+                    layout consistente. Limite: vídeos até {formatBytes(MAX_VIDEO_BYTES)}.
+                  </span>
+                </div>
+                <div className="grid" style={{ gap: "0.6rem" }}>
+                  <label className="grid" style={{ gap: "0.35rem" }}>
+                    <span className="muted">Animação desktop</span>
+                    <input
+                      value={form.animation_url}
+                      onChange={(e) => handleChange("animation_url", e.target.value)}
+                      className="field-input"
+                      placeholder="https://..."
+                    />
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={(e) => uploadAsset(e.target.files, "animation_url")}
+                  />
+                  <label className="grid" style={{ gap: "0.35rem" }}>
+                    <span className="muted">Animação mobile</span>
+                    <input
+                      value={form.animation_mobile_url}
+                      onChange={(e) => handleChange("animation_mobile_url", e.target.value)}
+                      className="field-input"
+                      placeholder="https://..."
+                    />
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={(e) => uploadAsset(e.target.files, "animation_mobile_url")}
+                  />
+                </div>
+              </div>
+
+              <div className="grid" style={{ gap: "0.8rem" }}>
+                <div className="grid" style={{ gap: "0.4rem" }}>
+                  <strong>Fallback (conexões ruins)</strong>
+                  <span className="muted">
+                    Imagem leve usada quando o vídeo não carregar. Limite: imagens até {formatBytes(MAX_IMAGE_BYTES)}.
+                  </span>
+                </div>
+                <div className="grid" style={{ gap: "0.6rem" }}>
+                  <label className="grid" style={{ gap: "0.35rem" }}>
+                    <span className="muted">Fallback desktop</span>
+                    <input
+                      value={form.fallback_image_url}
+                      onChange={(e) => handleChange("fallback_image_url", e.target.value)}
+                      className="field-input"
+                      placeholder="https://..."
+                    />
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => uploadAsset(e.target.files, "fallback_image_url")}
+                  />
+                  <label className="grid" style={{ gap: "0.35rem" }}>
+                    <span className="muted">Fallback mobile</span>
+                    <input
+                      value={form.fallback_image_mobile_url}
+                      onChange={(e) => handleChange("fallback_image_mobile_url", e.target.value)}
+                      className="field-input"
+                      placeholder="https://..."
+                    />
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => uploadAsset(e.target.files, "fallback_image_mobile_url")}
+                  />
+                </div>
+              </div>
+
+              <div className="grid" style={{ gap: "0.6rem" }}>
+                <label className="grid" style={{ gap: "0.35rem" }}>
+                  <span className="muted">Tipo de link</span>
+                  <select
+                    className="field-input"
+                    value={form.link_type}
+                    onChange={(e) => handleChange("link_type", e.target.value)}
+                  >
+                    <option value="">Sem link</option>
+                    <option value="url">URL externa</option>
+                    <option value="product">Produto (ID)</option>
+                    <option value="area">Área do sistema</option>
+                  </select>
+                </label>
+
+                {linkType === "area" && (
+                  <label className="grid" style={{ gap: "0.35rem" }}>
+                    <span className="muted">Destino</span>
+                    <select
+                      className="field-input"
+                      value={form.link_value}
+                      onChange={(e) => handleChange("link_value", e.target.value)}
+                    >
+                      <option value="">Selecione</option>
+                      {areaOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {linkType === "product" && (
+                  <label className="grid" style={{ gap: "0.35rem" }}>
+                    <span className="muted">ID do produto</span>
+                    <input
+                      value={form.link_value}
+                      onChange={(e) => handleChange("link_value", e.target.value)}
+                      className="field-input"
+                      placeholder="prod_..."
+                    />
+                  </label>
+                )}
+
+                {linkType === "url" && (
+                  <label className="grid" style={{ gap: "0.35rem" }}>
+                    <span className="muted">URL externa</span>
+                    <input
+                      value={form.link_value}
+                      onChange={(e) => handleChange("link_value", e.target.value)}
+                      className="field-input"
+                      placeholder="https://..."
+                    />
+                  </label>
+                )}
+              </div>
+
+              <div className="grid" style={{ gap: "0.6rem" }}>
+                <label className="grid" style={{ gap: "0.35rem" }}>
+                  <span className="muted">Ordem de destaque (maior primeiro)</span>
+                  <input
+                    value={form.sort_order}
+                    onChange={(e) => handleChange("sort_order", e.target.value)}
+                    className="field-input"
+                    type="number"
+                  />
+                </label>
+                <div className="grid" style={{ gap: "0.35rem" }}>
+                  <span className="muted">Período de campanha</span>
+                  <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.6rem" }}>
+                    <input
+                      type="datetime-local"
+                      value={form.active_from}
+                      onChange={(e) => handleChange("active_from", e.target.value)}
+                      className="field-input"
+                    />
+                    <input
+                      type="datetime-local"
+                      value={form.active_until}
+                      onChange={(e) => handleChange("active_until", e.target.value)}
+                      className="field-input"
+                    />
+                  </div>
+                </div>
+                <label className="grid" style={{ gap: "0.35rem" }}>
+                  <span className="muted">Ativo</span>
+                  <select
+                    className="field-input"
+                    value={form.is_active ? "true" : "false"}
+                    onChange={(e) => handleChange("is_active", e.target.value === "true")}
+                  >
+                    <option value="true">Sim</option>
+                    <option value="false">Não</option>
+                  </select>
+                </label>
+              </div>
+
+              {bannersError && <div className="muted">Erro: {bannersError}</div>}
+
+              <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.6rem" }}>
+                {(isEditMode || form.title) && (
+                  <button type="button" className="btn ghost" onClick={resetForm}>
+                    Limpar
+                  </button>
+                )}
+              </div>
+              {uploadingField && <p className="muted">Enviando arquivo...</p>}
+            </form>
+          </section>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -294,268 +653,11 @@ export default function MarketingSection({
         <p className="muted">Campanhas que aparecem apenas na Home (web e mobile).</p>
       </header>
 
-      <section className="panel" style={{ marginTop: "1.5rem" }}>
-        <h2 style={{ marginBottom: "0.8rem" }}>{editingId ? "Editar banner" : "Novo banner"}</h2>
-        <form className="grid" style={{ gap: "1rem" }} onSubmit={saveBanner}>
-          <div className="grid" style={{ gap: "0.6rem" }}>
-            <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Título</span>
-              <input
-                value={form.title}
-                onChange={(e) => handleChange("title", e.target.value)}
-                className="field-input"
-                required
-              />
-            </label>
-            <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Subtítulo</span>
-              <input
-                value={form.subtitle}
-                onChange={(e) => handleChange("subtitle", e.target.value)}
-                className="field-input"
-              />
-            </label>
-          </div>
-
-          <div className="grid" style={{ gap: "0.8rem" }}>
-            <div className="grid" style={{ gap: "0.4rem" }}>
-              <strong>Imagens</strong>
-              <span className="muted">
-                Desktop recomendado: 1440 x 360px. Mobile recomendado: 1440 x 360px. Limite: imagens até {formatBytes(MAX_IMAGE_BYTES)}.
-              </span>
-            </div>
-            <div className="grid" style={{ gap: "0.6rem" }}>
-              <label className="grid" style={{ gap: "0.35rem" }}>
-                <span className="muted">Imagem desktop</span>
-                <input
-                  value={form.image_url}
-                  onChange={(e) => handleChange("image_url", e.target.value)}
-                  className="field-input"
-                  placeholder="https://..."
-                />
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => uploadAsset(e.target.files, "image_url")}
-              />
-              <label className="grid" style={{ gap: "0.35rem" }}>
-                <span className="muted">Imagem mobile</span>
-                <input
-                  value={form.image_mobile_url}
-                  onChange={(e) => handleChange("image_mobile_url", e.target.value)}
-                  className="field-input"
-                  placeholder="https://..."
-                />
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => uploadAsset(e.target.files, "image_mobile_url")}
-              />
-            </div>
-          </div>
-
-          <div className="grid" style={{ gap: "0.8rem" }}>
-            <div className="grid" style={{ gap: "0.4rem" }}>
-              <strong>Animações</strong>
-              <span className="muted">
-                Aceita GIF ou vídeo (MP4/WebM). Use o mesmo tamanho das imagens para manter o
-                layout consistente. Limite: vídeos até {formatBytes(MAX_VIDEO_BYTES)}.
-              </span>
-            </div>
-            <div className="grid" style={{ gap: "0.6rem" }}>
-              <label className="grid" style={{ gap: "0.35rem" }}>
-                <span className="muted">Animação desktop</span>
-                <input
-                  value={form.animation_url}
-                  onChange={(e) => handleChange("animation_url", e.target.value)}
-                  className="field-input"
-                  placeholder="https://..."
-                />
-              </label>
-              <input
-                type="file"
-                accept="image/*,video/*"
-                onChange={(e) => uploadAsset(e.target.files, "animation_url")}
-              />
-              <label className="grid" style={{ gap: "0.35rem" }}>
-                <span className="muted">Animação mobile</span>
-                <input
-                  value={form.animation_mobile_url}
-                  onChange={(e) => handleChange("animation_mobile_url", e.target.value)}
-                  className="field-input"
-                  placeholder="https://..."
-                />
-              </label>
-              <input
-                type="file"
-                accept="image/*,video/*"
-                onChange={(e) => uploadAsset(e.target.files, "animation_mobile_url")}
-              />
-            </div>
-          </div>
-
-          <div className="grid" style={{ gap: "0.8rem" }}>
-            <div className="grid" style={{ gap: "0.4rem" }}>
-              <strong>Fallback (conexões ruins)</strong>
-              <span className="muted">
-                Imagem leve usada quando o vídeo não carregar. Limite: imagens até {formatBytes(MAX_IMAGE_BYTES)}.
-              </span>
-            </div>
-            <div className="grid" style={{ gap: "0.6rem" }}>
-              <label className="grid" style={{ gap: "0.35rem" }}>
-                <span className="muted">Fallback desktop</span>
-                <input
-                  value={form.fallback_image_url}
-                  onChange={(e) => handleChange("fallback_image_url", e.target.value)}
-                  className="field-input"
-                  placeholder="https://..."
-                />
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => uploadAsset(e.target.files, "fallback_image_url")}
-              />
-              <label className="grid" style={{ gap: "0.35rem" }}>
-                <span className="muted">Fallback mobile</span>
-                <input
-                  value={form.fallback_image_mobile_url}
-                  onChange={(e) => handleChange("fallback_image_mobile_url", e.target.value)}
-                  className="field-input"
-                  placeholder="https://..."
-                />
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => uploadAsset(e.target.files, "fallback_image_mobile_url")}
-              />
-            </div>
-          </div>
-
-          <div className="grid" style={{ gap: "0.6rem" }}>
-            <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Tipo de link</span>
-              <select
-                className="field-input"
-                value={form.link_type}
-                onChange={(e) => handleChange("link_type", e.target.value)}
-              >
-                <option value="">Sem link</option>
-                <option value="url">URL externa</option>
-                <option value="product">Produto (ID)</option>
-                <option value="area">Área do sistema</option>
-              </select>
-            </label>
-
-            {linkType === "area" && (
-              <label className="grid" style={{ gap: "0.35rem" }}>
-                <span className="muted">Destino</span>
-                <select
-                  className="field-input"
-                  value={form.link_value}
-                  onChange={(e) => handleChange("link_value", e.target.value)}
-                >
-                  <option value="">Selecione</option>
-                  {areaOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            {linkType === "product" && (
-              <label className="grid" style={{ gap: "0.35rem" }}>
-                <span className="muted">ID do produto</span>
-                <input
-                  value={form.link_value}
-                  onChange={(e) => handleChange("link_value", e.target.value)}
-                  className="field-input"
-                  placeholder="prod_..."
-                />
-              </label>
-            )}
-
-            {linkType === "url" && (
-              <label className="grid" style={{ gap: "0.35rem" }}>
-                <span className="muted">URL externa</span>
-                <input
-                  value={form.link_value}
-                  onChange={(e) => handleChange("link_value", e.target.value)}
-                  className="field-input"
-                  placeholder="https://..."
-                />
-              </label>
-            )}
-          </div>
-
-          <div className="grid" style={{ gap: "0.6rem" }}>
-            <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Ordem de destaque (maior primeiro)</span>
-              <input
-                value={form.sort_order}
-                onChange={(e) => handleChange("sort_order", e.target.value)}
-                className="field-input"
-                type="number"
-              />
-            </label>
-            <div className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Período de campanha</span>
-              <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.6rem" }}>
-                <input
-                  type="datetime-local"
-                  value={form.active_from}
-                  onChange={(e) => handleChange("active_from", e.target.value)}
-                  className="field-input"
-                />
-                <input
-                  type="datetime-local"
-                  value={form.active_until}
-                  onChange={(e) => handleChange("active_until", e.target.value)}
-                  className="field-input"
-                />
-              </div>
-            </div>
-            <label className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Ativo</span>
-              <select
-                className="field-input"
-                value={form.is_active ? "true" : "false"}
-                onChange={(e) => handleChange("is_active", e.target.value === "true")}
-              >
-                <option value="true">Sim</option>
-                <option value="false">Não</option>
-              </select>
-            </label>
-          </div>
-
-          {bannersError && <div className="muted">Erro: {bannersError}</div>}
-
-          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.6rem" }}>
-            <button className="btn" type="submit" disabled={isSaving}>
-              {isSaving ? (
-                <>
-                  <FontAwesomeIcon icon={faSpinner} spin /> Salvando...
-                </>
-              ) : editingId ? (
-                "Salvar alterações"
-              ) : (
-                "Cadastrar banner"
-              )}
-            </button>
-            {(editingId || form.title) && (
-              <button type="button" className="btn ghost" onClick={resetForm}>
-                Limpar
-              </button>
-            )}
-          </div>
-          {uploadingField && <p className="muted">Enviando arquivo...</p>}
-        </form>
-      </section>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
+        <button className="btn btn-secondary" onClick={() => navigate("/marketing/novo")} type="button">
+          Novo banner
+        </button>
+      </div>
 
       <section className="panel" style={{ marginTop: "1.5rem" }}>
         <h2 style={{ marginBottom: "0.8rem" }}>
@@ -589,18 +691,16 @@ export default function MarketingSection({
                       <button
                         type="button"
                         className="btn ghost"
-                        onClick={() => applyBannerToForm(banner)}
+                        onClick={() => navigate(`/marketing/${banner.id}`)}
                       >
                         <FontAwesomeIcon icon={faPenToSquare} /> Editar
                       </button>
                       <button
                         type="button"
                         className="btn ghost"
-                        disabled={deletingId === banner.id}
-                        onClick={() => deleteBanner(banner.id)}
+                        onClick={() => navigate(`/marketing/${banner.id}/excluir`)}
                       >
-                        <FontAwesomeIcon icon={faTrash} />{" "}
-                        {deletingId === banner.id ? "Excluindo..." : "Excluir"}
+                        <FontAwesomeIcon icon={faTrash} /> Excluir
                       </button>
                     </div>
                   </div>
@@ -679,5 +779,7 @@ export default function MarketingSection({
         )}
       </section>
     </div>
+  )
+
   )
 }

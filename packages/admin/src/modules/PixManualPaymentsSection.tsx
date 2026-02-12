@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 
 import type { AdminCompany, PendingPixPayment, StoreUser } from "../types"
 import { formatMoney } from "../utils/format"
@@ -11,6 +12,7 @@ type PixManualPaymentsSectionProps = {
   users: StoreUser[]
   companies: AdminCompany[]
   pushToast: (toast: ToastInput) => void
+  mode?: "list" | "confirm"
 }
 
 export default function PixManualPaymentsSection({
@@ -19,7 +21,11 @@ export default function PixManualPaymentsSection({
   users,
   companies,
   pushToast,
+  mode = "list",
 }: PixManualPaymentsSectionProps) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isConfirmMode = mode === "confirm"
   const [pending, setPending] = useState<PendingPixPayment[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
@@ -32,6 +38,7 @@ export default function PixManualPaymentsSection({
   const [collectionId, setCollectionId] = useState("")
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
+  const [confirmTarget, setConfirmTarget] = useState<PendingPixPayment | null>(null)
 
   const filteredUsers = useMemo(() => users || [], [users])
   const filteredCompanies = useMemo(() => {
@@ -68,15 +75,15 @@ export default function PixManualPaymentsSection({
   }
 
   useEffect(() => {
+    if (isConfirmMode) return
     loadPending()
-  }, [userId, companyId, txid, collectionId, dateFrom, dateTo, limit, offset])
+  }, [userId, companyId, txid, collectionId, dateFrom, dateTo, limit, offset, isConfirmMode])
 
   const totalPages = Math.max(1, Math.ceil(total / limit))
   const page = Math.min(Math.floor(offset / limit) + 1, totalPages)
 
   const handleConfirm = async (item: PendingPixPayment) => {
     if (!item?.payment_collection_id) return
-    if (!confirm("Confirmar pagamento PIX manual?")) return
     setConfirmingId(item.payment_collection_id)
     try {
       const res = await fetch(`${medusaUrl}/admin/pending-pix-payments`, {
@@ -92,12 +99,83 @@ export default function PixManualPaymentsSection({
         throw new Error(body || "Erro ao confirmar pagamento")
       }
       pushToast({ title: "Pagamento confirmado", variant: "success" })
-      await loadPending()
+      return true
     } catch (err: any) {
       pushToast({ title: err?.message || "Erro ao confirmar pagamento", variant: "error" })
+      return false
     } finally {
       setConfirmingId(null)
     }
+  }
+
+  useEffect(() => {
+    if (!isConfirmMode) return
+    const state = (location.state || {}) as { item?: PendingPixPayment }
+    setConfirmTarget(state.item || null)
+  }, [isConfirmMode, location.state])
+
+  if (isConfirmMode) {
+    if (!confirmTarget) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+          <header className="page-header">
+            <h1 className="page-title">Confirmar PIX</h1>
+            <p className="page-subtitle">Selecione um pagamento na lista.</p>
+          </header>
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/pix-manual")}>
+            Voltar
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Confirmar PIX manual</h1>
+          <p className="page-subtitle">{confirmTarget.user_email || confirmTarget.user_name || "Usuário"}</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/pix-manual")}>
+            Voltar
+          </button>
+          <button
+            className="btn"
+            type="button"
+            onClick={async () => {
+              const ok = await handleConfirm(confirmTarget)
+              if (ok) navigate("/pix-manual")
+            }}
+            disabled={confirmingId === confirmTarget.payment_collection_id}
+          >
+            {confirmingId === confirmTarget.payment_collection_id ? "Confirmando..." : "Confirmar pagamento"}
+          </button>
+        </div>
+
+        <section className="panel" style={{ maxWidth: "820px" }}>
+          <h3>Resumo</h3>
+          <div className="grid" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Condomínio</span>
+              <span>{confirmTarget.details?.company_name || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Payment collection</span>
+              <span>{confirmTarget.payment_collection_id || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">TXID</span>
+              <span>{confirmTarget.details?.pix_txid || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Valor</span>
+              <span>{formatMoney(confirmTarget.details?.amount, confirmTarget.details?.currency_code || "brl")}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
   }
 
   return (
@@ -225,10 +303,9 @@ export default function PixManualPaymentsSection({
                       <button
                         className="btn btn-secondary btn-sm"
                         type="button"
-                        onClick={() => handleConfirm(item)}
-                        disabled={confirmingId === item.payment_collection_id}
+                        onClick={() => navigate("/pix-manual/confirmar", { state: { item } })}
                       >
-                        {confirmingId === item.payment_collection_id ? "Confirmando..." : "Confirmar"}
+                        Confirmar
                       </button>
                     </div>
                   </td>

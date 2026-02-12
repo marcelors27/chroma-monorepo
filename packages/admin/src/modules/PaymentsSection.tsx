@@ -1,4 +1,5 @@
-import type { Dispatch, SetStateAction } from "react"
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react"
+import { useNavigate } from "react-router-dom"
 
 import { AdminCompany, StockLocation } from "../types"
 
@@ -7,13 +8,16 @@ type PaymentsSectionProps = {
   headers: Record<string, string>
   companies: AdminCompany[]
   setCompanies: Dispatch<SetStateAction<AdminCompany[]>>
-  companiesError: string | null
-  setCompaniesError: Dispatch<SetStateAction<string | null>>
-  companyEmailEdits: Record<string, string>
-  setCompanyEmailEdits: Dispatch<SetStateAction<Record<string, string>>>
-  companySavingId: string | null
-  setCompanySavingId: Dispatch<SetStateAction<string | null>>
   stockLocations: StockLocation[]
+  mode?: "list" | "edit"
+  companyId?: string
+}
+
+const getBillingEmailsValue = (company: AdminCompany) => {
+  const value = company.metadata?.billing_emails
+  if (Array.isArray(value)) return value.join(", ")
+  if (typeof value === "string") return value
+  return ""
 }
 
 export default function PaymentsSection({
@@ -21,31 +25,45 @@ export default function PaymentsSection({
   headers,
   companies,
   setCompanies,
-  companiesError,
-  setCompaniesError,
-  companyEmailEdits,
-  setCompanyEmailEdits,
-  companySavingId,
-  setCompanySavingId,
   stockLocations,
+  mode = "list",
+  companyId,
 }: PaymentsSectionProps) {
-  const handleCompanyEmailChange = (companyId: string, value: string) => {
-    setCompanyEmailEdits((prev) => ({ ...prev, [companyId]: value }))
-  }
+  const navigate = useNavigate()
+  const isEditMode = mode === "edit"
+  const [billingEmails, setBillingEmails] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const saveCompanyBillingEmails = async (company: AdminCompany) => {
-    setCompanySavingId(company.id)
-    setCompaniesError(null)
+  const activeCompany = useMemo(
+    () => (isEditMode ? companies.find((company) => company.id === companyId) || null : null),
+    [companies, companyId, isEditMode]
+  )
+
+  useEffect(() => {
+    if (!activeCompany) return
+    setBillingEmails(getBillingEmailsValue(activeCompany))
+    setError(null)
+  }, [activeCompany])
+
+  const configuredCount = companies.filter((company) => getBillingEmailsValue(company).trim()).length
+
+  const saveCompanyBillingEmails = async () => {
+    if (!activeCompany) return
+    setSaving(true)
+    setError(null)
     try {
       const payload = {
-        customer_id: company.customer_id,
-        billing_emails: companyEmailEdits[company.id] || "",
+        customer_id: activeCompany.customer_id,
+        billing_emails: billingEmails.trim(),
       }
-      const res = await fetch(`${medusaUrl}/admin/companies/${company.id}`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify(payload),
-      })
+      const res = await fetch(`${medusaUrl}/admin/companies/${activeCompany.id}`,
+        {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify(payload),
+        }
+      )
       if (!res.ok) {
         const body = await res.text()
         throw new Error(body || "Não foi possível salvar os e-mails")
@@ -53,13 +71,87 @@ export default function PaymentsSection({
       const json = await res.json()
       const updated = json?.company
       if (updated) {
-        setCompanies((prev) => prev.map((item) => (item.id === company.id ? updated : item)))
+        setCompanies((prev) => prev.map((item) => (item.id === activeCompany.id ? updated : item)))
       }
     } catch (err: any) {
-      setCompaniesError(err?.message || "Erro ao salvar e-mails")
+      setError(err?.message || "Erro ao salvar e-mails")
     } finally {
-      setCompanySavingId(null)
+      setSaving(false)
     }
+  }
+
+  if (isEditMode) {
+    if (!activeCompany) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+          <header className="page-header">
+            <h1 className="page-title">Editar cobrança</h1>
+            <p className="page-subtitle">Condomínio não encontrado.</p>
+          </header>
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/pagamentos")}>
+            Voltar para pagamentos
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Editar cobrança</h1>
+          <p className="page-subtitle">
+            {activeCompany.fantasy_name || activeCompany.trade_name || "Condomínio"}
+          </p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/pagamentos")}>
+            Voltar
+          </button>
+          <button className="btn" type="button" onClick={saveCompanyBillingEmails} disabled={saving}>
+            {saving ? "Salvando..." : "Salvar"}
+          </button>
+        </div>
+
+        {error && <div className="panel muted">Erro: {error}</div>}
+
+        <section className="panel" style={{ maxWidth: "720px" }}>
+          <h3>Detalhes do condomínio</h3>
+          <div className="grid" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Customer ID</span>
+              <span>{activeCompany.customer_id}</span>
+            </div>
+            {activeCompany.cnpj && (
+              <div className="grid" style={{ gap: "0.35rem" }}>
+                <span className="muted">CNPJ</span>
+                <span>{activeCompany.cnpj}</span>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="panel" style={{ maxWidth: "720px", marginTop: "1rem" }}>
+          <h3>Envio de boletos/PIX</h3>
+          <label className="grid" style={{ gap: "0.35rem", marginTop: "0.75rem" }}>
+            <span className="muted">E-mails de boleto/PIX</span>
+            <input
+              value={billingEmails}
+              onChange={(e) => setBillingEmails(e.target.value)}
+              placeholder="financeiro@condominio.com.br, sindico@condominio.com.br"
+              className="field-input"
+            />
+            <span className="muted" style={{ fontSize: "0.8rem" }}>
+              Separe por vírgula ou ponto e vírgula.
+            </span>
+          </label>
+          <div className="grid" style={{ gap: "0.35rem", marginTop: "1rem" }}>
+            <span className="muted">Pontos</span>
+            <strong>{Number(activeCompany?.metadata?.points_balance || 0)}</strong>
+          </div>
+        </section>
+      </div>
+    )
   }
 
   return (
@@ -77,9 +169,7 @@ export default function PaymentsSection({
         </div>
         <div className="panel grid" style={{ gap: "0.35rem" }}>
           <span className="muted">Boletos/PIX</span>
-          <strong style={{ fontSize: "1.6rem" }}>
-            {companies.filter((company) => companyEmailEdits[company.id]?.trim()).length}
-          </strong>
+          <strong style={{ fontSize: "1.6rem" }}>{configuredCount}</strong>
           <span className="muted">E-mails configurados</span>
         </div>
       </section>
@@ -159,8 +249,6 @@ export default function PaymentsSection({
           <span className="pill">{companies.length} empresas</span>
         </div>
 
-        {companiesError && <div className="muted">Erro: {companiesError}</div>}
-
         <div style={{ overflowX: "auto" }}>
           <table className="table">
             <thead>
@@ -182,25 +270,14 @@ export default function PaymentsSection({
                 companies.map((company) => (
                   <tr key={company.id}>
                     <td>{company.fantasy_name || company.trade_name || "Condomínio"}</td>
-                    <td style={{ minWidth: "320px" }}>
-                      <input
-                        value={companyEmailEdits[company.id] || ""}
-                        onChange={(e) => handleCompanyEmailChange(company.id, e.target.value)}
-                        placeholder="financeiro@condominio.com.br, sindico@condominio.com.br"
-                        className="field-input"
-                      />
-                      <span className="muted" style={{ fontSize: "0.8rem" }}>
-                        Separe por vírgula ou ponto e vírgula.
-                      </span>
-                    </td>
+                    <td>{getBillingEmailsValue(company) || "—"}</td>
                     <td>{Number(company?.metadata?.points_balance || 0)}</td>
                     <td>
                       <button
-                        className="btn btn-sm"
-                        onClick={() => saveCompanyBillingEmails(company)}
-                        disabled={companySavingId === company.id}
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => navigate(`/pagamentos/${company.id}`)}
                       >
-                        {companySavingId === company.id ? "Salvando..." : "Salvar"}
+                        Editar
                       </button>
                     </td>
                   </tr>

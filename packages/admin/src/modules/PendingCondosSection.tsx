@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react"
+import { useNavigate, useParams } from "react-router-dom"
 
 import { PendingCompany } from "../types"
 import { formatCnpj } from "../utils/format"
@@ -12,6 +13,8 @@ type PendingCondosSectionProps = {
   setPendingCompaniesError: Dispatch<SetStateAction<string | null>>
   pendingCompanyActionId: string | null
   setPendingCompanyActionId: Dispatch<SetStateAction<string | null>>
+  mode?: "list" | "review"
+  companyId?: string
 }
 
 export default function PendingCondosSection({
@@ -23,7 +26,14 @@ export default function PendingCondosSection({
   setPendingCompaniesError,
   pendingCompanyActionId,
   setPendingCompanyActionId,
+  mode = "list",
+  companyId,
 }: PendingCondosSectionProps) {
+  const navigate = useNavigate()
+  const params = useParams()
+  const resolvedCompanyId = params.companyId || companyId
+  const isReviewMode = mode === "review"
+
   async function setCompanyApproval(companyId: string, approved: boolean) {
     setPendingCompanyActionId(companyId)
     try {
@@ -37,11 +47,102 @@ export default function PendingCondosSection({
         throw new Error(body || "Não foi possível atualizar status")
       }
       setPendingCompanies((prev) => prev.filter((company) => company.id !== companyId))
+      return true
     } catch (err: any) {
       setPendingCompaniesError(err?.message || "Erro ao alterar status")
+      return false
     } finally {
       setPendingCompanyActionId(null)
     }
+  }
+
+  if (isReviewMode) {
+    const company = pendingCompanies.find((item) => item.id === resolvedCompanyId) || null
+
+    if (!company) {
+      return (
+        <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+          <header className="page-header">
+            <h1 className="page-title">Revisar condomínio</h1>
+            <p className="page-subtitle">Condomínio não encontrado.</p>
+          </header>
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/condominios-pendentes")}>
+            Voltar
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="layout" style={{ width: "100%", margin: 0, padding: 0 }}>
+        <header className="page-header">
+          <h1 className="page-title">Revisar condomínio</h1>
+          <p className="page-subtitle">{company.trade_name || company.fantasy_name || company.id}</p>
+        </header>
+
+        <div className="action-bar">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate("/condominios-pendentes")}>
+            Voltar
+          </button>
+          <div className="action-bar-group">
+            <button
+              className="btn"
+              type="button"
+              onClick={async () => {
+                const ok = await setCompanyApproval(company.id, true)
+                if (ok) navigate("/condominios-pendentes")
+              }}
+              disabled={pendingCompanyActionId === company.id}
+            >
+              {pendingCompanyActionId === company.id ? "Salvando..." : "Aprovar"}
+            </button>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={async () => {
+                const ok = await setCompanyApproval(company.id, false)
+                if (ok) navigate("/condominios-pendentes")
+              }}
+              disabled={pendingCompanyActionId === company.id}
+            >
+              {pendingCompanyActionId === company.id ? "Salvando..." : "Rejeitar"}
+            </button>
+          </div>
+        </div>
+
+        {pendingCompaniesError && <div className="panel muted">Erro: {pendingCompaniesError}</div>}
+
+        <section className="panel" style={{ maxWidth: "720px" }}>
+          <h3>Dados do condomínio</h3>
+          <div className="grid" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Razão social</span>
+              <span>{company.trade_name || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Nome fantasia</span>
+              <span>{company.fantasy_name || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">CNPJ</span>
+              <span>{formatCnpj(company.cnpj || undefined)}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">E-mail</span>
+              <span>{company.customer_email || "—"}</span>
+            </div>
+            <div className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Criado em</span>
+              <span>
+                {company.created_at
+                  ? new Date(company.created_at).toLocaleDateString("pt-BR")
+                  : "—"}
+              </span>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
   }
 
   return (
@@ -110,20 +211,13 @@ export default function PendingCondosSection({
                         ? new Date(company.created_at).toLocaleDateString("pt-BR")
                         : "—"}
                     </td>
-                    <td style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                      <button
-                        className="btn btn-sm"
-                        onClick={() => setCompanyApproval(company.id, true)}
-                        disabled={pendingCompanyActionId === company.id}
-                      >
-                        Aprovar
-                      </button>
+                    <td>
                       <button
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setCompanyApproval(company.id, false)}
-                        disabled={pendingCompanyActionId === company.id}
+                        type="button"
+                        onClick={() => navigate(`/condominios-pendentes/${company.id}`)}
                       >
-                        Rejeitar
+                        Revisar
                       </button>
                     </td>
                   </tr>
