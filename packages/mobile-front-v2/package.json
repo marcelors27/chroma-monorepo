@@ -221,6 +221,7 @@
     "whatwg-url-without-unicode": "^8.0.0"
   },
   "devDependencies": {
+    "babel-plugin-module-resolver": "^5.0.0",
     "@types/react": "~19.1.17",
     "typescript": "^5.8.3"
   }

@@ -11,6 +11,7 @@
       },
       "env": {
         "NODE_ENV": "production",
+        "EXPO_NO_DOCTOR": "1",
         "EXPO_USE_METRO_WORKSPACE_ROOT": "1",
         "EXPO_PUBLIC_MEDUSA_URL": "https://chromaapi-production.up.railway.app",
         "EXPO_PUBLIC_MEDUSA_PUBLISHABLE_KEY": "pk_c5bb13dad798a2eb7b7734c003826bbb3df98910766a2770bb6e032120ed77f8",
