@@ -171,6 +171,34 @@ const Auth = () => {
         await handleLoginSuccess();
       } catch (err: any) {
         if (!active) return;
+        if (provider === "apple" && err?.message === "link_required") {
+          const proceed = window.confirm(
+            "Este e-mail já tem uma conta. Deseja vincular sua conta Apple a este usuário?"
+          );
+          if (!proceed) {
+            setIsLoading(false);
+            return;
+          }
+          try {
+            const token = await completeSocialAuth(provider, {
+              code,
+              state: state || undefined,
+              linkExisting: true,
+            });
+            if (!token || !active) return;
+            await handleLoginSuccess();
+            return;
+          } catch (innerErr: any) {
+            toast({
+              title: "Erro no login social",
+              description: innerErr?.message || "Não foi possível autenticar.",
+              variant: "destructive",
+            });
+            return;
+          } finally {
+            if (active) setIsLoading(false);
+          }
+        }
         toast({
           title: "Erro no login social",
           description: err?.message || "Não foi possível autenticar.",

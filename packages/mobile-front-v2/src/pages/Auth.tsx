@@ -74,7 +74,7 @@ export default function Auth() {
     setIsLoading(true);
     try {
       const result = await loginWithSocial(provider, { mode: isLogin ? "login" : "signup" });
-      if (!isLogin && result.code === "link_required") {
+      if (result.code === "link_required") {
         setLinkPrompt({ email: result.email, credential: result.credential });
         return;
       }
@@ -95,7 +95,7 @@ export default function Auth() {
     setIsLoading(true);
     try {
       const result = await loginWithSocial("apple", {
-        mode: "signup",
+        mode: isLogin ? "login" : "signup",
         linkExisting: true,
         credential: linkPrompt.credential,
       });

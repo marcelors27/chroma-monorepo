@@ -784,11 +784,12 @@ export const startSocialAuth = async (provider: string, callbackUrl: string) => 
 
 export const completeSocialAuth = async (
   provider: string,
-  params: { code: string; state?: string }
+  params: { code: string; state?: string; linkExisting?: boolean }
 ) => {
   const search = new URLSearchParams({
     code: params.code,
     ...(params.state ? { state: params.state } : {}),
+    ...(params.linkExisting ? { link_existing: "true" } : {}),
   })
   const data = await apiFetch<{ token: string }>(
     `/auth/customer/${provider}/callback?${search.toString()}`,
