@@ -81,7 +81,7 @@ export default function Auth() {
       if (result.success) {
         return;
       } else {
-        toast.error("Login social indisponível no momento");
+        toast.error(authError || "Login social indisponível no momento");
       }
     } catch {
       toast.error("Erro ao fazer login social");
@@ -103,7 +103,7 @@ export default function Auth() {
         toast.success("Conta vinculada!");
         return;
       } else {
-        toast.error("Não foi possível vincular a conta.");
+        toast.error(authError || "Não foi possível vincular a conta.");
       }
     } finally {
       setIsLoading(false);

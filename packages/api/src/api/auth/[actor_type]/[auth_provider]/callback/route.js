@@ -9,6 +9,12 @@ const {
 const { createCustomerAccountWorkflow } = require("@medusajs/core-flows")
 
 const isEmail = (value) => typeof value === "string" && value.includes("@")
+const maskEmail = (value) => {
+  if (!isEmail(value)) return value || null
+  const [user, domain] = value.split("@")
+  const maskedUser = user.length <= 2 ? `${user[0] || ""}*` : `${user.slice(0, 2)}***`
+  return `${maskedUser}@${domain}`
+}
 
 const extractEmailFromIdToken = (req) => {
   const token =
@@ -136,6 +142,17 @@ const handle = async (req, res) => {
   if (!success || !authIdentity) {
     throw new MedusaError(MedusaError.Types.UNAUTHORIZED, error || "Authentication failed")
   }
+  try {
+    logger?.info?.(
+      JSON.stringify({
+        msg: "auth callback validated",
+        actor_type,
+        auth_provider,
+        link_existing: linkExisting,
+        auth_identity_id: authIdentity?.id || null,
+      })
+    )
+  } catch {}
 
   let effectiveIdentity = authIdentity
   let linkedCustomerId = null
@@ -147,7 +164,32 @@ const handle = async (req, res) => {
       (await resolveEmailFromIdentity(req.scope, authIdentity)) ||
       extractEmailFromIdToken(req)
     const existingId = email ? await findCustomerIdByEmail(req.scope, email) : null
+    try {
+      logger?.info?.(
+        JSON.stringify({
+          msg: "auth callback resolve customer",
+          actor_type,
+          auth_provider,
+          link_existing: linkExisting,
+          auth_identity_id: authIdentity?.id || null,
+          email: maskEmail(email),
+          existing_customer_id: existingId,
+        })
+      )
+    } catch {}
     if (auth_provider === "apple" && existingId && !linkExisting) {
+      try {
+        logger?.info?.(
+          JSON.stringify({
+            msg: "auth callback link required",
+            actor_type,
+            auth_provider,
+            auth_identity_id: authIdentity?.id || null,
+            email: maskEmail(email),
+            existing_customer_id: existingId,
+          })
+        )
+      } catch {}
       return res.status(409).json({
         message: "link_required",
         code: "link_required",
@@ -159,6 +201,17 @@ const handle = async (req, res) => {
     if (customerId) {
       linkedCustomerId = customerId
       effectiveIdentity = await updateAuthIdentityMetadata(req.scope, authIdentity, customerId)
+      try {
+        logger?.info?.(
+          JSON.stringify({
+            msg: "auth callback linked customer",
+            actor_type,
+            auth_provider,
+            auth_identity_id: authIdentity?.id || null,
+            customer_id: customerId,
+          })
+        )
+      } catch {}
     }
   }
 

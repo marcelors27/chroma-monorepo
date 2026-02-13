@@ -9,6 +9,7 @@ const SALES_CHANNEL_ID = process.env.EXPO_PUBLIC_MEDUSA_SALES_CHANNEL_ID;
 const REGION_ID = process.env.EXPO_PUBLIC_MEDUSA_REGION_ID;
 const CURRENCY_CODE = process.env.EXPO_PUBLIC_MEDUSA_CURRENCY_CODE || "brl";
 const DEBUG = process.env.EXPO_PUBLIC_DEBUG_FRONT === "true";
+const LOG_REQUESTS = process.env.EXPO_PUBLIC_LOG_REQUESTS !== "false";
 const MEDIA_BASE_URL = process.env.EXPO_PUBLIC_MEDIA_URL || MEDUSA_URL;
 const MEDUSA_ORIGIN = (() => {
   if (!MEDUSA_URL || !/^https?:\/\//i.test(MEDUSA_URL)) return null;
@@ -475,7 +476,7 @@ const handleAccessPending = () => {
 
 const apiFetch = async <T>(path: string, init?: FetchInit): Promise<T> => {
   const endLoading = beginGlobalLoading();
-  if (DEBUG) {
+  if (LOG_REQUESTS) {
     console.debug("[medusa] request", { path, method: init?.method || "GET", body: init?.body });
   }
   try {
@@ -485,7 +486,7 @@ const apiFetch = async <T>(path: string, init?: FetchInit): Promise<T> => {
     });
 
     if (!res.ok) {
-      if (DEBUG) {
+      if (LOG_REQUESTS) {
         console.debug("[medusa] response error", { path, status: res.status, statusText: res.statusText });
       }
       if (res.status === 403) {
@@ -495,7 +496,7 @@ const apiFetch = async <T>(path: string, init?: FetchInit): Promise<T> => {
       throw new Error(message);
     }
 
-    if (DEBUG) {
+    if (LOG_REQUESTS) {
       console.debug("[medusa] response ok", { path, status: res.status });
     }
 
