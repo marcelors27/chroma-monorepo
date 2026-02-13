@@ -1,6 +1,6 @@
 {
   "name": "chroma",
-  "version": "0.2.30",
+  "version": "0.2.31",
   "private": true,
   "packageManager": "pnpm@8.15.4",
   "scripts": {
