@@ -11,34 +11,36 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCondo } from "@/contexts/CondoContext";
 import { listCompanies } from "@/lib/medusa";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 
 export default function Condominios() {
   const navigation = useNavigation();
+  const { terms } = useBusinessTerms();
   const [searchQuery, setSearchQuery] = useState("");
   const { data, isLoading } = useQuery({ queryKey: ["companies"], queryFn: listCompanies });
   const { hasApprovedCondo } = useCondo();
   const isFirstAccess = !hasApprovedCondo;
 
-  const condominios = useMemo(() => {
+  const estabelecimentos = useMemo(() => {
     return (data?.companies || []).map((company: any) => ({
       id: company.id,
-      name: company.fantasy_name || company.trade_name || company.name || "Condomínio",
+      name: company.fantasy_name || company.trade_name || company.name || terms.label,
       address: company.metadata?.address || company.metadata?.city || "",
       units: Number(company.metadata?.units) || 0,
-      role: company.metadata?.role || "Síndico",
+      role: company.metadata?.role || terms.responsibleLabel,
     }));
-  }, [data]);
+  }, [data, terms.label, terms.responsibleLabel]);
 
-  const filteredCondos = condominios.filter(
-    (condo) =>
-      condo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      condo.address.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredEstabelecimentos = estabelecimentos.filter(
+    (estabelecimento) =>
+      estabelecimento.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      estabelecimento.address.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <AuthenticatedLayout>
       <Header
-        title="Meus Condomínios"
+        title={`Meus ${terms.labelPlural}`}
         subtitle="Gestão"
         showNotification={false}
         showCondoSelector={!isFirstAccess}
@@ -51,8 +53,8 @@ export default function Condominios() {
               <Building2 color="hsl(220 10% 50%)" size={22} />
             </View>
             <View>
-              <Text style={styles.summaryCount}>{condominios.length}</Text>
-              <Text style={styles.summaryLabel}>Condomínios cadastrados</Text>
+              <Text style={styles.summaryCount}>{estabelecimentos.length}</Text>
+              <Text style={styles.summaryLabel}>{`${terms.labelPlural} cadastrados`}</Text>
             </View>
           </View>
         </View>
@@ -62,7 +64,7 @@ export default function Condominios() {
             <Search color="hsl(215 15% 55%)" size={18} />
           </View>
           <Input
-            placeholder="Buscar condomínio..."
+            placeholder={`Buscar ${terms.labelLower}...`}
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="hsl(215 15% 55%)"
@@ -74,7 +76,7 @@ export default function Condominios() {
         <View style={styles.list}>
           {isLoading
             ? Array.from({ length: 3 }).map((_, index) => (
-                <View key={`condo-skeleton-${index}`} style={styles.condoSkeletonCard}>
+                <View key={`company-skeleton-${index}`} style={styles.condoSkeletonCard}>
                   <View style={styles.condoSkeletonRow}>
                     <Skeleton style={styles.condoSkeletonIcon} />
                     <View style={styles.condoSkeletonContent}>
@@ -84,21 +86,26 @@ export default function Condominios() {
                   </View>
                 </View>
               ))
-            : filteredCondos.map((condo) => (
+            : filteredEstabelecimentos.map((estabelecimento) => (
                 <CondoCard
-                  key={condo.id}
-                  {...condo}
-                  onEdit={() => navigation.navigate("CondominioDetalhes" as never, { id: condo.id } as never)}
-                  onClick={() => navigation.navigate("CondominioDetalhes" as never, { id: condo.id } as never)}
+                  key={estabelecimento.id}
+                  {...estabelecimento}
+                  unitLabelPlural={terms.unitLabelPlural}
+                  onEdit={() =>
+                    navigation.navigate("CondominioDetalhes" as never, { id: estabelecimento.id } as never)
+                  }
+                  onClick={() =>
+                    navigation.navigate("CondominioDetalhes" as never, { id: estabelecimento.id } as never)
+                  }
                 />
               ))}
         </View>
 
-        {!isLoading && filteredCondos.length === 0 && (
+        {!isLoading && filteredEstabelecimentos.length === 0 && (
           <View style={styles.emptyState}>
             <Building2 color="hsl(215 15% 55%)" size={40} />
-            <Text style={styles.emptyTitle}>Nenhum condomínio encontrado</Text>
-            <Text style={styles.emptySubtitle}>Adicione seu primeiro condomínio</Text>
+            <Text style={styles.emptyTitle}>{`Nenhum ${terms.labelLower} encontrado`}</Text>
+            <Text style={styles.emptySubtitle}>{`Adicione seu primeiro ${terms.labelLower}`}</Text>
           </View>
         )}
 
@@ -109,7 +116,7 @@ export default function Condominios() {
           >
             <View style={styles.addButtonContent}>
               <Plus color="#FFFFFF" size={16} />
-              <Text style={styles.addButtonText}>Novo Condomínio</Text>
+              <Text style={styles.addButtonText}>{`Novo ${terms.label}`}</Text>
             </View>
           </Button>
         </View>
@@ -118,18 +125,18 @@ export default function Condominios() {
           <View style={styles.firstAccessCard}>
             <Text style={styles.firstAccessTitle}>Finalize o cadastro</Text>
             <Text style={styles.firstAccessSubtitle}>
-              Cadastre todos os condomínios desejados antes de finalizar.
+              {`Cadastre todos os ${terms.labelPluralLower} desejados antes de finalizar.`}
             </Text>
             <Button
               onPress={() => navigation.navigate("AccessPending" as never)}
-              disabled={condominios.length === 0}
-              backgroundColor={condominios.length === 0 ? "#5DA2E6" : undefined}
-              opacity={condominios.length === 0 ? 0.6 : 1}
+              disabled={estabelecimentos.length === 0}
+              backgroundColor={estabelecimentos.length === 0 ? "#5DA2E6" : undefined}
+              opacity={estabelecimentos.length === 0 ? 0.6 : 1}
             >
               Finalizar
             </Button>
-            {condominios.length === 0 && (
-              <Text style={styles.firstAccessHint}>Adicione pelo menos um condomínio para continuar.</Text>
+            {estabelecimentos.length === 0 && (
+              <Text style={styles.firstAccessHint}>{`Adicione pelo menos um ${terms.labelLower} para continuar.`}</Text>
             )}
           </View>
         )}

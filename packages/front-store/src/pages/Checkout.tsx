@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import {
   completeCart,
   createRecurrence,
@@ -45,6 +46,7 @@ const ENABLE_PIX = import.meta.env.VITE_ENABLE_PIX === "true";
 
 const Checkout = () => {
   const { items, totalPrice, clearCart, completeBackendCheckout, cartId, isCartLoading } = useCart();
+  const { terms } = useBusinessTerms();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
@@ -276,7 +278,7 @@ const Checkout = () => {
       newErrors.paymentMethod = "Selecione uma forma de pagamento";
     }
     if (!deliveryData.condo?.trim()) {
-      newErrors.condo = "Informe o condomínio";
+      newErrors.condo = `Informe ${terms.articleSingular} ${terms.labelLower}`;
     }
     if (!shippingOptionId) {
       newErrors.shippingMethod = "Selecione uma forma de entrega";
@@ -331,7 +333,7 @@ const Checkout = () => {
       setOrderTotal(totalBefore);
       const activeCondo = getActiveCondo();
       const shippingAddress = {
-        first_name: "Condomínio",
+      first_name: terms.label,
         last_name: "Compras",
         address_1: deliveryData.condo,
         city: "São Paulo",
@@ -737,13 +739,13 @@ const Checkout = () => {
                   </h2>
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="condo">Condomínio</Label>
+                      <Label htmlFor="condo">{terms.label}</Label>
                       {errors.condo && (
                         <p className="text-sm text-destructive mt-1">{errors.condo}</p>
                       )}
                       <Input
                         id="condo"
-                        placeholder="Digite o condomínio"
+                        placeholder={`Digite ${terms.articleSingular} ${terms.labelLower}`}
                         value={deliveryData.condo}
                         onChange={(e) =>
                           setDeliveryData({ ...deliveryData, condo: e.target.value })

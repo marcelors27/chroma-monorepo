@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
 import { useCondo } from "@/contexts/CondoContext";
 import { useCart } from "@/contexts/CartContext";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import {
   getProductCategory,
   getProductImage,
@@ -40,6 +41,7 @@ export default function Produtos() {
   });
   const { activeCondo } = useCondo();
   const { addItem, isAddingItem } = useCart();
+  const { terms } = useBusinessTerms();
   const { width } = useWindowDimensions();
   const { data, isLoading } = useQuery({ queryKey: ["products"], queryFn: listProducts });
   const cardGap = 12;
@@ -142,7 +144,7 @@ export default function Produtos() {
 
   const handleAddToCart = async (product: (typeof products)[number]) => {
     if (!activeCondo) {
-      toast.error("Selecione um condomínio antes de adicionar itens ao carrinho.");
+      toast.error(`Selecione ${terms.articleSingular} ${terms.labelLower} antes de adicionar itens ao carrinho.`);
       return;
     }
     if (!product.variantId) {

@@ -12,6 +12,7 @@ type UsersSectionProps = {
   setUsers: Dispatch<SetStateAction<StoreUser[]>>
   usersError: string | null
   setUsersError: Dispatch<SetStateAction<string | null>>
+  businessTypes: { key: string; label: string }[]
   mode?: "list" | "create" | "reset" | "status"
   userId?: string
 }
@@ -23,6 +24,7 @@ export default function UsersSection({
   setUsers,
   usersError,
   setUsersError,
+  businessTypes,
   mode = "list",
   userId,
 }: UsersSectionProps) {
@@ -43,6 +45,67 @@ export default function UsersSection({
   const [showIdentityUsers, setShowIdentityUsers] = useState(true)
   const [usersNotice, setUsersNotice] = useState<string | null>(null)
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
+  const [deletePromptUser, setDeletePromptUser] = useState<StoreUser | null>(null)
+  const [companyFormByUser, setCompanyFormByUser] = useState<
+    Record<
+      string,
+      {
+        trade_name: string
+        fantasy_name: string
+        cnpj: string
+        approved: boolean
+        business_type: string
+      }
+    >
+  >({})
+  const [creatingCompanyFor, setCreatingCompanyFor] = useState<string | null>(null)
+  const [editingCompany, setEditingCompany] = useState<{
+    userId: string
+    company: any
+    form: { trade_name: string; fantasy_name: string; cnpj: string; approved: boolean; business_type: string }
+  } | null>(null)
+  const [deletingCompany, setDeletingCompany] = useState<{ userId: string; company: any } | null>(
+    null
+  )
+  const [deletingCompanyId, setDeletingCompanyId] = useState<string | null>(null)
+
+  const normalizeCnpj = (value: string) => value.replace(/\D/g, "").slice(0, 14)
+
+  const formatCnpjInput = (value: string) => {
+    const digits = normalizeCnpj(value)
+    const parts = [
+      digits.slice(0, 2),
+      digits.slice(2, 5),
+      digits.slice(5, 8),
+      digits.slice(8, 12),
+      digits.slice(12, 14),
+    ]
+    let formatted = ""
+    if (parts[0]) formatted += parts[0]
+    if (parts[1]) formatted += `.${parts[1]}`
+    if (parts[2]) formatted += `.${parts[2]}`
+    if (parts[3]) formatted += `/${parts[3]}`
+    if (parts[4]) formatted += `-${parts[4]}`
+    return formatted
+  }
+
+  const isValidCnpj = (value: string) => {
+    const digits = normalizeCnpj(value)
+    if (digits.length !== 14) return false
+    if (/^(\d)\1+$/.test(digits)) return false
+    const calc = (base: string, weights: number[]) => {
+      let sum = 0
+      for (let i = 0; i < weights.length; i++) {
+        sum += Number(base[i]) * weights[i]
+      }
+      const mod = sum % 11
+      return mod < 2 ? 0 : 11 - mod
+    }
+    const d1 = calc(digits.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+    const d2 = calc(`${digits.slice(0, 12)}${d1}`, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+    return digits.endsWith(`${d1}${d2}`)
+  }
 
   const totalCompanies = useMemo(
     () => users.reduce((acc, user) => acc + (user.companies?.length || 0), 0),
@@ -230,6 +293,220 @@ export default function UsersSection({
     }
   }
 
+  const handleDeleteUser = async (user: StoreUser) => {
+    if (!user?.id) return false
+    setDeletingUserId(user.id)
+    setUsersError(null)
+    setUsersNotice(null)
+    try {
+      const res = await fetch(`${medusaUrl}/admin/store-users/${user.id}`, {
+        method: "DELETE",
+        headers,
+      })
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || "Não foi possível remover o usuário")
+      }
+      const json = await res.json().catch(() => null)
+      setUsers((prev) => prev.filter((item) => item.id !== user.id))
+      const summary = json?.deleted
+      if (summary) {
+        setUsersNotice(
+          `Usuário removido. Customer: ${summary.customer ? "sim" : "não"}, identidades: ${
+            summary.auth_identities || 0
+          }, provedores: ${summary.provider_identities || 0}.`
+        )
+      } else {
+        setUsersNotice("Usuário removido permanentemente.")
+      }
+      return true
+    } catch (err: any) {
+      setUsersError(err?.message || "Erro ao remover usuário")
+      return false
+    } finally {
+      setDeletingUserId(null)
+      setDeletePromptUser(null)
+    }
+  }
+
+  const getCompanyForm = (userId: string) =>
+    companyFormByUser[userId] || {
+      trade_name: "",
+      fantasy_name: "",
+      cnpj: "",
+      approved: false,
+      business_type: businessTypes?.[0]?.key || "",
+    }
+
+  const updateCompanyForm = (userId: string, patch: Partial<ReturnType<typeof getCompanyForm>>) => {
+    setCompanyFormByUser((prev) => ({
+      ...prev,
+      [userId]: { ...getCompanyForm(userId), ...patch },
+    }))
+  }
+
+  const handleCreateCompany = async (user: StoreUser) => {
+    if (!user?.id) return false
+    if (user.source === "identity") {
+      setUsersError("Usuário sem customer. Não é possível cadastrar estabelecimento.")
+      return false
+    }
+    const form = getCompanyForm(user.id)
+    if (!form.trade_name || !form.fantasy_name || !form.cnpj) {
+      setUsersError("Informe razão social, nome fantasia e CNPJ")
+      return false
+    }
+    if (!isValidCnpj(form.cnpj)) {
+      setUsersError("CNPJ inválido")
+      return false
+    }
+    setCreatingCompanyFor(user.id)
+    setUsersError(null)
+    setUsersNotice(null)
+    try {
+      const res = await fetch(`${medusaUrl}/admin/store-users/${user.id}/companies`, {
+        method: "POST",
+        headers,
+      body: JSON.stringify({
+        trade_name: form.trade_name,
+        fantasy_name: form.fantasy_name,
+        cnpj: form.cnpj,
+        approved: form.approved,
+        business_type: form.business_type || undefined,
+      }),
+    })
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || "Não foi possível cadastrar o estabelecimento")
+      }
+      const json = await res.json()
+      const company = json?.company
+      if (company) {
+        setUsers((prev) =>
+          prev.map((item) =>
+            item.id === user.id
+              ? { ...item, companies: [...(item.companies || []), company] }
+              : item
+          )
+        )
+      }
+      setUsersNotice("Estabelecimento cadastrado.")
+      setCompanyFormByUser((prev) => ({
+        ...prev,
+        [user.id]: {
+          trade_name: "",
+          fantasy_name: "",
+          cnpj: "",
+          approved: false,
+          business_type: businessTypes?.[0]?.key || "",
+        },
+      }))
+      return true
+    } catch (err: any) {
+      setUsersError(err?.message || "Erro ao cadastrar estabelecimento")
+      return false
+    } finally {
+      setCreatingCompanyFor(null)
+    }
+  }
+
+  const handleUpdateCompany = async () => {
+    if (!editingCompany) return false
+    const { userId, company, form } = editingCompany
+    if (!form.trade_name || !form.fantasy_name || !form.cnpj) {
+      setUsersError("Informe razão social, nome fantasia e CNPJ")
+      return false
+    }
+    if (!isValidCnpj(form.cnpj)) {
+      setUsersError("CNPJ inválido")
+      return false
+    }
+    setCreatingCompanyFor(userId)
+    setUsersError(null)
+    setUsersNotice(null)
+    try {
+      const res = await fetch(
+        `${medusaUrl}/admin/store-users/${userId}/companies/${company.id}`,
+        {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({
+            trade_name: form.trade_name,
+            fantasy_name: form.fantasy_name,
+            cnpj: form.cnpj,
+            approved: form.approved,
+            business_type: form.business_type || undefined,
+          }),
+        }
+      )
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || "Não foi possível atualizar o estabelecimento")
+      }
+      const json = await res.json()
+      const updated = json?.company
+      if (updated) {
+        setUsers((prev) =>
+          prev.map((item) =>
+            item.id === userId
+              ? {
+                  ...item,
+                  companies: (item.companies || []).map((c) => (c.id === updated.id ? updated : c)),
+                }
+              : item
+          )
+        )
+      }
+      setUsersNotice("Estabelecimento atualizado.")
+      setEditingCompany(null)
+      return true
+    } catch (err: any) {
+      setUsersError(err?.message || "Erro ao atualizar estabelecimento")
+      return false
+    } finally {
+      setCreatingCompanyFor(null)
+    }
+  }
+
+  const handleDeleteCompany = async () => {
+    if (!deletingCompany) return false
+    const { userId, company } = deletingCompany
+    setDeletingCompanyId(company.id)
+    setUsersError(null)
+    setUsersNotice(null)
+    try {
+      const res = await fetch(
+        `${medusaUrl}/admin/store-users/${userId}/companies/${company.id}`,
+        {
+          method: "DELETE",
+          headers,
+        }
+      )
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || "Não foi possível remover o estabelecimento")
+      }
+      setUsers((prev) =>
+        prev.map((item) =>
+          item.id === userId
+            ? {
+                ...item,
+                companies: (item.companies || []).filter((c) => c.id !== company.id),
+              }
+            : item
+        )
+      )
+      setUsersNotice("Estabelecimento removido.")
+      return true
+    } catch (err: any) {
+      setUsersError(err?.message || "Erro ao remover estabelecimento")
+      return false
+    } finally {
+      setDeletingCompanyId(null)
+      setDeletingCompany(null)
+    }
+  }
+
   if (isResetMode || isStatusMode) {
     const user = users.find((item) => item.id === resolvedUserId) || null
     const title = isResetMode ? "Resetar senha" : "Status do usuário"
@@ -282,6 +559,15 @@ export default function UsersSection({
               }}
             >
               {user.disabled ? "Ativar usuário" : "Desativar usuário"}
+            </button>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => setDeletePromptUser(user)}
+              disabled={deletingUserId === user.id}
+              style={{ color: "#c23b3b", borderColor: "rgba(194, 59, 59, 0.35)" }}
+            >
+              {deletingUserId === user.id ? "Removendo..." : "Remover usuário"}
             </button>
           )}
         </div>
@@ -395,7 +681,7 @@ export default function UsersSection({
       <header className="grid" style={{ gap: "0.5rem" }}>
         <h1 style={{ fontSize: "2rem" }}>Usuários do front-store</h1>
         <p className="muted">
-          Cadastre contas, resete senhas e acompanhe os condomínios vinculados.
+          Cadastre contas, resete senhas e acompanhe os estabelecimentos vinculados.
         </p>
       </header>
 
@@ -406,14 +692,14 @@ export default function UsersSection({
           <span className="muted">Contas cadastradas</span>
         </div>
         <div className="panel grid" style={{ gap: "0.35rem" }}>
-          <span className="muted">Condomínios</span>
+          <span className="muted">Estabelecimentos</span>
           <strong style={{ fontSize: "1.6rem" }}>{totalCompanies}</strong>
           <span className="muted">Vinculados aos usuários</span>
         </div>
         <div className="panel grid" style={{ gap: "0.35rem" }}>
           <span className="muted">Aprovados</span>
           <strong style={{ fontSize: "1.6rem" }}>{approvedCompanies}</strong>
-          <span className="muted">Condomínios liberados</span>
+          <span className="muted">Estabelecimentos liberados</span>
         </div>
       </section>
 
@@ -429,7 +715,7 @@ export default function UsersSection({
           <div>
             <h3>Usuários cadastrados</h3>
             <p className="muted" style={{ marginTop: "0.25rem" }}>
-              Veja os condomínios por usuário e resete senhas quando necessário.
+              Veja os estabelecimentos por usuário e resete senhas quando necessário.
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -446,7 +732,7 @@ export default function UsersSection({
         <div style={{ marginBottom: "0.75rem", display: "grid", gap: "0.5rem" }}>
           <input
             className="field-input"
-            placeholder="Busque por nome, e-mail ou condomínio"
+            placeholder="Busque por nome, e-mail ou estabelecimento"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -467,7 +753,7 @@ export default function UsersSection({
                 <th>Usuário</th>
                 <th>E-mail</th>
                 <th>Telefone</th>
-                <th>Condomínios</th>
+                <th>Estabelecimentos</th>
                 <th>Status</th>
                 <th>Criado em</th>
                 <th>Ações</th>
@@ -529,6 +815,15 @@ export default function UsersSection({
                             >
                               {user.disabled ? "Ativar" : "Desativar"}
                             </button>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              type="button"
+                              onClick={() => setDeletePromptUser(user)}
+                              disabled={deletingUserId === user.id}
+                              style={{ color: "#c23b3b", borderColor: "rgba(194, 59, 59, 0.35)" }}
+                            >
+                              {deletingUserId === user.id ? "Removendo..." : "Remover"}
+                            </button>
                           </div>
                         </td>
                         <td>
@@ -559,9 +854,11 @@ export default function UsersSection({
                                         <th>Fantasia</th>
                                         <th>Razão social</th>
                                         <th>CNPJ</th>
+                                        <th>Tipo</th>
                                         <th>Status</th>
                                         <th>Criado em</th>
                                         <th>E-mails</th>
+                                        <th>Ações</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -579,6 +876,10 @@ export default function UsersSection({
                                             <td>{company.fantasy_name || "—"}</td>
                                             <td>{company.trade_name || "—"}</td>
                                             <td>{formatCnpj(company.cnpj || undefined)}</td>
+                                            <td>
+                                              {businessTypes.find((type) => type.key === company.business_type)
+                                                ?.label || "—"}
+                                            </td>
                                             <td>{company.approved ? "Aprovado" : "Pendente"}</td>
                                             <td>
                                               {company.created_at
@@ -588,6 +889,44 @@ export default function UsersSection({
                                                 : "—"}
                                             </td>
                                             <td>{emails || "—"}</td>
+                                            <td>
+                                              <div style={{ display: "flex", gap: "0.4rem" }}>
+                                                <button
+                                                  className="btn btn-secondary btn-sm"
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setEditingCompany({
+                                                      userId: user.id,
+                                                      company,
+                                                      form: {
+                                                        trade_name: company.trade_name || "",
+                                                        fantasy_name: company.fantasy_name || "",
+                                                        cnpj: formatCnpjInput(company.cnpj || ""),
+                                                        approved: Boolean(company.approved),
+                                                        business_type:
+                                                          company.business_type ||
+                                                          businessTypes?.[0]?.key ||
+                                                          "",
+                                                      },
+                                                    })
+                                                  }
+                                                >
+                                                  Editar
+                                                </button>
+                                                <button
+                                                  className="btn btn-secondary btn-sm"
+                                                  type="button"
+                                                  onClick={() => setDeletingCompany({ userId: user.id, company })}
+                                                  disabled={deletingCompanyId === company.id}
+                                                  style={{
+                                                    color: "#c23b3b",
+                                                    borderColor: "rgba(194, 59, 59, 0.35)",
+                                                  }}
+                                                >
+                                                  {deletingCompanyId === company.id ? "Removendo..." : "Remover"}
+                                                </button>
+                                              </div>
+                                            </td>
                                           </tr>
                                         )
                                       })}
@@ -595,9 +934,100 @@ export default function UsersSection({
                                   </table>
                                 </div>
                               ) : (
-                                <span className="muted">Nenhum condomínio vinculado.</span>
+                                <span className="muted">Nenhum estabelecimento vinculado.</span>
                               )}
 
+                              <div
+                                style={{
+                                  marginTop: "1rem",
+                                  paddingTop: "0.75rem",
+                                  borderTop: "1px solid var(--border)",
+                                }}
+                              >
+                                <strong>Cadastrar estabelecimento</strong>
+                                {user.source === "identity" ? (
+                                  <p className="muted" style={{ marginTop: "0.5rem" }}>
+                                    Usuário sem customer. Não é possível cadastrar estabelecimento.
+                                  </p>
+                                ) : (
+                                  <div
+                                    className="grid"
+                                    style={{
+                                      gap: "0.5rem",
+                                      marginTop: "0.75rem",
+                                      gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr auto auto",
+                                    }}
+                                  >
+                                    <input
+                                      className="field-input"
+                                      placeholder="Razão social"
+                                      value={getCompanyForm(user.id).trade_name}
+                                      onChange={(event) =>
+                                        updateCompanyForm(user.id, { trade_name: event.target.value })
+                                      }
+                                    />
+                                    <input
+                                      className="field-input"
+                                      placeholder="Nome fantasia"
+                                      value={getCompanyForm(user.id).fantasy_name}
+                                      onChange={(event) =>
+                                        updateCompanyForm(user.id, { fantasy_name: event.target.value })
+                                      }
+                                    />
+                                  <input
+                                    className="field-input"
+                                    placeholder="CNPJ"
+                                    value={getCompanyForm(user.id).cnpj}
+                                    onChange={(event) =>
+                                      updateCompanyForm(user.id, {
+                                        cnpj: formatCnpjInput(event.target.value),
+                                      })
+                                    }
+                                  />
+                                  <select
+                                    className="field-input"
+                                    value={getCompanyForm(user.id).business_type}
+                                    onChange={(event) =>
+                                      updateCompanyForm(user.id, { business_type: event.target.value })
+                                    }
+                                  >
+                                    {businessTypes.map((type) => (
+                                      <option key={type.key} value={type.key}>
+                                        {type.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <label
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "0.4rem",
+                                      color: "var(--muted)",
+                                      fontSize: "0.9rem",
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={getCompanyForm(user.id).approved}
+                                      onChange={(event) =>
+                                        updateCompanyForm(user.id, {
+                                          approved: event.target.checked,
+                                        })
+                                      }
+                                    />
+                                    Aprovado
+                                  </label>
+                                    <button
+                                      className="btn btn-sm"
+                                      type="button"
+                                      onClick={() => handleCreateCompany(user)}
+                                      disabled={creatingCompanyFor === user.id}
+                                    >
+                                      {creatingCompanyFor === user.id ? "Salvando..." : "Cadastrar"}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -610,6 +1040,231 @@ export default function UsersSection({
           </table>
         </div>
       </section>
+      {deletePromptUser && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(10, 12, 18, 0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+        >
+          <div
+            className="panel"
+            style={{
+              maxWidth: "460px",
+              width: "90%",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.35)",
+            }}
+          >
+            <h3>Remover usuário</h3>
+            <p className="muted" style={{ marginTop: "0.5rem" }}>
+              Remover permanentemente {deletePromptUser.email || deletePromptUser.id}? Essa ação não
+              pode ser desfeita.
+            </p>
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => setDeletePromptUser(null)}
+                disabled={deletingUserId === deletePromptUser.id}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn"
+                type="button"
+                onClick={async () => {
+                  const ok = await handleDeleteUser(deletePromptUser)
+                  if (ok && isStatusMode) {
+                    navigate("/usuarios")
+                  }
+                }}
+                disabled={deletingUserId === deletePromptUser.id}
+                style={{ background: "#c23b3b" }}
+              >
+                {deletingUserId === deletePromptUser.id ? "Removendo..." : "Remover"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editingCompany && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(10, 12, 18, 0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+        >
+          <div
+            className="panel"
+            style={{
+              maxWidth: "560px",
+              width: "92%",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.35)",
+            }}
+          >
+            <h3>Editar estabelecimento</h3>
+            <div
+              className="grid"
+              style={{
+                gap: "0.6rem",
+                marginTop: "0.75rem",
+                gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr",
+              }}
+            >
+              <input
+                className="field-input"
+                placeholder="Razão social"
+                value={editingCompany.form.trade_name}
+                onChange={(event) =>
+                  setEditingCompany((prev) =>
+                    prev
+                      ? { ...prev, form: { ...prev.form, trade_name: event.target.value } }
+                      : prev
+                  )
+                }
+              />
+              <input
+                className="field-input"
+                placeholder="Nome fantasia"
+                value={editingCompany.form.fantasy_name}
+                onChange={(event) =>
+                  setEditingCompany((prev) =>
+                    prev
+                      ? { ...prev, form: { ...prev.form, fantasy_name: event.target.value } }
+                      : prev
+                  )
+                }
+              />
+              <input
+                className="field-input"
+                placeholder="CNPJ"
+                value={editingCompany.form.cnpj}
+                onChange={(event) =>
+                  setEditingCompany((prev) =>
+                    prev
+                      ? { ...prev, form: { ...prev.form, cnpj: formatCnpjInput(event.target.value) } }
+                      : prev
+                  )
+                }
+              />
+              <select
+                className="field-input"
+                value={editingCompany.form.business_type}
+                onChange={(event) =>
+                  setEditingCompany((prev) =>
+                    prev
+                      ? { ...prev, form: { ...prev.form, business_type: event.target.value } }
+                      : prev
+                  )
+                }
+              >
+                {businessTypes.map((type) => (
+                  <option key={type.key} value={type.key}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                color: "var(--muted)",
+                fontSize: "0.9rem",
+                marginTop: "0.6rem",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={editingCompany.form.approved}
+                onChange={(event) =>
+                  setEditingCompany((prev) =>
+                    prev
+                      ? { ...prev, form: { ...prev.form, approved: event.target.checked } }
+                      : prev
+                  )
+                }
+              />
+              Aprovado
+            </label>
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => setEditingCompany(null)}
+                disabled={creatingCompanyFor === editingCompany.userId}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn"
+                type="button"
+                onClick={handleUpdateCompany}
+                disabled={creatingCompanyFor === editingCompany.userId}
+              >
+                {creatingCompanyFor === editingCompany.userId ? "Salvando..." : "Salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deletingCompany && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(10, 12, 18, 0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+        >
+          <div
+            className="panel"
+            style={{
+              maxWidth: "460px",
+              width: "90%",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.35)",
+            }}
+          >
+            <h3>Remover estabelecimento</h3>
+            <p className="muted" style={{ marginTop: "0.5rem" }}>
+              Remover permanentemente {deletingCompany.company?.fantasy_name || "este estabelecimento"}?
+            </p>
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => setDeletingCompany(null)}
+                disabled={deletingCompanyId === deletingCompany.company?.id}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn"
+                type="button"
+                onClick={handleDeleteCompany}
+                disabled={deletingCompanyId === deletingCompany.company?.id}
+                style={{ background: "#c23b3b" }}
+              >
+                {deletingCompanyId === deletingCompany.company?.id ? "Removendo..." : "Remover"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -7,6 +7,7 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { toast } from "@/lib/toast";
 import { listOrders, type MedusaOrder } from "@/lib/medusa";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 
 const buildTrackingSteps = (order?: MedusaOrder | null) => {
   const createdAt = order?.created_at ? new Date(order.created_at) : null;
@@ -43,6 +44,7 @@ const resolveCurrentStepIndex = (order?: MedusaOrder | null) => {
 
 export default function Rastreamento() {
   const route = useRoute();
+  const { terms } = useBusinessTerms();
   const id = (route.params as { id?: string } | undefined)?.id ?? "#1297";
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["orders"],
@@ -57,7 +59,7 @@ export default function Rastreamento() {
   const condoName =
     order?.shipping_address?.metadata?.company_name ||
     order?.shipping_address?.address_1 ||
-    "Condomínio";
+    terms.label;
   const trackingSteps = useMemo(() => buildTrackingSteps(order), [order]);
   const currentStepIndex = useMemo(() => resolveCurrentStepIndex(order), [order]);
   const pulseOpacity = useRef(new Animated.Value(0.4)).current;
@@ -127,7 +129,7 @@ export default function Rastreamento() {
         <View style={styles.card}>
           <Text style={styles.cardLabel}>Pedido</Text>
           <Text style={styles.cardTitle}>{displayId}</Text>
-          <Text style={styles.cardCondo}>Condomínio: {condoName}</Text>
+          <Text style={styles.cardCondo}>{`${terms.label}: ${condoName}`}</Text>
           <Text style={styles.cardSubtitle}>Código de rastreio: BR123456789</Text>
           <Pressable onPress={() => toast.success("Código de rastreio copiado!")} style={styles.copyButton}>
             <Text style={styles.copyButtonText}>Copiar código</Text>

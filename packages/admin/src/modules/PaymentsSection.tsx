@@ -100,7 +100,7 @@ export default function PaymentsSection({
         <header className="page-header">
           <h1 className="page-title">Editar cobrança</h1>
           <p className="page-subtitle">
-            {activeCompany.fantasy_name || activeCompany.trade_name || "Condomínio"}
+            {activeCompany.fantasy_name || activeCompany.trade_name || "Estabelecimento"}
           </p>
         </header>
 
@@ -116,7 +116,7 @@ export default function PaymentsSection({
         {error && <div className="panel muted">Erro: {error}</div>}
 
         <section className="panel" style={{ maxWidth: "720px" }}>
-          <h3>Detalhes do condomínio</h3>
+          <h3>Detalhes do estabelecimento</h3>
           <div className="grid" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
             <div className="grid" style={{ gap: "0.35rem" }}>
               <span className="muted">Customer ID</span>
@@ -138,7 +138,7 @@ export default function PaymentsSection({
             <input
               value={billingEmails}
               onChange={(e) => setBillingEmails(e.target.value)}
-              placeholder="financeiro@condominio.com.br, sindico@condominio.com.br"
+              placeholder="financeiro@estabelecimento.com.br, compras@estabelecimento.com.br"
               className="field-input"
             />
             <span className="muted" style={{ fontSize: "0.8rem" }}>
@@ -163,7 +163,7 @@ export default function PaymentsSection({
 
       <section className="grid grid-3">
         <div className="panel grid" style={{ gap: "0.35rem" }}>
-          <span className="muted">Condomínios</span>
+          <span className="muted">Estabelecimentos</span>
           <strong style={{ fontSize: "1.6rem" }}>{companies.length}</strong>
           <span className="muted">Com cadastro ativo</span>
         </div>
@@ -243,7 +243,7 @@ export default function PaymentsSection({
           <div>
             <h3>Destinatários de boleto/PIX</h3>
             <p className="muted" style={{ marginTop: "0.25rem" }}>
-              Configure os e-mails que receberão boletos e códigos PIX por condomínio.
+              Configure os e-mails que receberão boletos e códigos PIX por estabelecimento.
             </p>
           </div>
           <span className="pill">{companies.length} empresas</span>
@@ -253,7 +253,7 @@ export default function PaymentsSection({
           <table className="table">
             <thead>
               <tr>
-                <th>Condomínio</th>
+                <th>Estabelecimento</th>
                 <th>E-mails</th>
                 <th>Pontos</th>
                 <th>Ação</th>
@@ -269,7 +269,7 @@ export default function PaymentsSection({
               ) : (
                 companies.map((company) => (
                   <tr key={company.id}>
-                    <td>{company.fantasy_name || company.trade_name || "Condomínio"}</td>
+                    <td>{company.fantasy_name || company.trade_name || "Estabelecimento"}</td>
                     <td>{getBillingEmailsValue(company) || "—"}</td>
                     <td>{Number(company?.metadata?.points_balance || 0)}</td>
                     <td>

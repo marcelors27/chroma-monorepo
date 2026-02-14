@@ -25,6 +25,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useShare } from "@/hooks/useShare";
 import { useCondo } from "@/contexts/CondoContext";
 import { useCart } from "@/contexts/CartContext";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import {
   getProductCategory,
   getProductImage,
@@ -61,6 +62,7 @@ export default function ProductDetails() {
   const { toggleFavorite, isFavorite } = useFavorites();
   const { activeCondo } = useCondo();
   const { addItem, isAddingItem } = useCart();
+  const { terms } = useBusinessTerms();
   const [quantity, setQuantity] = useState(1);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -145,7 +147,7 @@ export default function ProductDetails() {
       name: "Roberto Mendes",
       date: "15/01/2024",
       rating: 5,
-      text: "Excelente kit! Os produtos são de ótima qualidade e rendem muito. O condomínio nunca esteve tão limpo.",
+      text: `Excelente kit! Os produtos são de ótima qualidade e rendem muito. ${terms.label} nunca esteve tão limpo.`,
       avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=60",
     },
     {
@@ -189,7 +191,7 @@ export default function ProductDetails() {
 
   const handleAddToCart = async () => {
     if (!activeCondo) {
-      toast.error("Selecione um condomínio antes de adicionar itens ao carrinho.");
+      toast.error(`Selecione ${terms.articleSingular} ${terms.labelLower} antes de adicionar itens ao carrinho.`);
       return;
     }
     if (!product.variantId) {

@@ -15,6 +15,7 @@ import { toast } from "@/lib/toast";
 import { createCompany, listCompanies, updateCompany } from "@/lib/medusa";
 import { beginGlobalLoading } from "@/lib/global-loading";
 import { useCondo } from "@/contexts/CondoContext";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 
 type CondoForm = {
   id?: string;
@@ -49,7 +50,7 @@ const emptyForm: CondoForm = {
   units: 0,
   floors: 0,
   parkingSpots: 0,
-  role: "Síndico",
+  role: "",
   cnpj: "",
   phone: "",
   email: "",
@@ -79,6 +80,7 @@ const formatCEP = (value: string) => {
 };
 
 export default function CondominioDetalhes() {
+  const { terms } = useBusinessTerms();
   const navigation = useNavigation();
   const route = useRoute();
   const queryClient = useQueryClient();
@@ -98,14 +100,15 @@ export default function CondominioDetalhes() {
   const [transferEmail, setTransferEmail] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [formData, setFormData] = useState<CondoForm>(emptyForm);
+  const defaultForm = useMemo(() => ({ ...emptyForm, role: terms.responsibleLabel }), [terms.responsibleLabel]);
+  const [formData, setFormData] = useState<CondoForm>(defaultForm);
   const [isLoadingCNPJ, setIsLoadingCNPJ] = useState(false);
   const [isLoadingCEP, setIsLoadingCEP] = useState(false);
   const canSaveNew = Boolean(formData.name.trim()) && formData.cnpj.replace(/\D/g, "").length === 14;
 
   useEffect(() => {
     if (!company) {
-      setFormData(emptyForm);
+      setFormData(defaultForm);
       return;
     }
     setFormData({
@@ -119,7 +122,7 @@ export default function CondominioDetalhes() {
       units: Number(company.metadata?.units) || 0,
       floors: Number(company.metadata?.floors) || 0,
       parkingSpots: Number(company.metadata?.parkingSpots) || 0,
-      role: company.metadata?.role || "Síndico",
+      role: company.metadata?.role || terms.responsibleLabel,
       cnpj: company.cnpj || "",
       phone: company.metadata?.phone || "",
       email: company.metadata?.email || "",
@@ -132,7 +135,7 @@ export default function CondominioDetalhes() {
       foundedAt: company.metadata?.foundedAt || "",
       notes: company.metadata?.notes || "",
     });
-  }, [company]);
+  }, [company, defaultForm, terms.responsibleLabel]);
 
   const handleChange = (field: keyof CondoForm, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -257,10 +260,10 @@ export default function CondominioDetalhes() {
     try {
       if (formData.id) {
         await updateCompany(formData.id, payload);
-        toast.success("Dados do condomínio atualizados!");
+        toast.success(`Dados ${terms.articleSingular} ${terms.labelLower} atualizados!`);
       } else {
         await createCompany(payload);
-        toast.success("Condomínio cadastrado! Aguardando aprovação.");
+        toast.success(`${terms.label} cadastrado! Aguardando aprovação.`);
         navigation.goBack();
       }
       queryClient.invalidateQueries({ queryKey: ["companies"] });
@@ -286,7 +289,7 @@ export default function CondominioDetalhes() {
   return (
     <AuthenticatedLayout>
       <Header
-        title={formData.name || "Novo condomínio"}
+        title={formData.name || `Novo ${terms.labelLower}`}
         showBackButton
         showCondoSelector={!isFirstAccess}
       />
@@ -304,10 +307,10 @@ export default function CondominioDetalhes() {
               <Building2 color="hsl(220 10% 50%)" size={28} />
             </View>
             <View style={styles.summaryContent}>
-              <Text style={styles.summaryTitle}>{formData.name || "Condomínio"}</Text>
+              <Text style={styles.summaryTitle}>{formData.name || terms.label}</Text>
               <Text style={styles.summarySubtitle}>{formData.address || "Endereço não informado"}</Text>
               <View style={styles.summaryRoleBadge}>
-                <Text style={styles.summaryRoleText}>{formData.role || "Síndico"}</Text>
+                <Text style={styles.summaryRoleText}>{formData.role || terms.responsibleLabel}</Text>
               </View>
             </View>
           </View>
@@ -316,12 +319,12 @@ export default function CondominioDetalhes() {
             <View style={styles.summaryStat}>
               <Users color="hsl(220 10% 50%)" size={16} />
               <Text style={styles.summaryStatValue}>{formData.units}</Text>
-              <Text style={styles.summaryStatLabel}>Unidades</Text>
+              <Text style={styles.summaryStatLabel}>{terms.unitLabelPlural}</Text>
             </View>
             <View style={styles.summaryStat}>
               <Building2 color="hsl(220 10% 50%)" size={16} />
               <Text style={styles.summaryStatValue}>{formData.floors}</Text>
-              <Text style={styles.summaryStatLabel}>Andares</Text>
+              <Text style={styles.summaryStatLabel}>{terms.floorLabelPlural}</Text>
             </View>
             <View style={styles.summaryStat}>
               <DollarSign color="hsl(220 10% 50%)" size={16} />
@@ -406,7 +409,7 @@ export default function CondominioDetalhes() {
                 editable={isEditing}
                 onChangeText={(value) => handleChange("billingEmails", value)}
                 marginTop={4}
-                placeholder="financeiro@condominio.com.br, sindico@condominio.com.br"
+                placeholder="financeiro@estabelecimento.com.br"
               />
               <Label marginTop={12}>Observações</Label>
               <Textarea
@@ -460,14 +463,14 @@ export default function CondominioDetalhes() {
           <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
             <DialogTrigger>
               <View style={styles.transferRow}>
-                <Button width="100%">Transferir responsabilidade</Button>
+                <Button width="100%">{`Transferir ${terms.responsibleLabelLower}`}</Button>
               </View>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Transferir responsabilidade</DialogTitle>
+                <DialogTitle>{`Transferir ${terms.responsibleLabelLower}`}</DialogTitle>
               </DialogHeader>
-              <Label>E-mail do novo responsável</Label>
+              <Label>{`E-mail do novo ${terms.responsibleLabelLower}`}</Label>
               <Input value={transferEmail} onChangeText={setTransferEmail} marginTop={4} />
               <Label marginTop={12}>Data de início</Label>
               <CalendarComponent selected={startDate} onSelect={setStartDate} />

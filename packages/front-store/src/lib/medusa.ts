@@ -142,6 +142,7 @@ export type ActiveCondo = {
   id: string
   name: string
   cnpj?: string
+  business_type?: string | null
   points_balance?: number
   billing_emails?: string[]
 }
@@ -210,6 +211,17 @@ export type MedusaMarketingBanner = {
   is_active?: boolean
   created_at?: string | null
   updated_at?: string | null
+}
+
+export type BusinessType = {
+  id: string
+  key: string
+  label: string
+  label_plural: string
+  article_singular?: string | null
+  article_plural?: string | null
+  terms?: Record<string, string> | null
+  is_active?: boolean
 }
 
 export type RecurrenceItem = {
@@ -1023,6 +1035,10 @@ export const listMarketingBanners = async (params?: { limit?: number; offset?: n
   return apiFetch<{ banners: MedusaMarketingBanner[] }>(
     `/store/marketing-banners${suffix ? `?${suffix}` : ""}`
   )
+}
+
+export const listBusinessTypes = async () => {
+  return apiFetch<{ business_types: BusinessType[] }>("/store/business-types")
 }
 
 export const createCart = async () => {

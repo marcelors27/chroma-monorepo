@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import condosBg from "@/assets/condos-bg.jpg";
 import { toast } from "@/hooks/use-toast";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import {
   createRecurrence,
   fetchPendingPaymentsFromBackend,
@@ -128,6 +129,7 @@ const ENABLE_TEST_BOLETO = import.meta.env.VITE_ENABLE_TEST_BOLETO === "true";
 const IS_DEV = import.meta.env.DEV === true;
 
 const Orders = () => {
+  const { terms } = useBusinessTerms();
   const [selectedOrder, setSelectedOrder] = useState<MedusaOrder | null>(null);
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
   const [activeTab, setActiveTab] = useState<"pending" | "progress" | "history">("pending");
@@ -280,12 +282,12 @@ const Orders = () => {
     return (
       order?.shipping_address?.metadata?.company_name ||
       order?.shipping_address?.address_1 ||
-      "Condomínio"
+      terms.label
     );
   };
 
   const resolvePendingCondo = (pending: PendingPayment) => {
-    return pending?.details?.company_name || "Condomínio";
+    return pending?.details?.company_name || terms.label;
   };
 
   const handleTestBoleto = async (pending: PendingPayment) => {
@@ -452,7 +454,7 @@ const Orders = () => {
                               • ID cobrança {pending.payment_collection_id}
                             </p>
                             <p className="text-muted-foreground text-sm">
-                              Condomínio: {resolvePendingCondo(pending)}
+                              {terms.label}: {resolvePendingCondo(pending)}
                             </p>
                             {pending.details?.boleto_line && (
                               <div className="mt-3 text-sm text-muted-foreground">
@@ -588,7 +590,7 @@ const Orders = () => {
                               {formatDate(order.created_at)} • {itemsCount} {itemsCount === 1 ? "item" : "itens"}
                             </p>
                             <p className="text-muted-foreground text-sm">
-                              Condomínio: {resolveOrderCondo(order)}
+                              {terms.label}: {resolveOrderCondo(order)}
                             </p>
                             <p className="text-primary font-bold text-lg mt-2">
                               {formatMoney(total)}
@@ -662,7 +664,7 @@ const Orders = () => {
                   Realizado em {formatDate(selectedOrder.created_at)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Condomínio: {resolveOrderCondo(selectedOrder)}
+                  {terms.label}: {resolveOrderCondo(selectedOrder)}
                 </p>
                 <p className="text-lg font-bold text-primary">
                   Total: {formatMoney(selectedOrder.total || 0)}

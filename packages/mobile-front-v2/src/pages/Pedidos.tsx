@@ -9,6 +9,7 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { suspendGlobalLoading } from "@/lib/global-loading";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import {
   fetchPendingPaymentsFromBackend,
   formatMoney,
@@ -59,6 +60,7 @@ const resolveStatusTone = (order: MedusaOrder): StatusTone => {
 };
 
 export default function Pedidos() {
+  const { terms } = useBusinessTerms();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const ENABLE_TEST_BOLETO = process.env.EXPO_PUBLIC_ENABLE_TEST_BOLETO === "true";
@@ -93,7 +95,7 @@ export default function Pedidos() {
       const condoName =
         order.shipping_address?.metadata?.company_name ||
         order.shipping_address?.address_1 ||
-        "Condomínio";
+        terms.label;
       return {
         id: order.display_id || order.id,
         status: resolveStatusLabel(order),
@@ -154,7 +156,7 @@ export default function Pedidos() {
       status: "Pagamento pendente",
       statusTone: "warning" as StatusTone,
       date: pending.created_at ? new Date(pending.created_at).toLocaleDateString("pt-BR") : "",
-      condo: pending.details?.company_name || "Condomínio",
+      condo: pending.details?.company_name || terms.label,
       total: pending.details?.amount || 0,
       items: 0,
       thumbnail: pending.details?.pix_qr || pending.details?.boleto_qr || "",

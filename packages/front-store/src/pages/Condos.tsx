@@ -21,6 +21,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { formatCNPJ, validateCNPJ } from "@/lib/cnpj";
 import { createCompany, listCompanies, updateCompany, transferCompany } from "@/lib/medusa";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import {
   Dialog,
   DialogContent,
@@ -99,7 +100,7 @@ const emptyFormData: Omit<Condo, 'id'> = {
   razaoSocial: "",
   inscricaoEstadual: "",
   inscricaoMunicipal: "",
-  role: "Síndico",
+  role: "",
   cep: "",
   zip: "",
   address: "",
@@ -134,6 +135,11 @@ const emptyFormData: Omit<Condo, 'id'> = {
 
 const Condos = () => {
   const { toast } = useToast();
+  const { terms } = useBusinessTerms();
+  const defaultFormData = useMemo(
+    () => ({ ...emptyFormData, role: terms.responsibleLabel }),
+    [terms.responsibleLabel]
+  );
   const [searchParams, setSearchParams] = useSearchParams();
   const [condos, setCondos] = useState<Condo[]>([]);
   const [isLoadingCondos, setIsLoadingCondos] = useState(true);
@@ -158,13 +164,13 @@ const Condos = () => {
     const metadata = company?.metadata || {};
     return {
       id: company.id,
-      name: company.fantasy_name || company.trade_name || metadata.name || "Condomínio",
+      name: company.fantasy_name || company.trade_name || metadata.name || terms.label,
       cnpj: company.cnpj || metadata.cnpj || "",
       razaoSocial: company.trade_name || metadata.razaoSocial || "",
       approved: Boolean(company.approved),
       inscricaoEstadual: metadata.inscricaoEstadual || "",
       inscricaoMunicipal: metadata.inscricaoMunicipal || "",
-      role: metadata.role || "Síndico",
+      role: metadata.role || terms.responsibleLabel,
       cep: metadata.cep || metadata.zip || "",
       zip: metadata.zip || metadata.cep || "",
       address: metadata.address || "",
@@ -240,7 +246,7 @@ const Condos = () => {
     units: toNumberOrZero(data.units),
     floors: toNumberOrZero(data.floors),
     parkingSpots: toNumberOrZero(data.parkingSpots),
-    role: data.role || "Síndico",
+    role: data.role || terms.responsibleLabel,
     adminName: data.adminName,
     adminPhone: data.adminPhone,
     monthlyFee: toNumberOrZero(data.monthlyFee),
@@ -252,7 +258,7 @@ const Condos = () => {
     const shouldOpen = searchParams.get("new") === "1";
     if (!shouldOpen) return;
     setEditingCondo(null);
-    setFormData(emptyFormData);
+    setFormData(defaultFormData);
     setIsDialogOpen(true);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -273,7 +279,7 @@ const Condos = () => {
       .catch((err: any) => {
         if (!mounted) return;
         toast({
-          title: "Erro ao carregar condomínios",
+          title: `Erro ao carregar ${terms.labelPluralLower}`,
           description: err?.message || "Tente novamente em instantes.",
           variant: "destructive",
         });
@@ -435,7 +441,7 @@ const Condos = () => {
 
   const openNewDialog = () => {
     setEditingCondo(null);
-    setFormData(emptyFormData);
+      setFormData(defaultFormData);
     setIsDialogOpen(true);
   };
 
@@ -473,7 +479,7 @@ const Condos = () => {
         const updatedCondo = mapCompanyToCondo(updated.company);
         setCondos((prev) => prev.map((c) => (c.id === updatedCondo.id ? updatedCondo : c)));
         toast({
-          title: "Condomínio atualizado!",
+          title: `${terms.label} atualizado!`,
           description: `${formData.name} foi atualizado com sucesso.`,
         });
       } else {
@@ -481,20 +487,20 @@ const Condos = () => {
         const createdCondo = mapCompanyToCondo(created.company);
         setCondos((prev) => [...prev, createdCondo]);
         toast({
-          title: "Condomínio adicionado!",
+          title: `${terms.label} adicionado!`,
           description: `${formData.name} foi cadastrado com sucesso.`,
         });
       }
     } catch (error: any) {
       toast({
-        title: "Erro ao salvar condomínio",
-        description: error?.message || "Não foi possível salvar os dados do condomínio.",
+        title: `Erro ao salvar ${terms.labelLower}`,
+        description: error?.message || `Não foi possível salvar os dados ${terms.articleSingular} ${terms.labelLower}.`,
         variant: "destructive",
       });
       return;
     }
 
-    setFormData(emptyFormData);
+    setFormData(defaultFormData);
     setEditingCondo(null);
     setIsDialogOpen(false);
   };
@@ -503,7 +509,7 @@ const Condos = () => {
     if (condos.length === 1) {
       toast({
         title: "Não permitido",
-        description: "Você precisa ter pelo menos um condomínio cadastrado.",
+        description: `Você precisa ter pelo menos um ${terms.labelLower} cadastrado.`,
         variant: "destructive",
       });
       return;
@@ -518,7 +524,7 @@ const Condos = () => {
     setCondos(condos.filter(c => c.id !== condoToDelete));
     setCondoToDelete(null);
     toast({
-      title: "Condomínio removido",
+      title: `${terms.label} removido`,
       description: `${condoName} foi removido da sua conta.`,
     });
   };
@@ -543,7 +549,7 @@ const Condos = () => {
     if (!transferEmail.trim()) {
       toast({
         title: "Informe o usuário destino",
-        description: "Digite o email da pessoa que vai receber o condomínio.",
+        description: `Digite o email da pessoa que vai receber ${terms.articleSingular} ${terms.labelLower}.`,
         variant: "destructive",
       });
       return;
@@ -583,8 +589,8 @@ const Condos = () => {
       toast({
         title: "Transferência enviada",
         description: transferEndDate
-          ? `O condomínio ficará disponível até ${transferEndDate}.`
-          : "O condomínio foi transferido em definitivo.",
+          ? `O ${terms.labelLower} ficará disponível até ${transferEndDate}.`
+          : `O ${terms.labelLower} foi transferido em definitivo.`,
       });
       setIsTransferDialogOpen(false);
       setTransferCondo(null);
@@ -592,7 +598,7 @@ const Condos = () => {
     } catch (error: any) {
       toast({
         title: "Erro na transferência",
-        description: error?.message || "Não foi possível transferir o condomínio.",
+        description: error?.message || `Não foi possível transferir ${terms.articleSingular} ${terms.labelLower}.`,
         variant: "destructive",
       });
     } finally {
@@ -614,7 +620,7 @@ const Condos = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold" data-testid="condos-title">
-              Meus Condomínios
+              {`Meus ${terms.labelPlural}`}
             </h1>
             <p className="text-muted-foreground">
               Gerencie os CNPJs e dados cadastrados na sua conta
@@ -625,19 +631,19 @@ const Condos = () => {
               setIsDialogOpen(open);
               if (!open) {
                 setEditingCondo(null);
-                setFormData(emptyFormData);
+                setFormData(defaultFormData);
               }
             }}>
               <DialogTrigger asChild>
                 <Button className="gap-2" onClick={openNewDialog} data-testid="condos-new">
                   <Plus className="h-4 w-4" />
-                  Novo Condomínio
+                  {`Novo ${terms.label}`}
                 </Button>
               </DialogTrigger>
               <DialogContent className="border-2 border-border bg-card max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle className="text-2xl">
-                    {editingCondo ? "Editar Condomínio" : "Adicionar Condomínio"}
+                    {editingCondo ? `Editar ${terms.label}` : `Adicionar ${terms.label}`}
                   </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="mt-4">
@@ -646,7 +652,7 @@ const Condos = () => {
                       <div className="space-y-4">
                         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                           <Building2 className="h-4 w-4" />
-                          Dados do condomínio
+                          {`Dados ${terms.articleSingular} ${terms.labelLower}`}
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="cnpj">CNPJ *</Label>
@@ -665,10 +671,10 @@ const Condos = () => {
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="name">Nome do Condomínio *</Label>
+                          <Label htmlFor="name">{`Nome do ${terms.label} *`}</Label>
                           <Input
                             id="name"
-                            placeholder="Ex: Condomínio Residencial Vista Mar"
+                            placeholder={`Ex: ${terms.label} Residencial Vista Mar`}
                             className="h-12 border-2"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -795,10 +801,10 @@ const Condos = () => {
 
                       <TabsContent value="basico" className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="name">Nome do Condomínio *</Label>
+                        <Label htmlFor="name">{`Nome do ${terms.label} *`}</Label>
                         <Input
                           id="name"
-                          placeholder="Ex: Condomínio Residencial Vista Mar"
+                          placeholder={`Ex: ${terms.label} Residencial Vista Mar`}
                           className="h-12 border-2"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -837,7 +843,7 @@ const Condos = () => {
                         <Label htmlFor="role">Cargo do responsável</Label>
                         <Input
                           id="role"
-                          placeholder="Síndico"
+                          placeholder={terms.responsibleLabel}
                           className="h-12 border-2"
                           value={formData.role}
                           onChange={(e) => setFormData({ ...formData, role: e.target.value })}
@@ -999,7 +1005,7 @@ const Condos = () => {
                         <Input
                           id="email"
                           type="email"
-                          placeholder="contato@condominio.com.br"
+                          placeholder="contato@estabelecimento.com.br"
                           className="h-12 border-2"
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -1009,7 +1015,7 @@ const Condos = () => {
                         <Label htmlFor="billingEmails">E-mails para boleto/PIX</Label>
                         <Input
                           id="billingEmails"
-                          placeholder="financeiro@condominio.com.br, sindico@condominio.com.br"
+                          placeholder="financeiro@estabelecimento.com.br"
                           className="h-12 border-2"
                           value={formData.billingEmails}
                           onChange={(e) => setFormData({ ...formData, billingEmails: e.target.value })}
@@ -1022,7 +1028,7 @@ const Condos = () => {
                         <Label htmlFor="website">Website</Label>
                         <Input
                           id="website"
-                          placeholder="www.condominio.com.br"
+                          placeholder="www.estabelecimento.com.br"
                           className="h-12 border-2"
                           value={formData.website}
                           onChange={(e) => setFormData({ ...formData, website: e.target.value })}
@@ -1032,7 +1038,7 @@ const Condos = () => {
                         <Label htmlFor="notes">Observações</Label>
                         <Textarea
                           id="notes"
-                          placeholder="Informações adicionais sobre o condomínio..."
+                          placeholder={`Informações adicionais sobre ${terms.articleSingular} ${terms.labelLower}...`}
                           className="border-2 min-h-[100px]"
                           value={formData.notes}
                           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -1043,21 +1049,21 @@ const Condos = () => {
                     <TabsContent value="predio" className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="units">Unidades</Label>
-                          <Input
-                            id="units"
-                            type="number"
-                            placeholder="Ex: 120"
+                        <Label htmlFor="units">{terms.unitLabelPlural}</Label>
+                        <Input
+                          id="units"
+                          type="number"
+                          placeholder="Ex: 120"
                             className="h-12 border-2"
                             value={formData.units}
                             onChange={(e) => setFormData({ ...formData, units: e.target.value })}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="floors">Andares</Label>
-                          <Input
-                            id="floors"
-                            type="number"
+                        <Label htmlFor="floors">{terms.floorLabelPlural}</Label>
+                        <Input
+                          id="floors"
+                          type="number"
                             placeholder="Ex: 15"
                             className="h-12 border-2"
                             value={formData.floors}
@@ -1067,9 +1073,9 @@ const Condos = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="parkingSpots">Vagas</Label>
-                          <Input
-                            id="parkingSpots"
+                        <Label htmlFor="parkingSpots">{terms.parkingLabelPlural}</Label>
+                        <Input
+                          id="parkingSpots"
                             type="number"
                             placeholder="Ex: 80"
                             className="h-12 border-2"
@@ -1101,9 +1107,9 @@ const Condos = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="totalUnidades">Total de Unidades</Label>
-                          <Input
-                            id="totalUnidades"
+                        <Label htmlFor="totalUnidades">{`Total de ${terms.unitLabelPlural}`}</Label>
+                        <Input
+                          id="totalUnidades"
                             type="number"
                             placeholder="Ex: 120"
                             className="h-12 border-2"
@@ -1112,9 +1118,9 @@ const Condos = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="totalBlocos">Número de Blocos</Label>
-                          <Input
-                            id="totalBlocos"
+                        <Label htmlFor="totalBlocos">{`Número de ${terms.blockLabelPlural}`}</Label>
+                        <Input
+                          id="totalBlocos"
                             type="number"
                             placeholder="Ex: 3"
                             className="h-12 border-2"
@@ -1125,9 +1131,9 @@ const Condos = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="totalAndares">Andares por Bloco</Label>
-                          <Input
-                            id="totalAndares"
+                        <Label htmlFor="totalAndares">{`${terms.floorLabelPlural} por ${terms.blockLabelLower}`}</Label>
+                        <Input
+                          id="totalAndares"
                             type="number"
                             placeholder="Ex: 15"
                             className="h-12 border-2"
@@ -1160,10 +1166,10 @@ const Condos = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="sindico">Síndico</Label>
+                          <Label htmlFor="sindico">{terms.responsibleLabel}</Label>
                           <Input
                             id="sindico"
-                            placeholder="Nome do síndico"
+                            placeholder={`Nome do ${terms.responsibleLabelLower}`}
                             className="h-12 border-2"
                             value={formData.sindico}
                             onChange={(e) => setFormData({ ...formData, sindico: e.target.value })}
@@ -1195,7 +1201,7 @@ const Condos = () => {
                         <Label htmlFor="observacoes">Observações</Label>
                         <Textarea
                           id="observacoes"
-                          placeholder="Informações adicionais sobre o condomínio..."
+                          placeholder={`Informações adicionais sobre ${terms.articleSingular} ${terms.labelLower}...`}
                           className="border-2 min-h-[100px]"
                           value={formData.observacoes}
                           onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
@@ -1235,11 +1241,11 @@ const Condos = () => {
           >
             <DialogContent className="border-2 border-border bg-card max-w-lg">
               <DialogHeader>
-                <DialogTitle className="text-2xl">Transferir condomínio</DialogTitle>
+                <DialogTitle className="text-2xl">{`Transferir ${terms.labelLower}`}</DialogTitle>
               </DialogHeader>
               <form className="space-y-5" onSubmit={handleTransferSubmit}>
                 <div className="space-y-2">
-                  <Label>Condomínio</Label>
+                  <Label>{terms.label}</Label>
                   <Input
                     value={transferCondo?.name || ""}
                     className="h-12 border-2"
@@ -1312,7 +1318,7 @@ const Condos = () => {
               <div className="border-2 border-border p-6 bg-card">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <LoadingSpinner size={20} />
-                  <span>Carregando condomínios...</span>
+                  <span>{`Carregando ${terms.labelPluralLower}...`}</span>
                 </div>
               </div>
             )}
@@ -1320,7 +1326,7 @@ const Condos = () => {
             {!isLoadingCondos && condos.length === 0 && (
               <div className="border-2 border-dashed border-border p-8 bg-card text-center">
                 <p className="text-muted-foreground">
-                  Nenhum condomínio aprovado encontrado.
+                  {`Nenhum ${terms.labelLower} aprovado encontrado.`}
                 </p>
               </div>
             )}
@@ -1368,7 +1374,7 @@ const Condos = () => {
                         {(condo.totalUnidades || condo.units) && (
                           <p className="text-sm text-muted-foreground flex items-center gap-1">
                             <Users className="h-3 w-3" />
-                            {condo.totalUnidades || condo.units} unidades • {condo.totalBlocos} blocos
+                            {condo.totalUnidades || condo.units} {terms.unitLabelPluralLower} • {condo.totalBlocos} {terms.blockLabelPluralLower}
                           </p>
                         )}
                       </div>
@@ -1408,9 +1414,9 @@ const Condos = () => {
         <AlertDialog open={!!condoToDelete} onOpenChange={(open) => !open && setCondoToDelete(null)}>
           <AlertDialogContent className="border-2 border-border bg-card">
             <AlertDialogHeader>
-              <AlertDialogTitle>Remover condomínio?</AlertDialogTitle>
+              <AlertDialogTitle>{`Remover ${terms.labelLower}?`}</AlertDialogTitle>
               <AlertDialogDescription>
-                Tem certeza que deseja remover este condomínio da sua conta? Esta ação não pode ser desfeita.
+                {`Tem certeza que deseja remover este ${terms.labelLower} da sua conta? Esta ação não pode ser desfeita.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

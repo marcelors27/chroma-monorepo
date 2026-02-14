@@ -20,6 +20,7 @@ import PromotionsSection from "./modules/PromotionsSection"
 import PushNotificationsSection from "./modules/PushNotificationsSection"
 import StockSection from "./modules/StockSection"
 import UsersSection from "./modules/UsersSection"
+import BusinessTypesSection from "./modules/BusinessTypesSection"
 import ToastContainer from "./modules/ToastContainer"
 import adminAuthBg from "./assets/admin-auth-bg.jpg"
 import adminDashboardBg from "./assets/admin-dashboard-bg.jpg"
@@ -38,6 +39,7 @@ import {
   ShippingOption,
   StoreUser,
   StockLocation,
+  BusinessType,
 } from "./types"
 
 const MEDUSA_URL = import.meta.env.VITE_MEDUSA_URL || "http://localhost:9000"
@@ -69,6 +71,8 @@ export default function App() {
   const [priceListsError, setPriceListsError] = useState<string | null>(null)
   const [storeUsers, setStoreUsers] = useState<StoreUser[]>([])
   const [storeUsersError, setStoreUsersError] = useState<string | null>(null)
+  const [businessTypes, setBusinessTypes] = useState<BusinessType[]>([])
+  const [businessTypesError, setBusinessTypesError] = useState<string | null>(null)
   const [salesChannels, setSalesChannels] = useState<SalesChannel[]>([])
   const [regions, setRegions] = useState<Region[]>([])
   const [stockLocations, setStockLocations] = useState<StockLocation[]>([])
@@ -183,6 +187,14 @@ export default function App() {
     )
   }
 
+  const PendingCompaniesLegacyRoute = () => {
+    const params = useParams()
+    const target = params.companyId
+      ? `/estabelecimentos-pendentes/${params.companyId}`
+      : "/estabelecimentos-pendentes"
+    return <Navigate to={target} replace />
+  }
+
   const UsersResetRoute = () => {
     const params = useParams()
     return (
@@ -193,6 +205,7 @@ export default function App() {
         setUsers={setStoreUsers}
         usersError={storeUsersError}
         setUsersError={setStoreUsersError}
+        businessTypes={businessTypes}
         mode="reset"
         userId={params.userId}
       />
@@ -209,6 +222,7 @@ export default function App() {
         setUsers={setStoreUsers}
         usersError={storeUsersError}
         setUsersError={setStoreUsersError}
+        businessTypes={businessTypes}
         mode="status"
         userId={params.userId}
       />
@@ -255,9 +269,9 @@ export default function App() {
       { id: "pagamentos", label: "Pagamentos", path: "/pagamentos", count: 0 },
       { id: "push", label: "Push", path: "/push", count: 0 },
       {
-        id: "condominios-pendentes",
-        label: "Condomínios pendentes",
-        path: "/condominios-pendentes",
+        id: "estabelecimentos-pendentes",
+        label: "Estabelecimentos pendentes",
+        path: "/estabelecimentos-pendentes",
         count: pendingCompanies.length,
       },
       { id: "produtos", label: "Produtos", path: "/produtos", count: products.length },
@@ -268,6 +282,12 @@ export default function App() {
       { id: "promocoes", label: "Promoções", path: "/promocoes", count: priceLists.length },
       { id: "canais", label: "Canais de vendas", path: "/canais", count: salesChannels.length },
       { id: "usuarios", label: "Usuários", path: "/usuarios", count: storeUsers.length },
+      {
+        id: "tipos-negocio",
+        label: "Tipos de negócio",
+        path: "/tipos-negocio",
+        count: businessTypes.length,
+      },
     ],
     [
       marketingBanners.length,
@@ -281,6 +301,7 @@ export default function App() {
       salesChannels.length,
       stockLocations.length,
       storeUsers.length,
+      businessTypes.length,
     ]
   )
 
@@ -316,7 +337,7 @@ export default function App() {
       },
       {
         label: "Configurações",
-        items: ["condominios-pendentes", "canais", "usuarios", "emails", "email-logs"]
+        items: ["estabelecimentos-pendentes", "canais", "usuarios", "tipos-negocio", "emails", "email-logs"]
           .map((id) => sectionById.get(id))
           .filter(Boolean),
       },
@@ -385,6 +406,7 @@ export default function App() {
           allCompaniesRes,
           priceListsRes,
           storeUsersRes,
+          businessTypesRes,
           salesChannelsRes,
           regionsRes,
           stockLocationsRes,
@@ -399,6 +421,7 @@ export default function App() {
           fetch(`${MEDUSA_URL}/admin/companies?limit=500`, { headers }),
           fetch(`${MEDUSA_URL}/admin/price-lists?limit=50`, { headers }),
           fetch(`${MEDUSA_URL}/admin/store-users?limit=500`, { headers }),
+          fetch(`${MEDUSA_URL}/admin/business-types`, { headers }),
           fetch(`${MEDUSA_URL}/admin/sales-channels?limit=200`, { headers }),
           fetch(`${MEDUSA_URL}/admin/regions?limit=200`, { headers }),
           fetch(stockLocationsUrl, { headers }),
@@ -472,6 +495,15 @@ export default function App() {
         } else {
           const body = await storeUsersRes.text()
           setStoreUsersError(body || "Não foi possível buscar usuários")
+        }
+
+        if (businessTypesRes.ok) {
+          const json = await businessTypesRes.json()
+          setBusinessTypes(json.business_types ?? [])
+          setBusinessTypesError(null)
+        } else {
+          const body = await businessTypesRes.text()
+          setBusinessTypesError(body || "Não foi possível buscar tipos de negócio")
         }
 
         if (salesChannelsRes.ok) {
@@ -735,7 +767,7 @@ export default function App() {
                 />
                 <Route path="/pagamentos/:companyId" element={<PaymentsEditRoute />} />
                 <Route
-                  path="/condominios-pendentes"
+                  path="/estabelecimentos-pendentes"
                   element={
                     <PendingCondosSection
                       medusaUrl={MEDUSA_URL}
@@ -746,12 +778,21 @@ export default function App() {
                       setPendingCompaniesError={setPendingCompaniesError}
                       pendingCompanyActionId={pendingCompanyActionId}
                       setPendingCompanyActionId={setPendingCompanyActionId}
+                      businessTypes={businessTypes}
                     />
                   }
                 />
                 <Route
-                  path="/condominios-pendentes/:companyId"
+                  path="/estabelecimentos-pendentes/:companyId"
                   element={<PendingCondosReviewRoute />}
+                />
+                <Route
+                  path="/condominios-pendentes"
+                  element={<PendingCompaniesLegacyRoute />}
+                />
+                <Route
+                  path="/condominios-pendentes/:companyId"
+                  element={<PendingCompaniesLegacyRoute />}
                 />
                 <Route
                   path="/noticias"
@@ -1303,6 +1344,7 @@ export default function App() {
                       setUsers={setStoreUsers}
                       usersError={storeUsersError}
                       setUsersError={setStoreUsersError}
+                      businessTypes={businessTypes}
                       mode="list"
                     />
                   }
@@ -1317,7 +1359,21 @@ export default function App() {
                       setUsers={setStoreUsers}
                       usersError={storeUsersError}
                       setUsersError={setStoreUsersError}
+                      businessTypes={businessTypes}
                       mode="create"
+                    />
+                  }
+                />
+                <Route
+                  path="/tipos-negocio"
+                  element={
+                    <BusinessTypesSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      businessTypes={businessTypes}
+                      setBusinessTypes={setBusinessTypes}
+                      businessTypesError={businessTypesError}
+                      setBusinessTypesError={setBusinessTypesError}
                     />
                   }
                 />

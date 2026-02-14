@@ -8,7 +8,7 @@ const features = [
   {
     icon: Package,
     title: "Produtos Premium",
-    description: "Seleção exclusiva para síndicos",
+    description: "Seleção exclusiva para gestores",
   },
   {
     icon: Truck,
@@ -30,14 +30,14 @@ const features = [
 const testimonials = [
   {
     name: "Carlos Silva",
-    role: "Síndico há 5 anos",
-    text: "A Chroma Store facilitou muito minhas compras para o condomínio. Produtos de qualidade e preços justos!",
+    role: "Gestor há 5 anos",
+    text: "A Chroma Store facilitou muito minhas compras para o estabelecimento. Produtos de qualidade e preços justos!",
     rating: 5,
   },
   {
     name: "Maria Santos",
-    role: "Síndica profissional",
-    text: "A recorrência de pedidos é perfeita! Nunca mais faltou material de limpeza no condomínio.",
+    role: "Gestora profissional",
+    text: "A recorrência de pedidos é perfeita! Nunca mais faltou material de limpeza no estabelecimento.",
     rating: 5,
   },
 ];
@@ -64,7 +64,7 @@ export default function Landing() {
           <Image source={logo} style={styles.brandLogo} />
           <View style={styles.heroPill}>
             <Star color="#5DA2E6" size={16} />
-            <Text style={styles.heroPillText}>A loja do síndico moderno</Text>
+            <Text style={styles.heroPillText}>A loja do gestor moderno</Text>
           </View>
 
           <Text style={styles.heroTitle}>
@@ -73,7 +73,7 @@ export default function Landing() {
           </Text>
 
           <Text style={styles.heroSubtitle}>
-            Produtos e serviços exclusivos para gestão de condomínios. Economize tempo e dinheiro.
+            Produtos e serviços exclusivos para gestão de estabelecimentos. Economize tempo e dinheiro.
           </Text>
 
           <View style={styles.heroActions}>

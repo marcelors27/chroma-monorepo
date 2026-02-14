@@ -17,6 +17,7 @@ import {
   startSocialAuth,
 } from "@/lib/medusa";
 import { isUnauthorizedError } from "@/lib/auth-errors";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 
 interface User {
   id: string;
@@ -107,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const { terms } = useBusinessTerms();
 
   useEffect(() => {
     const loadUser = async () => {
@@ -132,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (err) {
         if (isAccessPendingError(err)) {
-          setAuthError("Seu acesso está em avaliação. Aguarde a aprovação do condomínio.");
+          setAuthError(`Seu acesso está em avaliação. Aguarde a aprovação ${terms.articleSingular} ${terms.labelLower}.`);
         } else {
           await clearSession();
           setUser(null);
@@ -151,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await clearSession();
       setUser(null);
       await AsyncStorage.removeItem(USER_STORAGE_KEY);
-      setAuthError("Seu acesso está em avaliação. Aguarde a aprovação do condomínio.");
+      setAuthError(`Seu acesso está em avaliação. Aguarde a aprovação ${terms.articleSingular} ${terms.labelLower}.`);
       return false;
     }
     const { customer } = await getCustomerMe();
@@ -357,7 +359,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!existingToken) {
       await registerStore(email, password);
     }
-    setAuthError("Seu acesso está em avaliação. Aguarde a aprovação do condomínio.");
+    setAuthError(`Seu acesso está em avaliação. Aguarde a aprovação ${terms.articleSingular} ${terms.labelLower}.`);
     const fallback = { id: "new", name, email };
     setUser(fallback);
     await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(fallback));

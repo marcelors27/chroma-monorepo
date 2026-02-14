@@ -3,6 +3,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { NotificationPanel } from "@/components/ui/NotificationPanel";
 import { useCondo } from "@/contexts/CondoContext";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,8 +31,11 @@ export function Header({
 }: HeaderProps) {
   const navigation = useNavigation();
   const { condos, activeCondo, setActiveCondo, isAllCondos, setAllCondos } = useCondo();
+  const { terms } = useBusinessTerms();
 
-  const displayName = isAllCondos ? "Condomínio não selecionado" : activeCondo?.name || "Selecionar";
+  const displayName = isAllCondos
+    ? `${terms.label} não selecionado`
+    : activeCondo?.name || "Selecionar";
 
   return (
     <View style={styles.container}>
@@ -71,7 +75,7 @@ export function Header({
                   {isAllCondos && <Check color="hsl(220 10% 50%)" size={16} />}
                   {!isAllCondos && <Building2 color="hsl(215 15% 55%)" size={16} />}
                     <Text style={[styles.dropdownItemText, isAllCondos && styles.dropdownItemTextActive]}>
-                      Condomínio não selecionado
+                      {`${terms.label} não selecionado`}
                     </Text>
                   </View>
                 </DropdownMenuItem>

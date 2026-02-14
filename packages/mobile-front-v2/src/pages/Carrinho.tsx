@@ -16,6 +16,7 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { toast } from "@/lib/toast";
 import { useCart } from "@/contexts/CartContext";
 import { useCondo } from "@/contexts/CondoContext";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { suspendGlobalLoading } from "@/lib/global-loading";
@@ -59,6 +60,7 @@ export default function Carrinho() {
     cartId,
   } = useCart();
   const { activeCondo } = useCondo();
+  const { terms } = useBusinessTerms();
   const availableSavedMethods = savedPaymentMethods.filter(
     (method) => ENABLE_PIX || method.type !== "pix"
   );
@@ -179,9 +181,9 @@ export default function Carrinho() {
           return;
         }
         const shippingAddress = {
-          first_name: "Condomínio",
+          first_name: terms.label,
           last_name: "Compras",
-          address_1: activeCondo.name || "Condomínio",
+          address_1: activeCondo.name || terms.label,
           city: "São Paulo",
           country_code: "br",
           postal_code: "00000-000",
@@ -211,7 +213,7 @@ export default function Carrinho() {
       return;
     }
     if (!activeCondo) {
-      toast.error("Selecione um condomínio antes de finalizar.");
+      toast.error(`Selecione ${terms.articleSingular} ${terms.labelLower} antes de finalizar.`);
       return;
     }
 
@@ -224,9 +226,9 @@ export default function Carrinho() {
     setIsProcessing(true);
     try {
       const shippingAddress = {
-        first_name: "Condomínio",
+        first_name: terms.label,
         last_name: "Compras",
-        address_1: activeCondo.address || activeCondo.name || "Condomínio",
+        address_1: activeCondo.address || activeCondo.name || terms.label,
         address_2: activeCondo.complemento || "",
         city: activeCondo.city || "São Paulo",
         province: activeCondo.state || "SP",

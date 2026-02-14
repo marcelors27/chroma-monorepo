@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { CartProvider, useCart } from "@/contexts/CartContext";
+import { BusinessTypeProvider } from "@/contexts/BusinessTypeContext";
 import { NavigationContainer, useFocusEffect } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -382,16 +383,18 @@ const App = () => (
         <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
           <SafeAreaProvider>
             <NotificationProvider>
-              <AuthProvider>
-                <CondoProviderWithAuth>
-                  <CartProvider>
-                    <NavigationContainer>
-                      <RootNavigator />
-                      <GlobalLoadingOverlay />
-                    </NavigationContainer>
-                  </CartProvider>
-                </CondoProviderWithAuth>
-              </AuthProvider>
+              <BusinessTypeProvider>
+                <AuthProvider>
+                  <CondoProviderWithAuth>
+                    <CartProvider>
+                      <NavigationContainer>
+                        <RootNavigator />
+                        <GlobalLoadingOverlay />
+                      </NavigationContainer>
+                    </CartProvider>
+                  </CondoProviderWithAuth>
+                </AuthProvider>
+              </BusinessTypeProvider>
             </NotificationProvider>
           </SafeAreaProvider>
         </TamaguiProvider>

@@ -4,11 +4,13 @@ import { clearSession, getTokenValue, listCompanies } from "@/lib/medusa";
 import { isUnauthorizedError } from "@/lib/auth-errors";
 import { registerDevicePushToken } from "@/lib/push";
 import { toast } from "@/lib/toast";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 
 export interface Condo {
   id: string;
   name: string;
   address: string;
+  business_type?: string | null;
   cnpj?: string;
   razaoSocial?: string;
   number?: string;
@@ -49,6 +51,7 @@ export function CondoProvider({
   const [condos, setCondos] = useState<Condo[]>([]);
   const [activeCondo, setActiveCondoState] = useState<Condo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { terms, setActiveBusinessTypeKey } = useBusinessTerms();
 
   const refreshCondos = async () => {
     const token = await getTokenValue();
@@ -75,7 +78,8 @@ export function CondoProvider({
         .filter((company: any) => company?.approved)
         .map((company: any) => ({
           id: company.id,
-          name: company.fantasy_name || company.trade_name || company.name || "Condomínio",
+          name: company.fantasy_name || company.trade_name || company.name || terms.label,
+          business_type: company.business_type || null,
           cnpj: company.cnpj || company.metadata?.cnpj || "",
           razaoSocial: company.trade_name || company.metadata?.razaoSocial || "",
           address: company.metadata?.address || company.metadata?.city || "",
@@ -88,7 +92,7 @@ export function CondoProvider({
           phone: company.metadata?.phone || "",
           email: company.metadata?.email || "",
           units: Number(company.metadata?.units) || 0,
-          role: company.metadata?.role || "Síndico",
+          role: company.metadata?.role || terms.responsibleLabel,
           approved: true,
           pointsBalance: Number(company.metadata?.points_balance || 0),
           billingEmails: normalizeBillingEmails(company.metadata?.billing_emails),
@@ -108,7 +112,7 @@ export function CondoProvider({
         setActiveCondoState(null);
         return [];
       }
-      toast.error(err?.message || "Não foi possível carregar os condomínios.");
+      toast.error(err?.message || `Não foi possível carregar ${terms.labelPluralLower}.`);
       setCondos([]);
       setActiveCondoState(null);
       return [];
@@ -142,6 +146,10 @@ export function CondoProvider({
     if (!isAuthenticated) return;
     registerDevicePushToken(activeCondo?.id).catch(() => undefined);
   }, [isAuthenticated, activeCondo?.id]);
+
+  useEffect(() => {
+    setActiveBusinessTypeKey(activeCondo?.business_type || null);
+  }, [activeCondo?.business_type, setActiveBusinessTypeKey]);
 
   const setActiveCondo = (condo: Condo | null) => {
     setActiveCondoState(condo);

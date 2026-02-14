@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import homeBg from "@/assets/home-bg.jpg";
 import {
   getProductCategory,
@@ -33,6 +34,7 @@ import {
 } from "@/lib/medusa";
 
 const Home = () => {
+  const { terms } = useBusinessTerms();
   const { addItem } = useCart();
   const navigate = useNavigate();
   const authToken = getTokenValue();
@@ -78,7 +80,7 @@ const Home = () => {
         return {
           id: product.id,
           title: product.title,
-          description: product.description || "Oferta especial para condomínios.",
+          description: product.description || `Oferta especial para ${terms.labelPluralLower}.`,
           originalPrice: pricing.basePrice ?? undefined,
           salePrice: pricing.finalPrice,
           discount: pricing.discountPercent,
@@ -330,7 +332,7 @@ const Home = () => {
           )}
         </h1>
         <p className="text-muted-foreground mt-1">
-          Confira as melhores ofertas e novidades para seu condomínio
+          {`Confira as melhores ofertas e novidades para ${terms.articleSingular} ${terms.labelLower}`}
         </p>
       </div>
 

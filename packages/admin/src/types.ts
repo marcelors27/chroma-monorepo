@@ -32,6 +32,7 @@ export type PendingCompany = {
   fantasy_name?: string | null
   cnpj?: string | null
   customer_email?: string | null
+  business_type?: string | null
   created_at?: string
 }
 
@@ -41,6 +42,7 @@ export type AdminCompany = {
   trade_name?: string | null
   fantasy_name?: string | null
   cnpj?: string | null
+  business_type?: string | null
   metadata?: Record<string, any>
 }
 
@@ -50,8 +52,22 @@ export type UserCompany = {
   fantasy_name?: string | null
   cnpj?: string | null
   approved?: boolean
+  business_type?: string | null
   created_at?: string
   metadata?: Record<string, any>
+}
+
+export type BusinessType = {
+  id: string
+  key: string
+  label: string
+  label_plural: string
+  article_singular?: string | null
+  article_plural?: string | null
+  terms?: Record<string, string> | null
+  is_active?: boolean
+  created_at?: string | null
+  updated_at?: string | null
 }
 
 export type StoreUser = {

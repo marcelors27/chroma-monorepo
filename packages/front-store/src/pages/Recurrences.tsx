@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import {
   createRecurrence,
   deleteRecurrence,
@@ -31,6 +32,7 @@ const paymentLabels: Record<Recurrence["payment_method"], string> = {
 };
 
 const Recurrences = () => {
+  const { terms } = useBusinessTerms();
   const { data: recurrenceData, refetch: refetchRecurrences } = useQuery({
     queryKey: ["recurrences"],
     queryFn: listRecurrences,
@@ -176,7 +178,7 @@ const Recurrences = () => {
             Compras Recorrentes
           </h1>
           <p className="text-muted-foreground mt-1">
-            Agende compras semanais, quinzenais ou mensais para o condomínio.
+            {`Agende compras semanais, quinzenais ou mensais para ${terms.articleSingular} ${terms.labelLower}.`}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>Adicionar recorrência</Button>

@@ -169,7 +169,7 @@ export default function EmailLogsSection({
               <span>{resendTarget.type || "—"}</span>
             </div>
             <div className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Condomínio</span>
+              <span className="muted">Estabelecimento</span>
               <span>{resendTarget.company_id || "—"}</span>
             </div>
             <div className="grid" style={{ gap: "0.35rem" }}>
@@ -190,7 +190,7 @@ export default function EmailLogsSection({
     <div className="panel">
       <div style={{ marginBottom: "1rem" }}>
         <h2 data-testid="admin-email-logs-title">Histórico geral de e-mails</h2>
-        <p className="muted">Visualize e filtre os envios registrados por usuário e condomínio.</p>
+        <p className="muted">Visualize e filtre os envios registrados por usuário e estabelecimento.</p>
       </div>
 
       <div className="grid" style={{ gap: "0.75rem", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
@@ -206,7 +206,7 @@ export default function EmailLogsSection({
           </select>
         </label>
         <label className="grid" style={{ gap: "0.35rem" }}>
-          <span className="muted">Condomínio</span>
+          <span className="muted">Estabelecimento</span>
           <select className="field-input" value={companyId} onChange={(e) => { setCompanyId(e.target.value); setOffset(0) }}>
             <option value="">Todos</option>
             {filteredCompanies.map((company) => (

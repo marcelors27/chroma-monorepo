@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCondo } from "@/contexts/CondoContext";
 import { toast } from "@/lib/toast";
 import { listOrders } from "@/lib/medusa";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 
 const menuItems = [
   {
@@ -67,6 +68,7 @@ export default function Conta() {
   const navigation = useNavigation();
   const { logout, user } = useAuth();
   const { condos } = useCondo();
+  const { terms } = useBusinessTerms();
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["orders"],
     queryFn: listOrders,
@@ -149,7 +151,7 @@ export default function Conta() {
           <View style={styles.metricsRow}>
             <View style={styles.metric}>
               <Text style={styles.metricValue}>{condos.length}</Text>
-              <Text style={styles.metricLabel}>Condomínios</Text>
+        <Text style={styles.metricLabel}>{terms.labelPlural}</Text>
             </View>
             <View style={styles.metric}>
               <Text style={styles.metricValue}>{ordersCount}</Text>
@@ -177,7 +179,9 @@ export default function Conta() {
                     <View style={styles.sectionIcon}>
                       <Icon color="hsl(220 10% 55%)" size={18} />
                     </View>
-                    <Text style={styles.sectionLabel}>{item.label}</Text>
+                    <Text style={styles.sectionLabel}>
+                      {item.screen === "Condominios" ? `Meus ${terms.labelPlural}` : item.label}
+                    </Text>
                     <ChevronRight color="hsl(215 15% 55%)" size={18} />
                   </Pressable>
                 );
@@ -191,7 +195,7 @@ export default function Conta() {
           <Text style={styles.logoutText}>Sair da conta</Text>
         </Pressable>
 
-        <Text style={styles.footerText}>Síndico Store v1.0.0</Text>
+        <Text style={styles.footerText}>{`${terms.responsibleLabel} Store v1.0.0`}</Text>
       </ScrollView>
     </AuthenticatedLayout>
   );

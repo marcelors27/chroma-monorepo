@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sheet";
 import CartDrawer from "@/components/CartDrawer";
 import { clearSession, getActiveCondo, listCompanies, setActiveCondo } from "@/lib/medusa";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import { registerWebPush } from "@/lib/push";
 import dashboardBg from "@/assets/dashboard-bg.jpg";
 import logo from "@/assets/logo.png";
@@ -28,6 +29,7 @@ type CondoOption = {
   id: string;
   name: string;
   cnpj?: string;
+  business_type?: string | null;
   pointsBalance?: number;
   billing_emails?: string[];
 };
@@ -38,6 +40,7 @@ const AppLayout = () => {
   const [condos, setCondos] = useState<CondoOption[]>([]);
   const [selectedCondo, setSelectedCondo] = useState<CondoOption | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { terms, setActiveBusinessTypeKey } = useBusinessTerms();
   const isFirstAccessCondos = location.pathname === "/condos" && condos.length === 0;
   const showSidebar = !isFirstAccessCondos;
   const showMobileHeader = !isFirstAccessCondos;
@@ -63,6 +66,7 @@ const AppLayout = () => {
             id: company.id,
             name: company.fantasy_name || company.trade_name || "Empresa",
             cnpj: company.cnpj || undefined,
+            business_type: company.business_type || null,
             pointsBalance: Number(company?.metadata?.points_balance || 0),
             billing_emails: normalizeBillingEmails(company?.metadata?.billing_emails),
           }));
@@ -83,9 +87,11 @@ const AppLayout = () => {
           const match = approved.find((company: CondoOption) => company.id === stored.id);
           if (match) {
             setActiveCondo(match);
+            setActiveBusinessTypeKey(match.business_type || null);
           }
         } else if (approved[0]) {
           setActiveCondo(approved[0]);
+          setActiveBusinessTypeKey(approved[0]?.business_type || null);
         }
       })
       .catch(() => {
@@ -106,6 +112,7 @@ const AppLayout = () => {
   const handleLogout = () => {
     clearSession();
     setActiveCondo(null);
+    setActiveBusinessTypeKey(null);
     setSelectedCondo(null);
     navigate("/");
   };
@@ -136,7 +143,7 @@ const AppLayout = () => {
 
           {/* Condo Selector */}
           <div className="p-4 border-b border-border/70">
-            <p className="text-sm text-muted-foreground mb-2">Condomínio ativo</p>
+            <p className="text-sm text-muted-foreground mb-2">{terms.label} ativo</p>
             <div className="relative" title={selectedCondo?.name || "Sem empresa aprovada"}>
               <select 
                 className="w-full p-3 border border-border/60 bg-card/80 font-medium text-foreground truncate pr-8"
@@ -147,6 +154,7 @@ const AppLayout = () => {
                   if (condo) {
                     setSelectedCondo(condo);
                     setActiveCondo(condo);
+                    setActiveBusinessTypeKey(condo.business_type || null);
                   }
                 }}
               >
@@ -165,9 +173,9 @@ const AppLayout = () => {
                 <Star className="h-4 w-4" />
               </div>
               <div className="flex-1">
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  Pontos do condominio
-                </p>
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  {terms.pointsLabel} {terms.articleSingular} {terms.labelLower}
+                  </p>
                 <p className="text-lg font-semibold text-foreground">
                   {selectedCondo?.pointsBalance ?? 0}
                 </p>
@@ -181,7 +189,7 @@ const AppLayout = () => {
               <NavItem icon={<ShoppingCart />} label="Produtos" href="/dashboard" active={isActive("/dashboard")} />
               <NavItem icon={<Package />} label="Meus Pedidos" href="/orders" active={isActive("/orders")} />
               <NavItem icon={<Repeat />} label="Recorrentes" href="/recurrences" active={isActive("/recurrences")} />
-              <NavItem icon={<Hexagon />} label="Condomínios" href="/condos" active={isActive("/condos")} />
+              <NavItem icon={<Hexagon />} label={terms.labelPlural} href="/condos" active={isActive("/condos")} />
               <NavItem icon={<Settings />} label="Configurações" href="/settings" active={isActive("/settings")} />
             </ul>
           </nav>
@@ -250,7 +258,7 @@ const AppLayout = () => {
                         </select>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
-                        Pontos: {selectedCondo?.pointsBalance ?? 0}
+                        {terms.pointsLabel}: {selectedCondo?.pointsBalance ?? 0}
                       </p>
                     </div>
                     <nav className="p-4">

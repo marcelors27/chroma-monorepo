@@ -3,10 +3,12 @@ import { useNavigation } from "@react-navigation/native";
 import { ShieldAlert, ArrowLeft } from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import condoBackground from "@/assets/condo-background.jpg";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 
 export default function AccessPending() {
   const navigation = useNavigation();
   const { logout } = useAuth();
+  const { terms } = useBusinessTerms();
 
   const handleBackToLogin = () => {
     logout();
@@ -21,7 +23,7 @@ export default function AccessPending() {
         </View>
         <Text style={styles.title}>Seu acesso está em avaliação</Text>
         <Text style={styles.subtitle}>
-          O condomínio foi enviado para análise. Em breve você receberá a confirmação para acessar o catálogo.
+          {`O ${terms.labelLower} foi enviado para análise. Em breve você receberá a confirmação para acessar o catálogo.`}
         </Text>
         <Pressable style={styles.backButton} onPress={handleBackToLogin}>
           <ArrowLeft color="#0B0F14" size={18} />

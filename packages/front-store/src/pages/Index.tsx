@@ -6,7 +6,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { 
+import {
   Hexagon, 
   ShoppingCart, 
   Users, 
@@ -18,65 +18,66 @@ import {
   MessageCircle
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import heroBg from "@/assets/hero-bg.jpg";
 import logo from "@/assets/logo.png";
 
-const useCases = [
-  {
-    title: "Reposição de itens essenciais",
-    description: "Compras recorrentes de limpeza, portaria e escritório com previsibilidade.",
-    icon: Building2,
-  },
-  {
-    title: "Manutenção preventiva",
-    description: "Peças, insumos e serviços para manter elevadores e áreas comuns em dia.",
-    icon: Wrench,
-  },
-  {
-    title: "Compras emergenciais",
-    description: "Reposição rápida com controle de preço e histórico de pedidos.",
-    icon: Truck,
-  },
-  {
-    title: "Segurança e conformidade",
-    description: "Produtos homologados e fornecedores avaliados pelo condomínio.",
-    icon: ShieldCheck,
-  },
-  {
-    title: "Compras colaborativas",
-    description: "Cotações transparentes e aprovação com conselho e síndicos.",
-    icon: Users,
-  },
-];
-
-const testimonials = [
-  {
-    quote:
-      "Centralizamos as compras do condomínio e reduzimos o tempo de aprovação pela metade.",
-    name: "Carla Mendes",
-    role: "Síndica - Residencial Vale Verde",
-  },
-  {
-    quote:
-      "Os preços são consistentes e a reposição de itens essenciais ficou muito mais simples.",
-    name: "Rafael Torres",
-    role: "Administrador - Cond. Horizonte",
-  },
-  {
-    quote:
-      "A plataforma trouxe histórico e transparência, ajudando nas prestações de contas.",
-    name: "Marina Lopes",
-    role: "Conselheira - Parque das Águas",
-  },
-  {
-    quote:
-      "Conseguimos atender emergências com rapidez sem perder o controle do orçamento.",
-    name: "Paulo Ribeiro",
-    role: "Síndico - Jardim Central",
-  },
-];
-
 const Index = () => {
+  const { terms } = useBusinessTerms();
+  const useCases = [
+    {
+      title: "Reposição de itens essenciais",
+      description: "Compras recorrentes de limpeza, portaria e escritório com previsibilidade.",
+      icon: Building2,
+    },
+    {
+      title: "Manutenção preventiva",
+      description: "Peças, insumos e serviços para manter elevadores e áreas comuns em dia.",
+      icon: Wrench,
+    },
+    {
+      title: "Compras emergenciais",
+      description: "Reposição rápida com controle de preço e histórico de pedidos.",
+      icon: Truck,
+    },
+    {
+      title: "Segurança e conformidade",
+      description: `Produtos homologados e fornecedores avaliados ${terms.articleSingular} ${terms.labelLower}.`,
+      icon: ShieldCheck,
+    },
+    {
+      title: "Compras colaborativas",
+      description: `Cotações transparentes e aprovação com conselho e ${terms.responsibleLabelPluralLower}.`,
+      icon: Users,
+    },
+  ];
+
+  const testimonials = [
+    {
+      quote:
+        `Centralizamos as compras ${terms.articleSingular} ${terms.labelLower} e reduzimos o tempo de aprovação pela metade.`,
+      name: "Carla Mendes",
+      role: `${terms.responsibleLabel} - Residencial Vale Verde`,
+    },
+    {
+      quote:
+        "Os preços são consistentes e a reposição de itens essenciais ficou muito mais simples.",
+      name: "Rafael Torres",
+      role: "Administrador - Cond. Horizonte",
+    },
+    {
+      quote:
+        "A plataforma trouxe histórico e transparência, ajudando nas prestações de contas.",
+      name: "Marina Lopes",
+      role: "Conselheira - Parque das Águas",
+    },
+    {
+      quote:
+        "Conseguimos atender emergências com rapidez sem perder o controle do orçamento.",
+      name: "Paulo Ribeiro",
+      role: `${terms.responsibleLabel} - Jardim Central`,
+    },
+  ];
   return (
     <div className="min-h-screen bg-background relative">
       {/* Header */}
@@ -110,10 +111,10 @@ const Index = () => {
           <div className="max-w-3xl">
             <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-6">
               <span className="text-primary">E-commerce</span> exclusivo para{" "}
-              <span className="text-accent">condomínios</span>
+              <span className="text-accent">{terms.labelPluralLower}</span>
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-xl">
-              Plataforma de compras centralizada para seu condomínio. 
+              {`Plataforma de compras centralizada para ${terms.articleSingular} ${terms.labelLower}.`} 
               Gerencie múltiplos CNPJs e tenha acesso a ofertas exclusivas.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -143,12 +144,12 @@ const Index = () => {
             <FeatureCard
               icon={<Hexagon className="h-8 w-8 text-accent" />}
               title="Multi-CNPJ"
-              description="Cadastre e gerencie múltiplos condomínios com diferentes CNPJs em uma única conta."
+              description={`Cadastre e gerencie múltiplos ${terms.labelPluralLower} com diferentes CNPJs em uma única conta.`}
             />
             <FeatureCard
               icon={<ShoppingCart className="h-8 w-8 text-primary" />}
               title="Compras Centralizadas"
-              description="Acesse um catálogo de produtos exclusivos para condomínios com preços especiais."
+              description={`Acesse um catálogo de produtos exclusivos para ${terms.labelPluralLower} com preços especiais.`}
             />
           </div>
         </div>
@@ -158,7 +159,7 @@ const Index = () => {
       <section className="border-t-2 border-border py-20 bg-secondary/40">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-12">
-            Casos de uso para o dia a dia do condomínio
+            {`Casos de uso para o dia a dia ${terms.articleSingular} ${terms.labelLower}`}
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {useCases.map((item) => {
@@ -230,7 +231,7 @@ const Index = () => {
         <div className="container mx-auto px-4 py-20 text-center">
           <h2 className="text-4xl font-bold mb-4">Pronto para começar?</h2>
           <p className="text-xl text-muted-foreground mb-8">
-            Cadastre seu condomínio e comece a economizar hoje mesmo.
+            {`Cadastre ${terms.articleSingular} ${terms.labelLower} e comece a economizar hoje mesmo.`}
           </p>
           <Button size="lg" className="text-lg px-8 py-6" asChild>
             <Link to="/auth?mode=register">Criar conta gratuita</Link>

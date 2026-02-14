@@ -17,13 +17,22 @@ const fetchCustomerByCompanyId = async (scope, companyId) => {
 
 const POST = async (req, res) => {
   const { id } = req.params
+  const businessType = req.body?.business_type || req.body?.businessType || null
   const customer = await fetchCustomerByCompanyId(req.scope, id)
   if (!customer) {
     return res.status(404).json({ message: "Company not found" })
   }
 
   const companies = customer.metadata?.companies || []
-  const updatedCompanies = companies.map((cmp) => (cmp.id === id ? { ...cmp, approved: true } : cmp))
+  const updatedCompanies = companies.map((cmp) =>
+    cmp.id === id
+      ? {
+          ...cmp,
+          approved: true,
+          ...(businessType ? { business_type: businessType } : {}),
+        }
+      : cmp
+  )
   const metadata = { ...(customer.metadata || {}), companies: updatedCompanies }
 
   await updateCustomersWorkflow(req.scope).run({

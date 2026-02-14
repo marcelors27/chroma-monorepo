@@ -80,6 +80,17 @@ export type MedusaProduct = {
   options?: { id?: string; title?: string }[];
 };
 
+export type BusinessType = {
+  id: string;
+  key: string;
+  label: string;
+  label_plural: string;
+  article_singular?: string | null;
+  article_plural?: string | null;
+  terms?: Record<string, string> | null;
+  is_active?: boolean;
+};
+
 export type MedusaCart = {
   id: string;
   items: MedusaLineItem[];
@@ -682,6 +693,10 @@ export const registerAndCreateCompany = async (params: {
 
 export const listCompanies = async () => {
   return apiFetch<{ companies: any[] }>("/store/companies", { method: "GET" });
+};
+
+export const listBusinessTypes = async () => {
+  return apiFetch<{ business_types: BusinessType[] }>("/store/business-types", { method: "GET" });
 };
 
 export const createCompany = async (payload: {

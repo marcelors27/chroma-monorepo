@@ -85,7 +85,7 @@ export default function BillingResendSection({
 
   const handleSend = async () => {
     if (!selectedUser || !selectedCompany || !paymentCollectionId) {
-      pushToast({ title: "Informe usuário, condomínio e payment_collection_id", variant: "error" })
+      pushToast({ title: "Informe usuário, estabelecimento e payment_collection_id", variant: "error" })
       return
     }
     setIsSending(true)
@@ -127,7 +127,7 @@ export default function BillingResendSection({
     <div className="panel">
       <div style={{ marginBottom: "1rem" }}>
         <h2 data-testid="admin-billing-resend-title">Reenvio de cobranças</h2>
-        <p className="muted">Envie novamente cobranças de PIX ou boleto para usuário/condomínio.</p>
+        <p className="muted">Envie novamente cobranças de PIX ou boleto para usuário/estabelecimento.</p>
       </div>
 
       <div className="grid" style={{ gap: "1rem" }}>
@@ -144,7 +144,7 @@ export default function BillingResendSection({
             </select>
           </label>
           <label className="grid" style={{ gap: "0.35rem" }}>
-            <span className="muted">Condomínio</span>
+            <span className="muted">Estabelecimento</span>
             <select className="field-input" value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)}>
               <option value="">Selecione</option>
               {filteredCompanies.map((company) => (

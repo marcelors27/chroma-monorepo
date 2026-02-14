@@ -27,6 +27,7 @@ import {
 } from "@/lib/medusa";
 import { toast } from "@/lib/toast";
 import { useCondo } from "@/contexts/CondoContext";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 
 const DEBUG = process.env.EXPO_PUBLIC_DEBUG_FRONT === "true";
 const ENABLE_PIX = process.env.EXPO_PUBLIC_ENABLE_PIX === "true";
@@ -92,6 +93,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [lastAddQty, setLastAddQty] = useState(1);
   const { initPaymentSheet, presentPaymentSheet, retrievePaymentIntent, confirmPayment } = useStripe();
   const { activeCondo } = useCondo();
+  const { terms } = useBusinessTerms();
 
   useEffect(() => {
     refreshCart();
@@ -428,10 +430,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       Boolean(billingDetails?.address?.state) &&
       Boolean(billingDetails?.address?.postalCode);
     if (!billingDetails?.name || !hasAddress) {
-      throw new Error("Endereço do condomínio incompleto para gerar boleto.");
+      throw new Error(`Endereço ${terms.articleSingular} ${terms.labelLower} incompleto para gerar boleto.`);
     }
     if (!taxId) {
-      throw new Error("CNPJ do condomínio não informado.");
+      throw new Error(`CNPJ ${terms.articleSingular} ${terms.labelLower} não informado.`);
     }
     const response = await confirmStripePaymentServerSide({
       client_secret: clientSecret,

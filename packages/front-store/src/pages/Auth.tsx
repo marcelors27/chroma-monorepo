@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import authBg from "@/assets/auth-bg.jpg";
 import logo from "@/assets/logo.png";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import {
   completeSocialAuth,
   listCompanies,
@@ -22,6 +23,7 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { terms } = useBusinessTerms();
   const [isLogin, setIsLogin] = useState(searchParams.get("mode") !== "register");
   const [isLoading, setIsLoading] = useState(false);
   const [showReset, setShowReset] = useState(false);
@@ -262,7 +264,7 @@ const Auth = () => {
           </h1>
           <p className="text-muted-foreground mb-8">
             {isLogin 
-              ? "Entre para acessar sua conta e seus condomínios." 
+              ? `Entre para acessar sua conta e seus ${terms.labelPluralLower}.` 
               : "Cadastre-se e informe os dados da empresa depois."}
           </p>
 
@@ -470,10 +472,10 @@ const Auth = () => {
         <div className="max-w-md text-foreground relative z-10">
           <img src={logo} alt="Chroma" className="h-16 w-16 mb-8" />
           <h2 className="text-4xl font-bold mb-4">
-            Gerencie as compras do seu condomínio
+            Gerencie as compras {terms.articleSingular} {terms.labelLower}
           </h2>
           <p className="text-xl text-muted-foreground">
-            Centralize pedidos, gerencie múltiplos CNPJs e tenha acesso a produtos exclusivos para condomínios.
+            Centralize pedidos, gerencie múltiplos CNPJs e tenha acesso a produtos exclusivos para {terms.labelPluralLower}.
           </p>
         </div>
       </div>

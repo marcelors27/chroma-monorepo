@@ -17,6 +17,7 @@ import { toast } from "@/lib/toast";
 import { useCondo } from "@/contexts/CondoContext";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import {
   getProductCategory,
   getProductImage,
@@ -35,6 +36,7 @@ export default function Index() {
   const { activeCondo } = useCondo();
   const { addItem, isAddingItem } = useCart();
   const { user } = useAuth();
+  const { terms } = useBusinessTerms();
   const netInfo = useNetInfo();
   const { data, isLoading: isLoadingProducts, refetch: refetchProducts } = useQuery({
     queryKey: ["home-products"],
@@ -75,7 +77,7 @@ export default function Index() {
 
   const handleAddToCart = async (product: (typeof featuredProducts)[number]) => {
     if (!activeCondo) {
-      toast.error("Selecione um condomínio antes de adicionar itens ao carrinho.");
+      toast.error(`Selecione ${terms.articleSingular} ${terms.labelLower} antes de adicionar itens ao carrinho.`);
       return;
     }
     if (!product.variantId) {
@@ -307,7 +309,7 @@ export default function Index() {
             <Star color="#F8C25C" size={18} />
           </View>
           <View style={styles.pointsContent}>
-            <Text style={styles.pointsLabel}>Pontos do condomínio</Text>
+            <Text style={styles.pointsLabel}>{`${terms.pointsLabel} ${terms.articleSingular} ${terms.labelLower}`}</Text>
             <Text style={styles.pointsValue}>{activeCondo?.pointsBalance ?? 0}</Text>
           </View>
         </View>

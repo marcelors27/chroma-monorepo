@@ -12,6 +12,7 @@ import {
   EyeOff
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import {
   Card,
   CardContent,
@@ -30,6 +31,7 @@ import { getCustomerMe, updateCustomerMe, updatePassword } from "@/lib/medusa";
 
 const Settings = () => {
   const { toast } = useToast();
+  const { terms } = useBusinessTerms();
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [customerMetadata, setCustomerMetadata] = useState<Record<string, any>>({});
@@ -293,7 +295,7 @@ const Settings = () => {
                     <Input
                       id="cargo"
                       data-testid="settings-profile-role"
-                      placeholder="Ex: Síndico, Administrador"
+                      placeholder={`Ex: ${terms.responsibleLabel}, Administrador`}
                       className="h-12 border-2"
                       value={profileData.cargo}
                       onChange={(e) => setProfileData({ ...profileData, cargo: e.target.value })}

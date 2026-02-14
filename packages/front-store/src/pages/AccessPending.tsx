@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { ShieldAlert } from "lucide-react";
 import authBg from "@/assets/auth-bg.jpg";
 import logo from "@/assets/logo.png";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 
 const AccessPending = () => {
+  const { terms } = useBusinessTerms();
   return (
     <div
       className="min-h-screen bg-background flex items-center justify-center px-6 py-12"
@@ -28,12 +30,12 @@ const AccessPending = () => {
             <h1 className="text-2xl font-bold mb-2">Seu acesso está em avaliação</h1>
             <p className="text-muted-foreground mb-6">
               Você precisa ter pelo menos um CNPJ aprovado para acessar o catálogo.
-              Enquanto isso, cadastre uma empresa e envie o documento para análise.
+              {`Enquanto isso, cadastre ${terms.articleSingular} ${terms.labelLower} e envie o documento para análise.`}
             </p>
 
             <div className="space-y-3">
               <Button asChild className="w-full">
-                <Link to="/condos?new=1">Cadastrar empresa</Link>
+                <Link to="/condos?new=1">{`Cadastrar ${terms.labelLower}`}</Link>
               </Button>
               <Button asChild variant="outline" className="w-full border-2">
                 <Link to="/auth">Voltar ao login</Link>

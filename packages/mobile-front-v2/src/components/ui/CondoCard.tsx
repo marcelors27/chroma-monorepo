@@ -7,11 +7,13 @@ interface CondoCardProps {
   address: string;
   units: number;
   role: string;
+  unitLabelPlural?: string;
   onEdit?: () => void;
   onClick?: () => void;
 }
 
-export function CondoCard({ name, address, units, role, onEdit, onClick }: CondoCardProps) {
+export function CondoCard({ name, address, units, role, unitLabelPlural, onEdit, onClick }: CondoCardProps) {
+  const unitsLabel = unitLabelPlural || "Unidades";
   return (
     <View style={styles.card}>
       <Pressable onPress={onClick} style={styles.cardContent}>
@@ -36,7 +38,7 @@ export function CondoCard({ name, address, units, role, onEdit, onClick }: Condo
 
           <View style={styles.metaRow}>
             <Users color="hsl(215 15% 55%)" size={12} />
-            <Text style={styles.metaText}>{units} unidades</Text>
+            <Text style={styles.metaText}>{`${units} ${unitsLabel.toLowerCase()}`}</Text>
           </View>
         </View>
 
