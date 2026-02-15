@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ShoppingCart,
@@ -45,64 +45,78 @@ const AppLayout = () => {
   const showSidebar = !isFirstAccessCondos;
   const showMobileHeader = !isFirstAccessCondos;
 
+  const loadCondos = useCallback(async () => {
+    const normalizeBillingEmails = (value: unknown) => {
+      if (Array.isArray(value)) return value.filter(Boolean);
+      if (typeof value === "string" && value.trim()) {
+        return value
+          .split(",")
+          .map((email) => email.trim())
+          .filter(Boolean);
+      }
+      return [];
+    };
+
+    const data = await listCompanies();
+    const approved = (data?.companies || [])
+      .filter((company: any) => company?.approved)
+      .map((company: any) => ({
+        id: company.id,
+        name: company.fantasy_name || company.trade_name || "Empresa",
+        cnpj: company.cnpj || undefined,
+        business_type: company.business_type || null,
+        pointsBalance: Number(company?.metadata?.points_balance || 0),
+        billing_emails: normalizeBillingEmails(company?.metadata?.billing_emails),
+      }));
+
+    setCondos(approved);
+    setSelectedCondo((current) => {
+      const stored = getActiveCondo();
+      if (stored) {
+        const match = approved.find((company: CondoOption) => company.id === stored.id);
+        if (match) return match;
+      }
+      if (current) {
+        const refreshed = approved.find((company: CondoOption) => company.id === current.id);
+        if (refreshed) return refreshed;
+      }
+      return approved[0] || null;
+    });
+
+    const stored = getActiveCondo();
+    if (stored) {
+      const match = approved.find((company: CondoOption) => company.id === stored.id);
+      if (match) {
+        setActiveCondo(match);
+        setActiveBusinessTypeKey(match.business_type || null);
+      }
+    } else if (approved[0]) {
+      setActiveCondo(approved[0]);
+      setActiveBusinessTypeKey(approved[0]?.business_type || null);
+    }
+  }, [setActiveBusinessTypeKey]);
+
   useEffect(() => {
     let mounted = true;
-    listCompanies()
-      .then((data) => {
-        if (!mounted) return;
-        const normalizeBillingEmails = (value: unknown) => {
-          if (Array.isArray(value)) return value.filter(Boolean);
-          if (typeof value === "string" && value.trim()) {
-            return value
-              .split(",")
-              .map((email) => email.trim())
-              .filter(Boolean);
-          }
-          return [];
-        };
-        const approved = (data?.companies || [])
-          .filter((company: any) => company?.approved)
-          .map((company: any) => ({
-            id: company.id,
-            name: company.fantasy_name || company.trade_name || "Empresa",
-            cnpj: company.cnpj || undefined,
-            business_type: company.business_type || null,
-            pointsBalance: Number(company?.metadata?.points_balance || 0),
-            billing_emails: normalizeBillingEmails(company?.metadata?.billing_emails),
-          }));
-        setCondos(approved);
-        setSelectedCondo((current) => {
-          const stored = getActiveCondo();
-          if (stored) {
-            const match = approved.find((company: CondoOption) => company.id === stored.id);
-            if (match) return match;
-          }
-          if (current && approved.some((company: CondoOption) => company.id === current.id)) {
-            return current;
-          }
-          return approved[0] || null;
-        });
-        const stored = getActiveCondo();
-        if (stored) {
-          const match = approved.find((company: CondoOption) => company.id === stored.id);
-          if (match) {
-            setActiveCondo(match);
-            setActiveBusinessTypeKey(match.business_type || null);
-          }
-        } else if (approved[0]) {
-          setActiveCondo(approved[0]);
-          setActiveBusinessTypeKey(approved[0]?.business_type || null);
-        }
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setCondos([]);
-        setSelectedCondo(null);
-      });
+    loadCondos().catch(() => {
+      if (!mounted) return;
+      setCondos([]);
+      setSelectedCondo(null);
+    });
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [loadCondos]);
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      loadCondos().catch(() => undefined);
+    };
+    window.addEventListener("chroma:condos-refresh", handleRefresh as EventListener);
+    return () => {
+      window.removeEventListener("chroma:condos-refresh", handleRefresh as EventListener);
+    };
+  }, [loadCondos]);
 
   useEffect(() => {
     if (!selectedCondo?.id) return;

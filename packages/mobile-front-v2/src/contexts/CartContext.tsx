@@ -6,7 +6,6 @@ import {
   completeCart,
   createCart,
   deleteLineItem,
-  earnCompanyPoints,
   ensureCart,
   listShippingOptions,
   mapCartToItems,
@@ -474,19 +473,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   };
 
-  const applyPointsToOrder = async (orderId?: string | null, cartSnapshot?: any) => {
-    if (!orderId) return;
-    const companyId =
-      cartSnapshot?.shipping_address?.metadata?.company_id ||
-      cartSnapshot?.shipping_address?.metadata?.condo_id;
-    if (!companyId) return;
-    try {
-      await earnCompanyPoints(companyId, orderId);
-    } catch (err: any) {
-      if (DEBUG) console.debug("[cart] points:error", err?.message || err);
-    }
-  };
-
   const finalizePendingBoleto = async (clientSecret: string) => {
     try {
       const intentResult = await retrievePaymentIntent(clientSecret);
@@ -517,9 +503,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       console.debug("[cart] completeBackendCheckout:start", { cartId, address, paymentMethod, shippingOptionId });
     if (!cartId) throw new Error("Carrinho não encontrado");
     try {
-      const applyPoints = async (orderId?: string | null, snapshot?: any) => {
-        await applyPointsToOrder(orderId, snapshot);
-      };
       const { providerId, data } = resolvePaymentProvider(paymentMethod, options);
       let cartSnapshot = await retrieveCart(cartId);
       if (!cartSnapshot?.id) {
@@ -747,7 +730,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const orderId = await completeCart(cartSnapshot.id);
       if (DEBUG) console.debug("[cart] completeBackendCheckout:success", { orderId });
       await refreshCart();
-      await applyPoints(orderId, cartSnapshot);
       await removePendingPayment({ cart_id: cartSnapshot.id });
       await removePendingPaymentFromBackend({ cart_id: cartSnapshot.id });
       return { status: "completed", orderId };

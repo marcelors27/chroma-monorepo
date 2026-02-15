@@ -1,7 +1,7 @@
-import { Dimensions, Linking, Pressable, ScrollView, StyleSheet, Text, View, Image } from "react-native";
-import { useState } from "react";
+import { Dimensions, Linking, Pressable, ScrollView, StyleSheet, Text, View, Image, NativeSyntheticEvent, NativeScrollEvent } from "react-native";
+import { useEffect, useRef, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
-import { ArrowRight, MessageCircle, Newspaper, Package, Star, TrendingUp, RefreshCcw } from "lucide-react-native";
+import { ArrowRight, MessageCircle, Newspaper, Package, Star, TrendingUp } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -31,6 +31,54 @@ import {
   MedusaProduct,
 } from "@/lib/medusa";
 
+const PROMO_KEYWORDS = ["promo", "promoc", "sale", "oferta", "desconto"];
+
+const isPromotionValue = (value: unknown) => {
+  if (value === true || value === 1) return true;
+  if (typeof value === "number") return value > 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return false;
+    if (["true", "1", "yes", "sim", "on", "active", "ativo"].includes(normalized)) return true;
+    if (PROMO_KEYWORDS.some((keyword) => normalized.includes(keyword))) return true;
+  }
+  return false;
+};
+
+const hasPromotionKeyword = (value: unknown) => {
+  const text = String(value ?? "").toLowerCase();
+  return PROMO_KEYWORDS.some((keyword) => text.includes(keyword));
+};
+
+const hasPromotionMetadata = (metadata?: Record<string, unknown> | null) => {
+  if (!metadata) return false;
+  return Object.entries(metadata).some(([key, value]) => {
+    if (hasPromotionKeyword(key)) return isPromotionValue(value);
+    return false;
+  });
+};
+
+const hasPromotionFlag = (product?: MedusaProduct) => {
+  if (!product) return false;
+  const variant = getVariant(product);
+  const variantPrices = (variant?.prices || []) as Array<Record<string, unknown>>;
+  const calculated = variant?.calculated_price as Record<string, unknown> | number | undefined;
+
+  const metadataSignal =
+    hasPromotionMetadata((product.metadata || null) as Record<string, unknown> | null) ||
+    hasPromotionMetadata((variant?.metadata || null) as Record<string, unknown> | null);
+  const tagsSignal = Array.isArray(product.tags) && product.tags.some((tag) => hasPromotionKeyword(tag?.value));
+  const pricesSignal = variantPrices.some(
+    (price) => hasPromotionKeyword(price?.price_list_type) || isPromotionValue(price?.price_list_id)
+  );
+  const calculatedSignal =
+    typeof calculated === "object" &&
+    calculated !== null &&
+    (hasPromotionKeyword(calculated?.price_list_type) || isPromotionValue(calculated?.price_list_id));
+
+  return metadataSignal || tagsSignal || pricesSignal || calculatedSignal;
+};
+
 export default function Index() {
   const navigation = useNavigation();
   const { activeCondo } = useCondo();
@@ -52,8 +100,15 @@ export default function Index() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const [isBannerInteracting, setIsBannerInteracting] = useState(false);
+  const bannerScrollRef = useRef<ScrollView>(null);
+  const resumeAutoplayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const screenWidth = Dimensions.get("window").width;
   const productCardWidth = (screenWidth - 52) / 2;
+  const bannerCardWidth = Math.max(screenWidth - 72, 260);
+  const bannerGap = 14;
+  const bannerSnapInterval = bannerCardWidth + bannerGap;
   const whatsappTarget = process.env.EXPO_PUBLIC_WHATSAPP_TARGET || "+55 51 981975736";
   const pullThreshold = 80;
 
@@ -67,12 +122,33 @@ export default function Index() {
         description: product.description || "Descrição não informada.",
         price: pricing.finalPrice,
         originalPrice: pricing.onSale ? pricing.basePrice ?? undefined : undefined,
+        isOnPromotion: pricing.onSale || hasPromotionFlag(product),
         image: getProductImage(product) || "",
         category: getProductCategory(product),
         variantId: variant?.id || "",
         variantTitle: variant?.title || "",
       };
     })
+    .slice(0, 2);
+
+  const promotionHighlights = (data?.products || [])
+    .map((product: MedusaProduct) => {
+      const variant = getVariant(product);
+      const pricing = getVariantPricing(variant);
+      return {
+        id: product.id,
+        name: product.title,
+        description: product.description || "Descrição não informada.",
+        price: pricing.finalPrice,
+        originalPrice: pricing.onSale ? pricing.basePrice ?? undefined : undefined,
+        isOnPromotion: pricing.onSale || hasPromotionFlag(product),
+        image: getProductImage(product) || "",
+        category: getProductCategory(product),
+        variantId: variant?.id || "",
+        variantTitle: variant?.title || "",
+      };
+    })
+    .filter((product) => product.isOnPromotion)
     .slice(0, 2);
 
   const handleAddToCart = async (product: (typeof featuredProducts)[number]) => {
@@ -150,6 +226,56 @@ export default function Index() {
     if (!url) return false;
     return /\.(mp4|mov|webm)$/i.test(url);
   };
+
+  const handleBannerMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const nextIndex = Math.round(offsetX / bannerSnapInterval);
+    setActiveBannerIndex(Math.max(0, Math.min(nextIndex, Math.max(0, banners.length - 1))));
+  };
+
+  const pauseBannerAutoplay = () => {
+    if (resumeAutoplayTimeoutRef.current) {
+      clearTimeout(resumeAutoplayTimeoutRef.current);
+      resumeAutoplayTimeoutRef.current = null;
+    }
+    setIsBannerInteracting(true);
+  };
+
+  const scheduleResumeBannerAutoplay = () => {
+    if (resumeAutoplayTimeoutRef.current) {
+      clearTimeout(resumeAutoplayTimeoutRef.current);
+    }
+    resumeAutoplayTimeoutRef.current = setTimeout(() => {
+      setIsBannerInteracting(false);
+      resumeAutoplayTimeoutRef.current = null;
+    }, 2000);
+  };
+
+  useEffect(() => {
+    setActiveBannerIndex((current) => Math.min(current, Math.max(0, banners.length - 1)));
+  }, [banners.length]);
+
+  useEffect(() => {
+    if (banners.length <= 1 || isBannerInteracting) return;
+
+    const interval = setInterval(() => {
+      setActiveBannerIndex((current) => {
+        const nextIndex = (current + 1) % banners.length;
+        bannerScrollRef.current?.scrollTo({ x: nextIndex * bannerSnapInterval, animated: true });
+        return nextIndex;
+      });
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [banners.length, bannerSnapInterval, isBannerInteracting]);
+
+  useEffect(() => {
+    return () => {
+      if (resumeAutoplayTimeoutRef.current) {
+        clearTimeout(resumeAutoplayTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const resolveBannerAction = async (banner: MedusaMarketingBanner) => {
     if (!banner?.link_type) return;
@@ -238,7 +364,7 @@ export default function Index() {
           <View style={styles.bannerSection}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bannerRow}>
               {Array.from({ length: 2 }).map((_, index) => (
-                <View key={`banner-skeleton-${index}`} style={styles.bannerCard}>
+                <View key={`banner-skeleton-${index}`} style={[styles.bannerCard, { width: bannerCardWidth }]}>
                   <Skeleton style={styles.bannerSkeleton} />
                 </View>
               ))}
@@ -246,7 +372,18 @@ export default function Index() {
           </View>
         ) : banners.length > 0 ? (
           <View style={styles.bannerSection}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bannerRow}>
+            <ScrollView
+              ref={bannerScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.bannerRow}
+              snapToInterval={bannerSnapInterval}
+              decelerationRate="fast"
+              onMomentumScrollEnd={handleBannerMomentumEnd}
+              onScrollBeginDrag={pauseBannerAutoplay}
+              onScrollEndDrag={scheduleResumeBannerAutoplay}
+              scrollEventThrottle={16}
+            >
               {banners.map((banner) => {
                 const animation = banner.animation_mobile_url || banner.animation_url || "";
                 const image = banner.image_mobile_url || banner.image_url || "";
@@ -257,7 +394,7 @@ export default function Index() {
                 return (
                   <Pressable
                     key={banner.id}
-                    style={styles.bannerCard}
+                    style={[styles.bannerCard, { width: bannerCardWidth }]}
                     onPress={() => resolveBannerAction(banner)}
                     disabled={!banner.link_type}
                   >
@@ -278,6 +415,16 @@ export default function Index() {
                 );
               })}
             </ScrollView>
+            {banners.length > 1 && (
+              <View style={styles.bannerPagination}>
+                {banners.map((banner, index) => (
+                  <View
+                    key={`banner-dot-${banner.id}`}
+                    style={[styles.bannerDot, activeBannerIndex === index && styles.bannerDotActive]}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         ) : null}
         <View style={styles.metricsRow}>
@@ -368,6 +515,47 @@ export default function Index() {
                 ))}
               </View>
             </>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Destaques de promoções</Text>
+            <Pressable onPress={() => navigation.navigate("Produtos" as never)} style={styles.linkRow}>
+              <Text style={styles.linkText}>Ver todos</Text>
+              <ArrowRight color="#8C98A8" size={14} />
+            </Pressable>
+          </View>
+
+          {isLoadingProducts ? (
+            <View style={styles.productRow}>
+              {Array.from({ length: 2 }).map((_, index) => (
+                <View key={`promo-skeleton-${index}`} style={[styles.productSkeletonCard, { width: productCardWidth }]}>
+                  <Skeleton style={styles.productSkeletonImage} />
+                  <Skeleton style={styles.productSkeletonLine} />
+                  <Skeleton style={styles.productSkeletonLineShort} />
+                </View>
+              ))}
+            </View>
+          ) : promotionHighlights.length > 0 ? (
+            <View style={styles.productRow}>
+              {promotionHighlights.map((product) => (
+                <ProductCard
+                  key={`promo-${product.id}`}
+                  {...product}
+                  style={{ width: productCardWidth }}
+                  onPress={() =>
+                    navigation.navigate(
+                      "Produtos" as never,
+                      { screen: "ProductDetails", params: { id: product.id } } as never
+                    )
+                  }
+                  onAddToCart={() => handleAddToCart(product)}
+                />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptySectionText}>Sem promoções ativas no momento.</Text>
           )}
         </View>
 
@@ -478,6 +666,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(70, 78, 90, 0.6)",
     backgroundColor: "rgba(24, 28, 36, 0.95)",
+  },
+  bannerPagination: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  bannerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(140, 152, 168, 0.45)",
+  },
+  bannerDotActive: {
+    width: 20,
+    backgroundColor: "#E6E8EA",
   },
   bannerMedia: {
     width: "100%",
@@ -669,6 +874,11 @@ const styles = StyleSheet.create({
   productRow: {
     flexDirection: "row",
     gap: 12,
+  },
+  emptySectionText: {
+    color: "#8C98A8",
+    fontSize: 13,
+    paddingVertical: 8,
   },
   helpCard: {
     flexDirection: "row",

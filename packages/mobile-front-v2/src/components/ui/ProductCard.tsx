@@ -12,6 +12,7 @@ interface ProductCardProps {
   description: string;
   price: number;
   originalPrice?: number;
+  isOnPromotion?: boolean;
   image: string;
   category: string;
   onAddToCart?: () => void;
@@ -25,6 +26,7 @@ export function ProductCard({
   description,
   price,
   originalPrice,
+  isOnPromotion,
   image,
   category,
   onAddToCart,
@@ -33,6 +35,7 @@ export function ProductCard({
 }: ProductCardProps) {
   const navigation = useNavigation();
   const discount = originalPrice ? Math.round((1 - price / originalPrice) * 100) : 0;
+  const isOnSale = Boolean(isOnPromotion) || discount > 0;
   const handlePress = onPress ?? (() => navigation.navigate("ProductDetails" as never, { id } as never));
 
   return (
@@ -42,9 +45,9 @@ export function ProductCard({
     >
       <View style={styles.media}>
         <ImageWithSkeleton source={{ uri: image }} style={styles.mediaImage} defaultSource={fallbackImage} />
-        {discount > 0 && (
+        {isOnSale && (
           <View style={styles.discountTag}>
-            <Text style={styles.discountText}>-{discount}%</Text>
+            <Text style={styles.discountText}>{discount > 0 ? `PROMO -${discount}%` : "PROMO"}</Text>
           </View>
         )}
         <View style={styles.categoryTag}>
@@ -66,6 +69,7 @@ export function ProductCard({
             {originalPrice && (
               <Text style={styles.originalPrice}>{formatMoney(originalPrice)}</Text>
             )}
+            {isOnSale && <Text style={styles.saleHint}>Em promoção</Text>}
           </View>
 
           <Pressable
@@ -110,11 +114,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "#5DA2E6",
+    backgroundColor: "#E8595C",
   },
   discountText: {
     color: "#FFFFFF",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
   },
   categoryTag: {
@@ -159,6 +163,12 @@ const styles = StyleSheet.create({
     color: "#7C8796",
     fontSize: 12,
     textDecorationLine: "line-through",
+  },
+  saleHint: {
+    color: "#E8595C",
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 2,
   },
   addButton: {
     width: 38,

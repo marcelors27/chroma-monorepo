@@ -99,8 +99,11 @@ export function CondoProvider({
         }));
       setCondos(mapped);
       setActiveCondoState((current) => {
-        if (current && mapped.some((condo) => condo.id === current.id)) {
-          return current;
+        if (current) {
+          const refreshed = mapped.find((condo) => condo.id === current.id);
+          if (refreshed) {
+            return refreshed;
+          }
         }
         return mapped[0] || null;
       });

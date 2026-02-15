@@ -30,6 +30,54 @@ const normalizeText = (value: string) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
+const PROMO_KEYWORDS = ["promo", "promoc", "sale", "oferta", "desconto"];
+
+const isPromotionValue = (value: unknown) => {
+  if (value === true || value === 1) return true;
+  if (typeof value === "number") return value > 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return false;
+    if (["true", "1", "yes", "sim", "on", "active", "ativo"].includes(normalized)) return true;
+    if (PROMO_KEYWORDS.some((keyword) => normalized.includes(keyword))) return true;
+  }
+  return false;
+};
+
+const hasPromotionKeyword = (value: unknown) => {
+  const text = String(value ?? "").toLowerCase();
+  return PROMO_KEYWORDS.some((keyword) => text.includes(keyword));
+};
+
+const hasPromotionMetadata = (metadata?: Record<string, unknown> | null) => {
+  if (!metadata) return false;
+  return Object.entries(metadata).some(([key, value]) => {
+    if (hasPromotionKeyword(key)) return isPromotionValue(value);
+    return false;
+  });
+};
+
+const hasPromotionFlag = (product?: MedusaProduct) => {
+  if (!product) return false;
+  const variant = getVariant(product);
+  const variantPrices = (variant?.prices || []) as Array<Record<string, unknown>>;
+  const calculated = variant?.calculated_price as Record<string, unknown> | number | undefined;
+
+  const metadataSignal =
+    hasPromotionMetadata((product.metadata || null) as Record<string, unknown> | null) ||
+    hasPromotionMetadata((variant?.metadata || null) as Record<string, unknown> | null);
+  const tagsSignal = Array.isArray(product.tags) && product.tags.some((tag) => hasPromotionKeyword(tag?.value));
+  const pricesSignal = variantPrices.some(
+    (price) => hasPromotionKeyword(price?.price_list_type) || isPromotionValue(price?.price_list_id)
+  );
+  const calculatedSignal =
+    typeof calculated === "object" &&
+    calculated !== null &&
+    (hasPromotionKeyword(calculated?.price_list_type) || isPromotionValue(calculated?.price_list_id));
+
+  return metadataSignal || tagsSignal || pricesSignal || calculatedSignal;
+};
+
 export default function Produtos() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,6 +107,7 @@ export default function Produtos() {
           description: product.description || "Descrição não informada.",
           price: pricing.finalPrice,
           originalPrice: pricing.onSale ? pricing.basePrice ?? undefined : undefined,
+          isOnPromotion: pricing.onSale || hasPromotionFlag(product),
           image: getProductImage(product) || "",
           category: getProductCategory(product),
           inStock: (variant?.inventory_quantity ?? 0) > 0,
@@ -120,7 +169,7 @@ export default function Produtos() {
         normalizeText(product.name).includes(normalizeText(searchQuery)) ||
         normalizeText(product.description).includes(normalizeText(searchQuery));
       const matchesPrice = product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1];
-      const matchesDiscount = !filters.onlyDiscounted || product.originalPrice;
+      const matchesDiscount = !filters.onlyDiscounted || product.isOnPromotion;
       const matchesStock = !filters.inStock || product.inStock;
       return matchesCategory && matchesSearch && matchesPrice && matchesDiscount && matchesStock;
     });

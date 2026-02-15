@@ -33,6 +33,54 @@ import {
   formatMoney,
 } from "@/lib/medusa";
 
+const PROMO_KEYWORDS = ["promo", "promoc", "sale", "oferta", "desconto"];
+
+const isPromotionValue = (value: unknown) => {
+  if (value === true || value === 1) return true;
+  if (typeof value === "number") return value > 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return false;
+    if (["true", "1", "yes", "sim", "on", "active", "ativo"].includes(normalized)) return true;
+    if (PROMO_KEYWORDS.some((keyword) => normalized.includes(keyword))) return true;
+  }
+  return false;
+};
+
+const hasPromotionKeyword = (value: unknown) => {
+  const text = String(value ?? "").toLowerCase();
+  return PROMO_KEYWORDS.some((keyword) => text.includes(keyword));
+};
+
+const hasPromotionMetadata = (metadata?: Record<string, unknown> | null) => {
+  if (!metadata) return false;
+  return Object.entries(metadata).some(([key, value]) => {
+    if (hasPromotionKeyword(key)) return isPromotionValue(value);
+    return false;
+  });
+};
+
+const hasPromotionFlag = (product?: MedusaProduct) => {
+  if (!product) return false;
+  const variant = getVariant(product);
+  const variantPrices = (variant?.prices || []) as Array<Record<string, unknown>>;
+  const calculated = variant?.calculated_price as Record<string, unknown> | number | undefined;
+
+  const metadataSignal =
+    hasPromotionMetadata((product.metadata || null) as Record<string, unknown> | null) ||
+    hasPromotionMetadata((variant?.metadata || null) as Record<string, unknown> | null);
+  const tagsSignal = Array.isArray(product.tags) && product.tags.some((tag) => hasPromotionKeyword(tag?.value));
+  const pricesSignal = variantPrices.some(
+    (price) => hasPromotionKeyword(price?.price_list_type) || isPromotionValue(price?.price_list_id)
+  );
+  const calculatedSignal =
+    typeof calculated === "object" &&
+    calculated !== null &&
+    (hasPromotionKeyword(calculated?.price_list_type) || isPromotionValue(calculated?.price_list_id));
+
+  return metadataSignal || tagsSignal || pricesSignal || calculatedSignal;
+};
+
 const Home = () => {
   const { terms } = useBusinessTerms();
   const { addItem } = useCart();
@@ -55,25 +103,8 @@ const Home = () => {
 
   const promotions = useMemo(() => {
     const items = data?.products || [];
-    const isTruthy = (value: unknown) => {
-      if (value === true || value === 1) return true;
-      if (typeof value === "string") {
-        const normalized = value.trim().toLowerCase();
-        return ["true", "1", "yes", "sim"].includes(normalized);
-      }
-      return false;
-    };
-    const isFeatured = (product: MedusaProduct) => {
-      const metadata = product?.metadata || {};
-      return (
-        isTruthy((metadata as any).featured) ||
-        isTruthy((metadata as any).destaque) ||
-        isTruthy((metadata as any).em_destaque)
-      );
-    };
 
     return items
-      .filter((product: MedusaProduct) => isFeatured(product))
       .map((product: MedusaProduct) => {
         const variant = getVariant(product);
         const pricing = getVariantPricing(variant);
@@ -85,14 +116,16 @@ const Home = () => {
           salePrice: pricing.finalPrice,
           discount: pricing.discountPercent,
           onSale: pricing.onSale,
+          isPromotion: pricing.onSale || hasPromotionFlag(product),
           image: getProductImage(product),
           validUntil: "",
           variantId: variant?.id,
           category: getProductCategory(product),
         };
       })
+      .filter((product) => Boolean(product.isPromotion))
       .slice(0, 3);
-  }, [data]);
+  }, [data, terms.labelPluralLower]);
 
   const handleAddToCart = (promo: (typeof promotions)[0]) => {
     if (!promo?.variantId) {
@@ -502,7 +535,7 @@ const Home = () => {
           <div className="flex items-center gap-2">
             <Tag className="h-5 w-5 text-primary" />
             <h2 className="text-xl font-bold" data-testid="home-promotions-title">
-              Promoções em Destaque
+              Destaques de promoções
             </h2>
           </div>
           <Link to="/dashboard">
@@ -539,6 +572,7 @@ const Home = () => {
             promotions.map((promo) => {
               const showDiscount =
                 promo.originalPrice && promo.originalPrice > promo.salePrice && promo.discount;
+              const showPromotionBadge = promo.isPromotion;
               return (
                 <Card
                   key={promo.id}
@@ -560,10 +594,16 @@ const Home = () => {
                       alt={promo.title}
                       className="w-full h-full object-cover"
                     />
-                    {showDiscount && (
+                    {showPromotionBadge && (
                       <Badge className="absolute top-2 right-2 bg-destructive text-destructive-foreground">
-                        <Percent className="h-3 w-3 mr-1" />
-                        {promo.discount}% OFF
+                        {showDiscount ? (
+                          <>
+                            <Percent className="h-3 w-3 mr-1" />
+                            {promo.discount}% OFF
+                          </>
+                        ) : (
+                          "PROMO"
+                        )}
                       </Badge>
                     )}
                   </div>

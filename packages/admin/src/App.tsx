@@ -440,7 +440,13 @@ export default function App() {
         }
         if (ordersRes.ok) {
           const json = await ordersRes.json()
-          setOrders(json.orders ?? [])
+          const rawOrders = json.orders ?? []
+          const mappedOrders = rawOrders.map((order: any) => {
+            const manualFulfillmentStatus = order?.metadata?.manual_fulfillment_status
+            if (!manualFulfillmentStatus) return order
+            return { ...order, fulfillment_status: manualFulfillmentStatus }
+          })
+          setOrders(mappedOrders)
         }
 
         if (companiesRes.ok) {
@@ -508,11 +514,34 @@ export default function App() {
 
         if (salesChannelsRes.ok) {
           const json = await salesChannelsRes.json()
-          setSalesChannels(json.sales_channels ?? [])
+          setSalesChannels(json.sales_channels ?? json.salesChannels ?? [])
+          setCatalogError(null)
+        } else if (salesChannelsRes.status === 403) {
+          // Some admin users may not have explicit sales-channel permission.
+          // Keep the dashboard usable without surfacing a hard catalog error.
+          setSalesChannels([])
           setCatalogError(null)
         } else {
-          const body = await salesChannelsRes.text()
-          setCatalogError(body || "Não foi possível buscar sales channels")
+          let fallbackLoaded = false
+          try {
+            const fallbackRes = await fetch(
+              `${MEDUSA_URL}/admin/sales-channels?limit=200&fields=${encodeURIComponent("+id,+name,+description,+is_disabled")}`,
+              { headers }
+            )
+            if (fallbackRes.ok) {
+              const fallbackJson = await fallbackRes.json()
+              setSalesChannels(fallbackJson.sales_channels ?? fallbackJson.salesChannels ?? [])
+              setCatalogError(null)
+              fallbackLoaded = true
+            }
+          } catch {
+            // handled below
+          }
+
+          if (!fallbackLoaded) {
+            const body = await salesChannelsRes.text()
+            setCatalogError(body || "Não foi possível buscar sales channels")
+          }
         }
 
         if (regionsRes.ok) {
@@ -1361,6 +1390,21 @@ export default function App() {
                       setUsersError={setStoreUsersError}
                       businessTypes={businessTypes}
                       mode="create"
+                    />
+                  }
+                />
+                <Route
+                  path="/usuarios/:userId"
+                  element={
+                    <UsersSection
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      users={storeUsers}
+                      setUsers={setStoreUsers}
+                      usersError={storeUsersError}
+                      setUsersError={setStoreUsersError}
+                      businessTypes={businessTypes}
+                      mode="actions"
                     />
                   }
                 />

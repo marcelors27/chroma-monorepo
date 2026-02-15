@@ -29,9 +29,15 @@ import { useQueryClient } from "@tanstack/react-query";
 
 type StatusTone = "info" | "warning" | "success" | "danger";
 
+const resolveFulfillmentStatus = (order: MedusaOrder) => {
+  return (order.metadata?.manual_fulfillment_status as string | undefined) || order.fulfillment_status;
+};
+
 const resolveStatusLabel = (order: MedusaOrder) => {
-  if (order.status === "canceled" || order.fulfillment_status === "canceled") return "Cancelado";
-  switch (order.fulfillment_status) {
+  const fulfillmentStatus = resolveFulfillmentStatus(order);
+  if (order.status === "canceled" || fulfillmentStatus === "canceled") return "Cancelado";
+  if (order.status === "completed") return "Entregue";
+  switch (fulfillmentStatus) {
     case "delivered":
       return "Entregue";
     case "shipped":
@@ -52,10 +58,12 @@ const resolveStatusLabel = (order: MedusaOrder) => {
 };
 
 const resolveStatusTone = (order: MedusaOrder): StatusTone => {
-  if (order.status === "canceled" || order.fulfillment_status === "canceled") return "danger";
-  if (order.fulfillment_status === "delivered") return "success";
-  if (order.fulfillment_status === "shipped" || order.fulfillment_status === "partially_shipped") return "info";
-  if (order.fulfillment_status === "fulfilled" || order.fulfillment_status === "partially_fulfilled") return "info";
+  const fulfillmentStatus = resolveFulfillmentStatus(order);
+  if (order.status === "canceled" || fulfillmentStatus === "canceled") return "danger";
+  if (order.status === "completed") return "success";
+  if (fulfillmentStatus === "delivered") return "success";
+  if (fulfillmentStatus === "shipped" || fulfillmentStatus === "partially_shipped") return "info";
+  if (fulfillmentStatus === "fulfilled" || fulfillmentStatus === "partially_fulfilled") return "info";
   return "warning";
 };
 
@@ -72,6 +80,7 @@ export default function Pedidos() {
     queryKey: ["orders"],
     queryFn: listOrders,
     refetchOnMount: "always",
+    refetchInterval: 30000,
   });
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
@@ -88,6 +97,16 @@ export default function Pedidos() {
     };
     loadPending();
   }, []);
+
+  const pendingByCollection = useMemo(() => {
+    const map = new Map<string, PendingPayment>();
+    pendingPayments.forEach((pending) => {
+      if (pending.payment_collection_id) {
+        map.set(pending.payment_collection_id, pending);
+      }
+    });
+    return map;
+  }, [pendingPayments]);
 
   const orders = useMemo(() => {
     return (data?.orders || []).map((order) => {
@@ -108,14 +127,14 @@ export default function Pedidos() {
         rawId: order.id,
         payment_collection_id: order.payment_collection_id,
         boletoExpiresAfterDays: order.shipping_address?.metadata?.boleto_expires_after_days,
+        isHistory:
+          order.status === "canceled" ||
+          resolveFulfillmentStatus(order) === "canceled" ||
+          resolveFulfillmentStatus(order) === "delivered" ||
+          order.status === "completed",
       };
     });
-  }, [data]);
-
-  const isHistoryOrder = (order: MedusaOrder) =>
-    order.status === "canceled" ||
-    order.fulfillment_status === "canceled" ||
-    order.fulfillment_status === "delivered";
+  }, [data, terms.label]);
 
   const ordersWithoutPending = useMemo(() => {
     return orders.filter(
@@ -123,14 +142,8 @@ export default function Pedidos() {
     );
   }, [orders, pendingByCollection]);
 
-  const inProgressOrders = useMemo(
-    () => ordersWithoutPending.filter((order) => !isHistoryOrder(order)),
-    [ordersWithoutPending]
-  );
-  const historyOrders = useMemo(
-    () => ordersWithoutPending.filter(isHistoryOrder),
-    [ordersWithoutPending]
-  );
+  const inProgressOrders = useMemo(() => ordersWithoutPending.filter((order) => !order.isHistory), [ordersWithoutPending]);
+  const historyOrders = useMemo(() => ordersWithoutPending.filter((order) => order.isHistory), [ordersWithoutPending]);
 
   const { pendingCount, progressCount, historyCount } = useMemo(() => {
     return {
@@ -139,16 +152,6 @@ export default function Pedidos() {
       historyCount: historyOrders.length,
     };
   }, [pendingPayments.length, inProgressOrders.length, historyOrders.length]);
-
-  const pendingByCollection = useMemo(() => {
-    const map = new Map<string, PendingPayment>();
-    pendingPayments.forEach((pending) => {
-      if (pending.payment_collection_id) {
-        map.set(pending.payment_collection_id, pending);
-      }
-    });
-    return map;
-  }, [pendingPayments]);
 
   const visibleOrders = useMemo(() => {
     const pendingMapped = pendingPayments.map((pending) => ({
@@ -174,7 +177,7 @@ export default function Pedidos() {
       return inProgressOrders;
     }
     return historyOrders;
-  }, [activeTab, pendingPayments, inProgressOrders, historyOrders, pendingByCollection]);
+  }, [activeTab, pendingPayments, inProgressOrders, historyOrders, terms.label]);
 
   const showSkeleton = isLoading && visibleOrders.length === 0;
 

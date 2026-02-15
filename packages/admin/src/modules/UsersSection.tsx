@@ -13,7 +13,7 @@ type UsersSectionProps = {
   usersError: string | null
   setUsersError: Dispatch<SetStateAction<string | null>>
   businessTypes: { key: string; label: string }[]
-  mode?: "list" | "create" | "reset" | "status"
+  mode?: "list" | "create" | "reset" | "status" | "actions"
   userId?: string
 }
 
@@ -34,6 +34,7 @@ export default function UsersSection({
   const isCreateMode = mode === "create"
   const isResetMode = mode === "reset"
   const isStatusMode = mode === "status"
+  const isActionsMode = mode === "actions"
   const [createForm, setCreateForm] = useState({
     email: "",
     first_name: "",
@@ -507,9 +508,9 @@ export default function UsersSection({
     }
   }
 
-  if (isResetMode || isStatusMode) {
+  if (isResetMode || isStatusMode || isActionsMode) {
     const user = users.find((item) => item.id === resolvedUserId) || null
-    const title = isResetMode ? "Resetar senha" : "Status do usuário"
+    const title = isResetMode ? "Resetar senha" : isStatusMode ? "Status do usuário" : "Ações do usuário"
 
     if (!user) {
       return (
@@ -550,25 +551,46 @@ export default function UsersSection({
               Enviar nova senha
             </button>
           ) : (
-            <button
-              className="btn"
-              type="button"
-              onClick={async () => {
-                const ok = await toggleUserStatus(user)
-                if (ok) navigate("/usuarios")
-              }}
-            >
-              {user.disabled ? "Ativar usuário" : "Desativar usuário"}
-            </button>
-            <button
-              className="btn btn-secondary"
-              type="button"
-              onClick={() => setDeletePromptUser(user)}
-              disabled={deletingUserId === user.id}
-              style={{ color: "#c23b3b", borderColor: "rgba(194, 59, 59, 0.35)" }}
-            >
-              {deletingUserId === user.id ? "Removendo..." : "Remover usuário"}
-            </button>
+            <>
+              {!isStatusMode && (
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={async () => {
+                    const ok = await handleResetPassword(user.id)
+                    if (ok) navigate("/usuarios")
+                  }}
+                >
+                  Enviar nova senha
+                </button>
+              )}
+              <button
+                className="btn"
+                type="button"
+                onClick={async () => {
+                  const ok = await toggleUserStatus(user)
+                  if (ok) navigate("/usuarios")
+                }}
+              >
+                {user.disabled ? "Ativar usuário" : "Desativar usuário"}
+              </button>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={async () => {
+                  const confirmed = window.confirm(
+                    `Remover permanentemente ${user.email || user.id}? Essa ação não pode ser desfeita.`
+                  )
+                  if (!confirmed) return
+                  const ok = await handleDeleteUser(user)
+                  if (ok) navigate("/usuarios")
+                }}
+                disabled={deletingUserId === user.id}
+                style={{ color: "#c23b3b", borderColor: "rgba(194, 59, 59, 0.35)" }}
+              >
+                {deletingUserId === user.id ? "Removendo..." : "Remover usuário"}
+              </button>
+            </>
           )}
         </div>
 
@@ -804,25 +826,9 @@ export default function UsersSection({
                             <button
                               className="btn btn-sm"
                               type="button"
-                              onClick={() => navigate(`/usuarios/${user.id}/resetar-senha`)}
+                              onClick={() => navigate(`/usuarios/${user.id}`)}
                             >
-                              Resetar
-                            </button>
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              type="button"
-                              onClick={() => navigate(`/usuarios/${user.id}/status`)}
-                            >
-                              {user.disabled ? "Ativar" : "Desativar"}
-                            </button>
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              type="button"
-                              onClick={() => setDeletePromptUser(user)}
-                              disabled={deletingUserId === user.id}
-                              style={{ color: "#c23b3b", borderColor: "rgba(194, 59, 59, 0.35)" }}
-                            >
-                              {deletingUserId === user.id ? "Removendo..." : "Remover"}
+                              Ações
                             </button>
                           </div>
                         </td>

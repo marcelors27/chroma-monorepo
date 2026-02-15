@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import {
   ArrowLeft,
@@ -14,7 +14,7 @@ import {
   Share2,
   Star,
 } from "lucide-react-native";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -32,6 +32,8 @@ import {
   getVariant,
   getVariantPricing,
   formatMoney,
+  listProductReviews,
+  createProductReview,
   resolveMediaUrl,
   retrieveProduct,
 } from "@/lib/medusa";
@@ -60,18 +62,32 @@ export default function ProductDetails() {
   const route = useRoute();
   const { share } = useShare();
   const { toggleFavorite, isFavorite } = useFavorites();
-  const { activeCondo } = useCondo();
+  const { activeCondo, refreshCondos } = useCondo();
   const { addItem, isAddingItem } = useCart();
   const { terms } = useBusinessTerms();
+  const queryClient = useQueryClient();
   const [quantity, setQuantity] = useState(1);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
+  const [newReviewRating, setNewReviewRating] = useState(0);
+  const [newReviewComment, setNewReviewComment] = useState("");
 
   const id = (route.params as { id?: string } | undefined)?.id ?? "";
   const { data, isLoading } = useQuery({
     queryKey: ["product", id],
     queryFn: () => retrieveProduct(id),
+    enabled: Boolean(id),
+  });
+  const { data: reviewsData, isLoading: isLoadingReviews, refetch: refetchReviews } = useQuery({
+    queryKey: ["product-reviews", id, activeCondo?.id || "all"],
+    queryFn: () =>
+      listProductReviews({
+        productId: id,
+        companyId: activeCondo?.id || undefined,
+        limit: 100,
+      }),
     enabled: Boolean(id),
   });
 
@@ -121,7 +137,7 @@ export default function ProductDetails() {
       originalPrice: pricing.onSale ? pricing.basePrice ?? undefined : undefined,
       media,
       category: getProductCategory(rawProduct),
-      rating: Number(rawProduct.metadata?.rating) || 4.6,
+      rating: Number(rawProduct.metadata?.rating) || 0,
       reviewCount: Number(rawProduct.metadata?.reviewCount) || 0,
       features:
         Array.isArray(rawProduct.metadata?.features)
@@ -140,33 +156,40 @@ export default function ProductDetails() {
 
   const discount = product?.originalPrice ? Math.round((1 - product.price / product.originalPrice) * 100) : 0;
   const ratingStars = useMemo(() => Array.from({ length: 5 }, (_, index) => index + 1), []);
+  const backendReviews = reviewsData?.reviews || [];
+  const eligibility = reviewsData?.eligibility;
+  const canReview = Boolean(eligibility?.can_review);
+  const pointsPerReview = Number(eligibility?.points_per_review || 0);
+  const reviewCount = Number(reviewsData?.summary?.total_count || product?.reviewCount || 0);
+  const reviewRating = Number(reviewsData?.summary?.average_rating || product?.rating || 0);
 
-  const reviews = [
-    {
-      id: "1",
-      name: "Roberto Mendes",
-      date: "15/01/2024",
-      rating: 5,
-      text: `Excelente kit! Os produtos são de ótima qualidade e rendem muito. ${terms.label} nunca esteve tão limpo.`,
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=60",
+  const submitReview = useMutation({
+    mutationFn: async () => {
+      if (!product) throw new Error("Produto não encontrado.");
+      return createProductReview({
+        productId: product.id,
+        companyId: activeCondo?.id || undefined,
+        rating: newReviewRating,
+        comment: newReviewComment.trim(),
+      });
     },
-    {
-      id: "2",
-      name: "Ana Paula",
-      date: "10/01/2024",
-      rating: 4,
-      text: "Muito bom custo-benefício. A fragrância é agradável e dura bastante. Só achei a embalagem um pouco grande.",
-      avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=120&auto=format&fit=crop&q=60",
+    onSuccess: async (result) => {
+      const pointsEarned = Number(result?.points?.points_earned || 0);
+      setNewReviewRating(0);
+      setNewReviewComment("");
+      setIsReviewFormOpen(false);
+      await Promise.all([refetchReviews(), refreshCondos()]);
+      queryClient.invalidateQueries({ queryKey: ["product-reviews", id] });
+      toast.success(
+        pointsEarned > 0
+          ? `Avaliacao enviada. +${pointsEarned} ${terms.pointsLabelLower} para ${activeCondo?.name || terms.labelLower}.`
+          : "Avaliacao enviada com sucesso."
+      );
     },
-    {
-      id: "3",
-      name: "Carlos Silva",
-      date: "05/01/2024",
-      rating: 5,
-      text: "Já é a terceira vez que compro. Produto confiável e entrega sempre no prazo.",
-      avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&auto=format&fit=crop&q=60",
+    onError: (error: any) => {
+      toast.error(error?.message || "Nao foi possivel enviar a avaliacao.");
     },
-  ];
+  });
 
   if (isLoading) {
     return (
@@ -293,14 +316,14 @@ export default function ProductDetails() {
               {ratingStars.map((star) => (
                 <Star
                   key={star}
-                  color={star <= Math.round(product.rating) ? "#F0C86E" : "#394050"}
+                  color={star <= Math.round(reviewRating) ? "#F0C86E" : "#394050"}
                   size={16}
-                  fill={star <= Math.round(product.rating) ? "#F0C86E" : "transparent"}
+                  fill={star <= Math.round(reviewRating) ? "#F0C86E" : "transparent"}
                 />
               ))}
             </View>
-            <Text style={styles.ratingText}>{product.rating.toFixed(1)}</Text>
-            <Text style={styles.reviewCount}>({product.reviewCount} avaliações)</Text>
+            <Text style={styles.ratingText}>{reviewRating.toFixed(1)}</Text>
+            <Text style={styles.reviewCount}>({reviewCount} avaliações)</Text>
           </View>
 
           <Text style={styles.description}>{product.fullDescription}</Text>
@@ -385,34 +408,112 @@ export default function ProductDetails() {
 
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Avaliações</Text>
-            <Pressable onPress={() => toast.info("Funcionalidade em breve")}> 
-              <Text style={styles.sectionLink}>Ver todas</Text>
+            <Pressable
+              onPress={() => {
+                if (!canReview) return;
+                setIsReviewFormOpen((prev) => !prev);
+              }}
+            >
+              <Text style={styles.sectionLink}>
+                {canReview
+                  ? isReviewFormOpen
+                    ? "Cancelar"
+                    : pointsPerReview > 0
+                      ? `Avaliar e ganhar +${pointsPerReview}`
+                      : "Avaliar"
+                  : "Após compra"}
+              </Text>
             </Pressable>
           </View>
 
-          <View style={styles.reviewsList}>
-            {reviews.map((review) => (
-              <View key={review.id} style={styles.reviewCard}>
-                <View style={styles.reviewHeader}>
-                  <Image source={{ uri: review.avatar }} style={styles.reviewAvatar} />
-                  <View style={styles.reviewHeaderText}>
-                    <Text style={styles.reviewName}>{review.name}</Text>
-                    <Text style={styles.reviewDate}>{review.date}</Text>
-                  </View>
-                </View>
-                <View style={styles.reviewStars}>
-                  {ratingStars.map((star) => (
+          <View style={styles.reviewCalloutCard}>
+            <Text style={styles.reviewCalloutTitle}>Sua opinião vale pontos</Text>
+            <Text style={styles.reviewCalloutText}>
+              {canReview
+                ? pointsPerReview > 0
+                  ? `Avalie este produto e ganhe +${pointsPerReview} ${terms.pointsLabelLower} para ${activeCondo?.name || terms.labelLower}.`
+                  : "Avalie este produto e compartilhe sua experiência."
+                : "As avaliações ficam liberadas após a compra concluída deste produto."}
+            </Text>
+          </View>
+
+          {isReviewFormOpen && canReview && (
+            <View style={styles.reviewFormCard}>
+              <Text style={styles.reviewFormLabel}>Sua nota</Text>
+              <View style={styles.reviewStars}>
+                {ratingStars.map((star) => (
+                  <Pressable key={`new-rating-${star}`} onPress={() => setNewReviewRating(star)}>
                     <Star
-                      key={star}
-                      color={star <= review.rating ? "#F0C86E" : "#394050"}
-                      size={14}
-                      fill={star <= review.rating ? "#F0C86E" : "transparent"}
+                      color={star <= newReviewRating ? "#F0C86E" : "#394050"}
+                      size={18}
+                      fill={star <= newReviewRating ? "#F0C86E" : "transparent"}
                     />
-                  ))}
-                </View>
-                <Text style={styles.reviewText}>{review.text}</Text>
+                  </Pressable>
+                ))}
               </View>
-            ))}
+              <TextInput
+                multiline
+                value={newReviewComment}
+                onChangeText={setNewReviewComment}
+                placeholder="Conte sua experiência com o produto..."
+                placeholderTextColor="#6F7B8B"
+                style={styles.reviewInput}
+                textAlignVertical="top"
+                maxLength={500}
+              />
+              <Pressable
+                onPress={() => {
+                  if (newReviewRating < 1 || newReviewComment.trim().length < 5) {
+                    toast.error("Preencha nota e comentário (mínimo 5 caracteres).");
+                    return;
+                  }
+                  submitReview.mutate();
+                }}
+                style={[styles.reviewSubmitButton, submitReview.isPending && styles.reviewSubmitButtonDisabled]}
+                disabled={submitReview.isPending}
+              >
+                <Text style={styles.reviewSubmitButtonText}>
+                  {submitReview.isPending ? "Enviando..." : "Enviar avaliação"}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          <View style={styles.reviewsList}>
+            {isLoadingReviews ? (
+              <Text style={styles.emptyReviewsText}>Carregando avaliações...</Text>
+            ) : backendReviews.length === 0 ? (
+              <Text style={styles.emptyReviewsText}>Nenhuma avaliação ainda. Seja o primeiro a avaliar.</Text>
+            ) : (
+              backendReviews.map((review) => (
+                <View key={review.id} style={styles.reviewCard}>
+                  <View style={styles.reviewHeader}>
+                    <View style={styles.reviewAvatarFallback}>
+                      <Text style={styles.reviewAvatarFallbackText}>
+                        {(review.author_name || "C").charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={styles.reviewHeaderText}>
+                      <Text style={styles.reviewName}>{review.author_name || "Cliente"}</Text>
+                      <Text style={styles.reviewDate}>
+                        {review.created_at ? new Date(review.created_at).toLocaleDateString("pt-BR") : "Agora"}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.reviewStars}>
+                    {ratingStars.map((star) => (
+                      <Star
+                        key={`${review.id}-${star}`}
+                        color={star <= Number(review.rating || 0) ? "#F0C86E" : "#394050"}
+                        size={14}
+                        fill={star <= Number(review.rating || 0) ? "#F0C86E" : "transparent"}
+                      />
+                    ))}
+                  </View>
+                  <Text style={styles.reviewText}>{review.comment}</Text>
+                </View>
+              ))
+            )}
           </View>
         </View>
       </ScrollView>
@@ -691,9 +792,75 @@ const styles = StyleSheet.create({
     color: "#5DA2E6",
     fontSize: 13,
   },
+  reviewCalloutCard: {
+    marginTop: 10,
+    backgroundColor: "rgba(248, 194, 92, 0.12)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(248, 194, 92, 0.28)",
+    padding: 12,
+  },
+  reviewCalloutTitle: {
+    color: "#F8C25C",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  reviewCalloutText: {
+    color: "#D9DEE6",
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 6,
+  },
+  reviewFormCard: {
+    marginTop: 12,
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(46, 54, 68, 0.5)",
+    gap: 10,
+  },
+  reviewFormLabel: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  reviewInput: {
+    minHeight: 100,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(93, 162, 230, 0.35)",
+    backgroundColor: "rgba(20, 24, 30, 0.9)",
+    color: "#E6E8EA",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  reviewSubmitButton: {
+    marginTop: 2,
+    backgroundColor: "#5DA2E6",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+  },
+  reviewSubmitButtonDisabled: {
+    opacity: 0.65,
+  },
+  reviewSubmitButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
   reviewsList: {
     marginTop: 12,
     gap: 12,
+  },
+  emptyReviewsText: {
+    color: "#8C98A8",
+    fontSize: 12,
+    lineHeight: 18,
   },
   reviewCard: {
     backgroundColor: "rgba(24, 28, 36, 0.95)",
@@ -708,10 +875,18 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 10,
   },
-  reviewAvatar: {
+  reviewAvatarFallback: {
     width: 36,
     height: 36,
     borderRadius: 18,
+    backgroundColor: "rgba(93, 162, 230, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewAvatarFallbackText: {
+    color: "#CFE5FF",
+    fontSize: 14,
+    fontWeight: "700",
   },
   reviewHeaderText: {
     flex: 1,

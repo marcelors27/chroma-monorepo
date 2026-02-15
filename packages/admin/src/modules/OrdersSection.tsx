@@ -42,16 +42,18 @@ const formatHistoryDate = (value?: string) => {
 
 const ORDER_STATUS_OPTIONS = [
   { value: "pending", label: "Pendente" },
-  { value: "processing", label: "Processando" },
+  { value: "requires_action", label: "Requer ação" },
   { value: "completed", label: "Concluído" },
   { value: "canceled", label: "Cancelado" },
 ]
 
 const FULFILLMENT_STATUS_OPTIONS = [
   { value: "not_fulfilled", label: "Não entregue" },
-  { value: "processing", label: "Processando" },
+  { value: "partially_fulfilled", label: "Separação parcial" },
+  { value: "fulfilled", label: "Separado" },
   { value: "shipped", label: "Enviado" },
   { value: "partially_shipped", label: "Parcialmente enviado" },
+  { value: "partially_delivered", label: "Parcialmente entregue" },
   { value: "delivered", label: "Entregue" },
   { value: "canceled", label: "Cancelado" },
 ]
@@ -129,10 +131,19 @@ export default function OrdersSection({
 
   const saveOrder = async () => {
     if (!activeOrder) return
-    const payload = {
-      status: draft.status ?? activeOrder.status,
-      fulfillment_status: draft.fulfillment_status ?? activeOrder.fulfillment_status,
+    const payload: Partial<Order> = {}
+    if (draft.status && draft.status !== activeOrder.status) {
+      payload.status = draft.status
     }
+    if (draft.fulfillment_status && draft.fulfillment_status !== activeOrder.fulfillment_status) {
+      payload.fulfillment_status = draft.fulfillment_status
+    }
+
+    if (!Object.keys(payload).length) {
+      setError("Nenhuma alteração para salvar.")
+      return
+    }
+
     setSaving(true)
     setError(null)
     try {

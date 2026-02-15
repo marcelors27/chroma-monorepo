@@ -86,27 +86,106 @@ const buildTrackingSteps = (createdAt?: string) => {
   ];
 };
 
-const resolveCurrentTrackingStep = (order?: MedusaOrder | null) => {
-  if (!order) return "confirmed";
-  if (order.status === "canceled" || order.fulfillment_status === "canceled") return "confirmed";
-  switch (order.fulfillment_status) {
+const resolveFulfillmentStatus = (order?: MedusaOrder | null) => {
+  if (!order) return undefined;
+  return (order.metadata?.manual_fulfillment_status as string | undefined) || order.fulfillment_status;
+};
+
+const formatOrderStatusLabel = (status?: string) => {
+  switch (status) {
+    case "pending":
+      return "Pendente";
+    case "requires_action":
+      return "Requer ação";
+    case "completed":
+      return "Concluído";
+    case "canceled":
+      return "Cancelado";
+    default:
+      return status || "—";
+  }
+};
+
+const formatFulfillmentStatusLabel = (status?: string) => {
+  switch (status) {
     case "not_fulfilled":
-    case "fulfilled":
+      return "Em separação";
     case "partially_fulfilled":
-      return "separation";
+      return "Separação parcial";
+    case "fulfilled":
+      return "Separado";
+    case "shipped":
+      return "Em trânsito";
+    case "partially_shipped":
+      return "Envio parcial";
+    case "partially_delivered":
+      return "Entrega parcial";
+    case "delivered":
+      return "Entregue";
+    case "canceled":
+      return "Cancelado";
+    default:
+      return status || "—";
+  }
+};
+
+const formatPaymentStatusLabel = (status?: string) => {
+  switch (status) {
+    case "captured":
+      return "Pago";
+    case "authorized":
+      return "Autorizado";
+    case "pending":
+      return "Pendente";
+    case "canceled":
+      return "Cancelado";
+    case "refunded":
+      return "Reembolsado";
+    default:
+      return status || "—";
+  }
+};
+
+type TrackingStage = "done" | "current" | "pending" | "blocked";
+
+const resolveTrackingStage = (order: MedusaOrder, index: number): TrackingStage => {
+  const fulfillmentStatus = resolveFulfillmentStatus(order);
+  const isCancelled = order.status === "canceled" || fulfillmentStatus === "canceled";
+  if (isCancelled) {
+    return index === 0 ? "done" : "blocked";
+  }
+
+  switch (fulfillmentStatus) {
+    case "not_fulfilled":
+    case "partially_fulfilled":
+      if (index === 0) return "done";
+      if (index === 1) return "current";
+      return "pending";
+    case "fulfilled":
+      if (index <= 1) return "done";
+      return "pending";
     case "shipped":
     case "partially_shipped":
-      return "transit";
+      if (index <= 1) return "done";
+      if (index === 2) return "current";
+      return "pending";
+    case "partially_delivered":
+      if (index <= 2) return "done";
+      if (index === 3) return "current";
+      return "pending";
     case "delivered":
-      return "out_for_delivery";
+      return "done";
     default:
-      return "confirmed";
+      if (index === 0) return "current";
+      return "pending";
   }
 };
 
 const resolveStatus = (order: MedusaOrder): OrderStatus => {
-  if (order.status === "canceled" || order.fulfillment_status === "canceled") return "cancelled";
-  switch (order.fulfillment_status) {
+  const fulfillmentStatus = resolveFulfillmentStatus(order);
+  if (order.status === "canceled" || fulfillmentStatus === "canceled") return "cancelled";
+  if (order.status === "completed") return "delivered";
+  switch (fulfillmentStatus) {
     case "delivered":
       return "delivered";
     case "shipped":
@@ -150,6 +229,8 @@ const Orders = () => {
     queryKey: ["orders"],
     queryFn: listOrders,
     refetchOnMount: "always",
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
   });
   const orders = data?.orders || [];
   const pendingCollections = new Set(
@@ -322,6 +403,57 @@ const Orders = () => {
   };
 
   const orderStatus = selectedOrder ? resolveStatus(selectedOrder) : "processing";
+  const timelineEvents = selectedOrder
+    ? (() => {
+        const history = Array.isArray(selectedOrder.metadata?.status_history)
+          ? selectedOrder.metadata.status_history
+          : [];
+        if (history.length) {
+          return history
+            .slice()
+            .reverse()
+            .map((entry: any, idx: number) => {
+              const status = entry?.to_status || entry?.status || selectedOrder.status || "—";
+              const fulfillment =
+                entry?.to_fulfillment_status ||
+                entry?.fulfillment_status ||
+                resolveFulfillmentStatus(selectedOrder) ||
+                "—";
+              const payment = entry?.payment_status || selectedOrder.payment_status || "—";
+              return {
+                key: `history-${idx}`,
+                icon: "processing",
+                label: `Entrega: ${formatFulfillmentStatusLabel(fulfillment)}`,
+                detail: `Pedido: ${formatOrderStatusLabel(status)} • Pagamento: ${formatPaymentStatusLabel(payment)}`,
+                date: entry?.at || selectedOrder.updated_at,
+              };
+            });
+        }
+        return [
+          {
+            key: "created",
+            icon: "created",
+            label: `Entrega: ${formatFulfillmentStatusLabel(resolveFulfillmentStatus(selectedOrder))}`,
+            detail: "Pedido realizado",
+            date: selectedOrder.created_at,
+          },
+          {
+            key: "fulfillment",
+            icon: "processing",
+            label: `Entrega: ${formatFulfillmentStatusLabel(resolveFulfillmentStatus(selectedOrder))}`,
+            detail: `Pedido: ${formatOrderStatusLabel(selectedOrder.status)} • Pagamento: ${formatPaymentStatusLabel(selectedOrder.payment_status)}`,
+            date: selectedOrder.updated_at,
+          },
+          {
+            key: "payment",
+            icon: "processing",
+            label: `Entrega: ${formatFulfillmentStatusLabel(resolveFulfillmentStatus(selectedOrder))}`,
+            detail: `Pagamento: ${formatPaymentStatusLabel(selectedOrder.payment_status)}`,
+            date: selectedOrder.updated_at,
+          },
+        ];
+      })()
+    : [];
 
   useEffect(() => {
     let active = true;
@@ -728,24 +860,55 @@ const Orders = () => {
                 </div>
                 <div className="space-y-2">
                   <div className="border-l-2 border-border pl-6 space-y-4">
-                    {buildTrackingSteps(selectedOrder.created_at).map((step) => {
-                      const currentStep = resolveCurrentTrackingStep(selectedOrder);
-                      const isCurrent = step.key === currentStep;
+                    {buildTrackingSteps(selectedOrder.created_at).map((step, index) => {
+                      const stage = resolveTrackingStage(selectedOrder, index);
+                      const isDone = stage === "done";
+                      const isCurrent = stage === "current";
+                      const isBlocked = stage === "blocked";
+                      const stageLabel = isBlocked
+                        ? "Interrompida"
+                        : isCurrent
+                          ? "Em andamento"
+                          : isDone
+                            ? "Concluída"
+                            : "Prevista";
+                      const stageClass = isBlocked
+                        ? "border-destructive/50 bg-destructive/10 text-destructive"
+                        : isCurrent
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : isDone
+                            ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-500"
+                            : "border-border bg-muted/20 text-muted-foreground";
                       return (
                         <div key={step.key} className="relative">
                           <span
                             className={`absolute -left-3 top-2 h-3 w-3 rounded-full border-2 ${
                               isCurrent
                                 ? "border-primary bg-primary/80 animate-pulse"
+                                : isDone
+                                  ? "border-emerald-500 bg-emerald-500/80"
+                                  : isBlocked
+                                    ? "border-destructive bg-destructive/70"
                                 : "border-muted bg-muted"
                             }`}
                           />
                           <div
                             className={`flex items-center justify-between border border-border p-3 bg-background ${
-                              isCurrent ? "border-primary/60" : ""
+                              isCurrent
+                                ? "border-primary/60"
+                                : isDone
+                                  ? "border-emerald-500/40"
+                                  : isBlocked
+                                    ? "border-destructive/40"
+                                    : ""
                             }`}
                           >
-                            <span className="text-sm font-medium">{step.title}</span>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-medium">{step.title}</span>
+                              <span className={`w-fit rounded-full border px-2 py-0.5 text-[11px] ${stageClass}`}>
+                                {stageLabel}
+                              </span>
+                            </div>
                             <span className="text-xs text-muted-foreground">{step.date}</span>
                           </div>
                         </div>
@@ -758,15 +921,12 @@ const Orders = () => {
               <div className="space-y-2">
                 <h3 className="font-semibold">Linha do tempo</h3>
                 <div className="space-y-2">
-                  {[
-                    { key: "created", label: "Pedido criado", date: selectedOrder.created_at },
-                    { key: selectedOrder.fulfillment_status || "processing", label: `Status: ${selectedOrder.fulfillment_status || "processando"}`, date: selectedOrder.updated_at },
-                    { key: selectedOrder.payment_status || "processing", label: `Pagamento: ${selectedOrder.payment_status || "processando"}`, date: selectedOrder.updated_at },
-                  ].map((event, idx) => (
-                    <div key={`${event.key}-${idx}`} className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <div className="text-primary">{trackingIcons[event.key] || <Clock className="h-4 w-4" />}</div>
+                  {timelineEvents.map((event) => (
+                    <div key={event.key} className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <div className="text-primary">{trackingIcons[event.icon] || <Clock className="h-4 w-4" />}</div>
                       <div>
                         <p className="font-medium text-foreground">{event.label}</p>
+                        {event.detail ? <p className="text-xs">{event.detail}</p> : null}
                         <p>{formatDate(event.date)}</p>
                       </div>
                     </div>

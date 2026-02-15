@@ -229,6 +229,28 @@ export type MedusaMarketingBanner = {
   updated_at?: string | null;
 };
 
+export type MedusaProductReview = {
+  id: string;
+  product_id: string;
+  customer_id: string;
+  company_id?: string | null;
+  order_id?: string | null;
+  rating: number;
+  comment: string;
+  author_name: string;
+  points_earned?: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type MedusaProductReviewEligibility = {
+  can_review: boolean;
+  points_per_review: number;
+  purchased_orders?: number;
+  reviewed_orders?: number;
+  remaining_reviews: number;
+};
+
 export type RecurrenceItem = {
   variant_id: string;
   quantity: number;
@@ -945,6 +967,49 @@ export const listNews = async (params?: { limit?: number; offset?: number }) => 
   });
 };
 
+export const listProductReviews = async (params: {
+  productId: string;
+  companyId?: string | null;
+  limit?: number;
+}) => {
+  const query = new URLSearchParams();
+  query.set("product_id", params.productId);
+  if (params.companyId) query.set("company_id", params.companyId);
+  if (params.limit) query.set("limit", String(params.limit));
+  return apiFetch<{
+    reviews: MedusaProductReview[];
+    summary: { total_count: number; average_rating: number };
+    eligibility: MedusaProductReviewEligibility;
+  }>(`/store/reviews?${query.toString()}`, {
+    method: "GET",
+  });
+};
+
+export const createProductReview = async (payload: {
+  productId: string;
+  companyId?: string | null;
+  rating: number;
+  comment: string;
+}) => {
+  return apiFetch<{
+    review: MedusaProductReview;
+    points: {
+      points_earned: number;
+      points_balance?: number | null;
+      points_total?: number | null;
+      points_per_review: number;
+    };
+  }>("/store/reviews", {
+    method: "POST",
+    body: JSON.stringify({
+      product_id: payload.productId,
+      company_id: payload.companyId || null,
+      rating: payload.rating,
+      comment: payload.comment,
+    }),
+  });
+};
+
 export const getNews = async (id: string) => {
   return apiFetch<{ news: MedusaNews }>(`/store/news/${id}`, {
     method: "GET",
@@ -1042,7 +1107,7 @@ const retrieveOrder = async (orderId: string) => {
   const params = new URLSearchParams();
   params.set(
     "fields",
-    "+items,+items.id,+items.quantity,+items.title,+items.product_id,+items.variant_id,+items.thumbnail,+items.unit_price"
+    "+items,+items.id,+items.quantity,+items.title,+items.product_id,+items.variant_id,+items.thumbnail,+items.unit_price,+metadata"
   );
   return apiFetch<{ order: MedusaOrder }>(`/store/orders/${orderId}?${params.toString()}`, { method: "GET" });
 };
@@ -1051,7 +1116,7 @@ export const listOrders = async () => {
   const params = new URLSearchParams();
   params.set(
     "fields",
-    "+items,+items.id,+items.quantity,+items.title,+items.product_id,+items.variant_id,+items.thumbnail,+items.unit_price"
+    "+items,+items.id,+items.quantity,+items.title,+items.product_id,+items.variant_id,+items.thumbnail,+items.unit_price,+metadata"
   );
   const data = await apiFetch<{ orders: MedusaOrder[] }>(`/store/orders?${params.toString()}`, { method: "GET" });
   const orders = data?.orders || [];

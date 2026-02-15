@@ -1,45 +1,26 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Star, User } from "lucide-react";
-import { listOrders } from "@/lib/medusa";
-
-interface Review {
-  id: string;
-  productId: string;
-  author: string;
-  rating: number;
-  comment: string;
-  date: string;
-}
+import { Gift, Star, User } from "lucide-react";
+import {
+  createProductReview,
+  getActiveCondo,
+  listProductReviews,
+  MedusaProductReview,
+} from "@/lib/medusa";
 
 interface ProductReviewsProps {
   productId: string;
 }
 
-const STORAGE_KEY = "product_reviews";
-
-const getStoredReviews = (): Review[] => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveReviews = (reviews: Review[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(reviews));
-};
-
-const StarRating = ({ 
-  rating, 
-  onRatingChange, 
-  interactive = false 
-}: { 
-  rating: number; 
+const StarRating = ({
+  rating,
+  onRatingChange,
+  interactive = false,
+}: {
+  rating: number;
   onRatingChange?: (rating: number) => void;
   interactive?: boolean;
 }) => {
@@ -70,173 +51,171 @@ const StarRating = ({
   );
 };
 
+const formatReviewDate = (value?: string | null) => {
+  if (!value) return "Agora";
+  try {
+    return new Date(value).toLocaleDateString("pt-BR");
+  } catch {
+    return "Agora";
+  }
+};
+
 export const ProductReviews = ({ productId }: ProductReviewsProps) => {
   const { toast } = useToast();
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const queryClient = useQueryClient();
+  const activeCondo = getActiveCondo();
   const [showForm, setShowForm] = useState(false);
-  const [canReview, setCanReview] = useState(false);
-  const [checkingEligibility, setCheckingEligibility] = useState(true);
   const [newReview, setNewReview] = useState({
-    author: "",
     rating: 0,
     comment: "",
   });
 
-  useEffect(() => {
-    const allReviews = getStoredReviews();
-    setReviews(allReviews.filter((r) => r.productId === productId));
-  }, [productId]);
+  const reviewsQuery = useQuery({
+    queryKey: ["product-reviews", productId, activeCondo?.id || "all"],
+    queryFn: () =>
+      listProductReviews({
+        productId,
+        companyId: activeCondo?.id || undefined,
+        limit: 100,
+      }),
+    enabled: Boolean(productId),
+  });
 
-  useEffect(() => {
-    if (!canReview) {
+  const reviews = (reviewsQuery.data?.reviews || []) as MedusaProductReview[];
+  const averageRating = Number(reviewsQuery.data?.summary?.average_rating || 0);
+  const totalReviews = Number(reviewsQuery.data?.summary?.total_count || 0);
+  const eligibility = reviewsQuery.data?.eligibility;
+  const canReview = Boolean(eligibility?.can_review);
+  const pointsPerReview = Number(eligibility?.points_per_review || 0);
+
+  const calloutText = useMemo(() => {
+    if (canReview && pointsPerReview > 0) {
+      return `Avalie este produto e ganhe +${pointsPerReview} pontos para ${activeCondo?.name || "seu condomínio"}.`;
+    }
+    if (canReview) {
+      return "Avalie este produto e compartilhe sua experiência.";
+    }
+    return "As avaliações ficam disponíveis após a compra concluída deste produto.";
+  }, [activeCondo?.name, canReview, pointsPerReview]);
+
+  const submitReview = useMutation({
+    mutationFn: async () => {
+      return createProductReview({
+        productId,
+        companyId: activeCondo?.id || undefined,
+        rating: newReview.rating,
+        comment: newReview.comment.trim(),
+      });
+    },
+    onSuccess: (result) => {
+      const pointsEarned = Number(result?.points?.points_earned || 0);
+      setNewReview({ rating: 0, comment: "" });
       setShowForm(false);
-    }
-  }, [canReview]);
-
-  useEffect(() => {
-    let active = true;
-    const checkEligibility = async () => {
-      setCheckingEligibility(true);
-      try {
-        const data = await listOrders();
-        const orders = data?.orders || [];
-        const hasPurchased = orders.some((order) =>
-          (order.items || []).some((item) => item.product_id === productId)
-        );
-        if (active) {
-          setCanReview(hasPurchased);
-        }
-      } catch {
-        if (active) {
-          setCanReview(false);
-        }
-      } finally {
-        if (active) {
-          setCheckingEligibility(false);
-        }
-      }
-    };
-    if (productId) {
-      checkEligibility();
-    } else {
-      setCheckingEligibility(false);
-      setCanReview(false);
-    }
-    return () => {
-      active = false;
-    };
-  }, [productId]);
-
-  const averageRating = reviews.length > 0
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-    : 0;
+      queryClient.invalidateQueries({ queryKey: ["product-reviews", productId] });
+      queryClient.invalidateQueries({ queryKey: ["product-reviews", productId, activeCondo?.id || "all"] });
+      window.dispatchEvent(new CustomEvent("chroma:condos-refresh"));
+      toast({
+        title: "Avaliação enviada",
+        description:
+          pointsEarned > 0
+            ? `Obrigado pelo feedback. Você ganhou +${pointsEarned} pontos.`
+            : "Obrigado pelo feedback!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Não foi possível enviar",
+        description: error?.message || "Tente novamente em instantes.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!newReview.author.trim() || !newReview.comment.trim() || newReview.rating === 0) {
+    if (newReview.rating < 1 || newReview.comment.trim().length < 5) {
       toast({
-        title: "Preencha todos os campos",
-        description: "Nome, avaliação e comentário são obrigatórios.",
+        title: "Complete sua avaliação",
+        description: "Selecione de 1 a 5 estrelas e escreva ao menos 5 caracteres.",
         variant: "destructive",
       });
       return;
     }
-
-    const review: Review = {
-      id: Date.now().toString(),
-      productId,
-      author: newReview.author.trim(),
-      rating: newReview.rating,
-      comment: newReview.comment.trim(),
-      date: new Date().toLocaleDateString("pt-BR"),
-    };
-
-    const allReviews = getStoredReviews();
-    const updatedReviews = [review, ...allReviews];
-    saveReviews(updatedReviews);
-    setReviews([review, ...reviews]);
-    setNewReview({ author: "", rating: 0, comment: "" });
-    setShowForm(false);
-    
-    toast({
-      title: "Avaliação enviada",
-      description: "Obrigado pelo seu feedback!",
-    });
+    submitReview.mutate();
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      <div className="rounded-2xl border border-amber-300/30 bg-amber-100/10 p-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 rounded-lg bg-amber-300/20 p-2 text-amber-300">
+            <Gift className="h-4 w-4" />
+          </div>
+          <div className="flex-1">
+            <p className="font-medium">{calloutText}</p>
+            {eligibility?.remaining_reviews ? (
+              <p className="text-sm text-muted-foreground mt-1">
+                Você ainda pode avaliar {eligibility.remaining_reviews} compra(s) deste item.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold">Avaliações</h2>
           <div className="flex items-center gap-2 mt-1">
             <StarRating rating={Math.round(averageRating)} />
             <span className="text-sm text-muted-foreground">
-              {averageRating.toFixed(1)} ({reviews.length} {reviews.length === 1 ? "avaliação" : "avaliações"})
+              {averageRating.toFixed(1)} ({totalReviews} {totalReviews === 1 ? "avaliação" : "avaliações"})
             </span>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {!checkingEligibility && !canReview && (
-            <span className="text-sm text-muted-foreground">
-              Avaliações liberadas apenas após a compra.
-            </span>
-          )}
           <Button
-            onClick={() => setShowForm(!showForm)}
-            disabled={!canReview || checkingEligibility}
+            onClick={() => setShowForm((prev) => !prev)}
+            disabled={!canReview || reviewsQuery.isLoading}
           >
-            {showForm ? "Cancelar" : "Escrever avaliação"}
+            {showForm ? "Cancelar" : pointsPerReview > 0 ? `Avaliar e ganhar +${pointsPerReview}` : "Escrever avaliação"}
           </Button>
         </div>
       </div>
 
-      {/* Review Form */}
       {showForm && canReview && (
         <form onSubmit={handleSubmit} className="border-2 border-border p-4 space-y-4">
           <div>
-            <label className="text-sm font-medium mb-2 block">Seu nome</label>
-            <Input
-              value={newReview.author}
-              onChange={(e) => setNewReview({ ...newReview, author: e.target.value })}
-              placeholder="Digite seu nome"
-              maxLength={50}
-            />
-          </div>
-          
-          <div>
-            <label className="text-sm font-medium mb-2 block">Sua avaliação</label>
+            <label className="text-sm font-medium mb-2 block">Sua nota</label>
             <StarRating
               rating={newReview.rating}
-              onRatingChange={(rating) => setNewReview({ ...newReview, rating })}
+              onRatingChange={(rating) => setNewReview((prev) => ({ ...prev, rating }))}
               interactive
             />
           </div>
-          
+
           <div>
             <label className="text-sm font-medium mb-2 block">Seu comentário</label>
             <Textarea
               value={newReview.comment}
-              onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+              onChange={(e) => setNewReview((prev) => ({ ...prev, comment: e.target.value }))}
               placeholder="Conte sua experiência com o produto..."
               rows={4}
               maxLength={500}
             />
           </div>
-          
-          <Button type="submit" className="w-full sm:w-auto">
-            Enviar avaliação
+
+          <Button type="submit" className="w-full sm:w-auto" disabled={submitReview.isPending}>
+            {submitReview.isPending ? "Enviando..." : "Enviar avaliação"}
           </Button>
         </form>
       )}
 
-      {/* Reviews List */}
       <div className="space-y-4">
-        {reviews.length === 0 ? (
+        {reviewsQuery.isLoading ? (
+          <p className="text-muted-foreground text-center py-8">Carregando avaliações...</p>
+        ) : reviews.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">
-            Nenhuma avaliação ainda. Seja o primeiro a avaliar!
+            Nenhuma avaliação ainda. Seja o primeiro a avaliar.
           </p>
         ) : (
           reviews.map((review) => (
@@ -247,9 +226,9 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                    <span className="font-semibold">{review.author}</span>
+                    <span className="font-semibold">{review.author_name || "Cliente"}</span>
                     <StarRating rating={review.rating} />
-                    <span className="text-sm text-muted-foreground">{review.date}</span>
+                    <span className="text-sm text-muted-foreground">{formatReviewDate(review.created_at)}</span>
                   </div>
                   <p className="text-muted-foreground mt-2">{review.comment}</p>
                 </div>

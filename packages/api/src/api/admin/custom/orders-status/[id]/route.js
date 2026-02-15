@@ -7,8 +7,7 @@ const { updateOrderWorkflow } = require("@medusajs/core-flows")
 
 const updateOrderStatus = async (scope, id, payload, metadata, actorId) => {
   const cleanPayload = {}
-  if (payload?.status) cleanPayload.status = payload.status
-  if (payload?.fulfillment_status) cleanPayload.fulfillment_status = payload.fulfillment_status
+  if (payload?.status && payload.status !== "processing") cleanPayload.status = payload.status
   if (metadata) cleanPayload.metadata = metadata
 
   if (!Object.keys(cleanPayload).length) {
@@ -37,9 +36,19 @@ const fetchOrder = async (scope, id) => {
     fields: ["id", "status", "fulfillment_status", "payment_status", "display_id", "metadata"],
   })
   const result = await remoteQuery(query)
-  if (Array.isArray(result)) return result[0]
-  if (Array.isArray(result?.data)) return result.data[0]
-  return result
+  const order = Array.isArray(result)
+    ? result[0]
+    : Array.isArray(result?.data)
+      ? result.data[0]
+      : result
+
+  if (!order) return order
+
+  const manualFulfillmentStatus = order?.metadata?.manual_fulfillment_status
+  if (manualFulfillmentStatus) {
+    return { ...order, fulfillment_status: manualFulfillmentStatus }
+  }
+  return order
 }
 
 const POST = async (req, res) => {
@@ -50,6 +59,8 @@ const POST = async (req, res) => {
 
   try {
     const previous = await fetchOrder(req.scope, orderId)
+    const previousFulfillmentStatus =
+      previous?.metadata?.manual_fulfillment_status || previous?.fulfillment_status || null
     const actor =
       req?.user?.email ||
       req?.user?.id ||
@@ -63,19 +74,23 @@ const POST = async (req, res) => {
       at: now,
       actor,
       from_status: previous?.status || null,
-      from_fulfillment_status: previous?.fulfillment_status || null,
+      from_fulfillment_status: previousFulfillmentStatus,
       to_status: req.body?.status || previous?.status || null,
       to_fulfillment_status:
-        req.body?.fulfillment_status || previous?.fulfillment_status || null,
+        req.body?.fulfillment_status || previousFulfillmentStatus,
       status: req.body?.status || previous?.status || null,
       fulfillment_status:
-        req.body?.fulfillment_status || previous?.fulfillment_status || null,
+        req.body?.fulfillment_status || previousFulfillmentStatus,
       payment_status: previous?.payment_status || null,
     }
     const nextHistory = [...statusHistory, nextEntry].slice(-50)
     const nextMetadata = {
       ...(previous?.metadata || {}),
       status_history: nextHistory,
+      manual_fulfillment_status:
+        req.body?.fulfillment_status ??
+        previous?.metadata?.manual_fulfillment_status ??
+        null,
     }
 
     await updateOrderStatus(

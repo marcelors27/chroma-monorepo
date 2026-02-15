@@ -44,10 +44,59 @@ type UiProduct = {
   price: number;
   category: string;
   image: string;
+  isPromotion: boolean;
   onSale?: boolean;
   originalPrice?: number;
   variantId?: string;
   raw: MedusaProduct;
+};
+
+const PROMO_KEYWORDS = ["promo", "promoc", "sale", "oferta", "desconto"];
+
+const isPromotionValue = (value: unknown) => {
+  if (value === true || value === 1) return true;
+  if (typeof value === "number") return value > 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return false;
+    if (["true", "1", "yes", "sim", "on", "active", "ativo"].includes(normalized)) return true;
+    if (PROMO_KEYWORDS.some((keyword) => normalized.includes(keyword))) return true;
+  }
+  return false;
+};
+
+const hasPromotionKeyword = (value: unknown) => {
+  const text = String(value ?? "").toLowerCase();
+  return PROMO_KEYWORDS.some((keyword) => text.includes(keyword));
+};
+
+const hasPromotionMetadata = (metadata?: Record<string, unknown> | null) => {
+  if (!metadata) return false;
+  return Object.entries(metadata).some(([key, value]) => {
+    if (hasPromotionKeyword(key)) return isPromotionValue(value);
+    return false;
+  });
+};
+
+const hasPromotionFlag = (product?: MedusaProduct) => {
+  if (!product) return false;
+  const variant = getVariant(product);
+  const variantPrices = (variant?.prices || []) as Array<Record<string, unknown>>;
+  const calculated = variant?.calculated_price as Record<string, unknown> | number | undefined;
+
+  const metadataSignal =
+    hasPromotionMetadata((product.metadata || null) as Record<string, unknown> | null) ||
+    hasPromotionMetadata((variant?.metadata || null) as Record<string, unknown> | null);
+  const tagsSignal = Array.isArray(product.tags) && product.tags.some((tag) => hasPromotionKeyword(tag?.value));
+  const pricesSignal = variantPrices.some(
+    (price) => hasPromotionKeyword(price?.price_list_type) || isPromotionValue(price?.price_list_id)
+  );
+  const calculatedSignal =
+    typeof calculated === "object" &&
+    calculated !== null &&
+    (hasPromotionKeyword(calculated?.price_list_type) || isPromotionValue(calculated?.price_list_id));
+
+  return metadataSignal || tagsSignal || pricesSignal || calculatedSignal;
 };
 
 interface LayoutContext {
@@ -84,6 +133,7 @@ const Dashboard = () => {
           price: pricing.finalPrice,
           category: getProductCategory(product),
           image: getProductImage(product),
+          isPromotion: pricing.onSale || hasPromotionFlag(product),
           onSale: pricing.onSale,
           originalPrice: pricing.onSale ? pricing.basePrice ?? undefined : undefined,
           variantId: variant?.id,
@@ -109,7 +159,7 @@ const Dashboard = () => {
       const maxAmount = Number.isFinite(parsedMax) ? parsedMax * 100 : null;
       const matchesMinPrice = !minPrice || (minAmount !== null && product.price >= minAmount);
       const matchesMaxPrice = !maxPrice || (maxAmount !== null && product.price <= maxAmount);
-      const matchesOnSale = !onlyOnSale || product.onSale;
+      const matchesOnSale = !onlyOnSale || product.isPromotion;
 
       return matchesName && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesOnSale;
     });
@@ -428,12 +478,16 @@ const ProductCard = ({
   onAdd: (product: UiProduct) => void;
 }) => {
   const canAdd = Boolean(product.variantId);
+  const discountPercent =
+    product.onSale && product.originalPrice
+      ? Math.max(1, Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100))
+      : 0;
 
   return (
     <div className="border-2 border-border bg-card p-3 sm:p-6 hover:border-primary transition-colors relative flex flex-col h-full">
-      {product.onSale && (
+      {product.isPromotion && (
         <span className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-destructive text-destructive-foreground text-[10px] sm:text-xs font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 z-10">
-          PROMO
+          PROMO {discountPercent > 0 ? `-${discountPercent}%` : ""}
         </span>
       )}
       <Link
@@ -463,6 +517,7 @@ const ProductCard = ({
         <p className="text-lg sm:text-2xl font-bold text-primary">
           {formatMoney(product.price)}
         </p>
+        {product.isPromotion && <p className="text-[11px] sm:text-xs font-medium text-destructive">Em promoção</p>}
       </div>
       <Button
         className="w-full text-xs sm:text-sm h-8 sm:h-10"

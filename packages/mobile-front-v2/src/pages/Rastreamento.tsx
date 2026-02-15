@@ -24,21 +24,102 @@ const buildTrackingSteps = (order?: MedusaOrder | null) => {
   ];
 };
 
-const resolveCurrentStepIndex = (order?: MedusaOrder | null) => {
-  if (!order) return 0;
-  if (order.status === "canceled" || order.fulfillment_status === "canceled") return 0;
-  switch (order.fulfillment_status) {
+const resolveFulfillmentStatus = (order?: MedusaOrder | null) => {
+  if (!order) return undefined;
+  return (order.metadata?.manual_fulfillment_status as string | undefined) || order.fulfillment_status;
+};
+
+const formatOrderStatusLabel = (status?: string) => {
+  switch (status) {
+    case "pending":
+      return "Pendente";
+    case "requires_action":
+      return "Requer ação";
+    case "completed":
+      return "Concluído";
+    case "canceled":
+      return "Cancelado";
+    default:
+      return status || "—";
+  }
+};
+
+const formatFulfillmentStatusLabel = (status?: string) => {
+  switch (status) {
     case "not_fulfilled":
-    case "fulfilled":
+      return "Em separação";
     case "partially_fulfilled":
-      return 1;
+      return "Separação parcial";
+    case "fulfilled":
+      return "Separado";
+    case "shipped":
+      return "Em trânsito";
+    case "partially_shipped":
+      return "Envio parcial";
+    case "partially_delivered":
+      return "Entrega parcial";
+    case "delivered":
+      return "Entregue";
+    case "canceled":
+      return "Cancelado";
+    default:
+      return status || "—";
+  }
+};
+
+const formatPaymentStatusLabel = (status?: string) => {
+  switch (status) {
+    case "captured":
+      return "Pago";
+    case "authorized":
+      return "Autorizado";
+    case "pending":
+      return "Pendente";
+    case "canceled":
+      return "Cancelado";
+    case "refunded":
+      return "Reembolsado";
+    default:
+      return status || "—";
+  }
+};
+
+type TrackingStage = "done" | "current" | "pending" | "blocked";
+
+const resolveTrackingStage = (order: MedusaOrder | null | undefined, index: number): TrackingStage => {
+  if (!order) {
+    return index === 0 ? "current" : "pending";
+  }
+
+  const fulfillmentStatus = resolveFulfillmentStatus(order);
+  const isCancelled = order.status === "canceled" || fulfillmentStatus === "canceled";
+  if (isCancelled) {
+    return index === 0 ? "done" : "blocked";
+  }
+
+  switch (fulfillmentStatus) {
+    case "not_fulfilled":
+    case "partially_fulfilled":
+      if (index === 0) return "done";
+      if (index === 1) return "current";
+      return "pending";
+    case "fulfilled":
+      if (index <= 1) return "done";
+      return "pending";
     case "shipped":
     case "partially_shipped":
-      return 2;
+      if (index <= 1) return "done";
+      if (index === 2) return "current";
+      return "pending";
+    case "partially_delivered":
+      if (index <= 2) return "done";
+      if (index === 3) return "current";
+      return "pending";
     case "delivered":
-      return 3;
+      return "done";
     default:
-      return 0;
+      if (index === 0) return "current";
+      return "pending";
   }
 };
 
@@ -50,6 +131,7 @@ export default function Rastreamento() {
     queryKey: ["orders"],
     queryFn: listOrders,
     refetchOnMount: "always",
+    refetchInterval: 30000,
   });
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
@@ -61,7 +143,41 @@ export default function Rastreamento() {
     order?.shipping_address?.address_1 ||
     terms.label;
   const trackingSteps = useMemo(() => buildTrackingSteps(order), [order]);
-  const currentStepIndex = useMemo(() => resolveCurrentStepIndex(order), [order]);
+  const historyEntries = useMemo(() => {
+    const history = Array.isArray(order?.metadata?.status_history)
+      ? order?.metadata?.status_history
+      : [];
+    if (history.length) {
+      return history
+        .slice()
+        .reverse()
+        .map((entry: any, index: number) => ({
+          id: `history-${index}`,
+          title: `Entrega: ${formatFulfillmentStatusLabel(
+            entry?.to_fulfillment_status || entry?.fulfillment_status || resolveFulfillmentStatus(order)
+          )}`,
+          subtitle: `Pedido: ${formatOrderStatusLabel(entry?.to_status || entry?.status || order?.status)} • Pagamento: ${formatPaymentStatusLabel(
+            entry?.payment_status || order?.payment_status
+          )}`,
+          date: entry?.at ? new Date(entry.at).toLocaleString("pt-BR") : "--",
+        }));
+    }
+
+    return [
+      {
+        id: "created",
+        title: `Entrega: ${formatFulfillmentStatusLabel(resolveFulfillmentStatus(order))}`,
+        subtitle: "Pedido realizado",
+        date: order?.created_at ? new Date(order.created_at).toLocaleString("pt-BR") : "--",
+      },
+      {
+        id: "updated",
+        title: `Entrega: ${formatFulfillmentStatusLabel(resolveFulfillmentStatus(order))}`,
+        subtitle: `Pedido: ${formatOrderStatusLabel(order?.status)} • Pagamento: ${formatPaymentStatusLabel(order?.payment_status)}`,
+        date: order?.updated_at ? new Date(order.updated_at).toLocaleString("pt-BR") : "--",
+      },
+    ];
+  }, [order]);
   const pulseOpacity = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
@@ -138,23 +254,69 @@ export default function Rastreamento() {
 
         <View style={styles.timeline}>
           {trackingSteps.map((step, index) => {
-            const isCurrent = index === currentStepIndex;
+            const stage = resolveTrackingStage(order, index);
+            const isDone = stage === "done";
+            const isCurrent = stage === "current";
+            const isBlocked = stage === "blocked";
+            const stageLabel = isBlocked
+              ? "Interrompida"
+              : isCurrent
+                ? "Em andamento"
+                : isDone
+                  ? "Concluída"
+                  : "Prevista";
+            const stageLabelStyle = isBlocked
+              ? styles.stageChipBlocked
+              : isCurrent
+                ? styles.stageChipCurrent
+                : isDone
+                  ? styles.stageChipDone
+                  : styles.stageChipPending;
             const isLast = index === trackingSteps.length - 1;
             return (
               <View key={step.id} style={styles.timelineItem}>
                 <View style={styles.timelineRail}>
                   <Animated.View
-                    style={[styles.timelineDot, isCurrent && styles.timelineDotActive, isCurrent && { opacity: pulseOpacity }]}
+                    style={[
+                      styles.timelineDot,
+                      isDone && styles.timelineDotDone,
+                      isBlocked && styles.timelineDotBlocked,
+                      isCurrent && styles.timelineDotActive,
+                      isCurrent && { opacity: pulseOpacity },
+                    ]}
                   />
                   {!isLast && <View style={styles.timelineLine} />}
                 </View>
-                <View style={[styles.stepContent, isCurrent && styles.stepContentActive]}>
+                <View
+                  style={[
+                    styles.stepContent,
+                    isDone && styles.stepContentDone,
+                    isBlocked && styles.stepContentBlocked,
+                    isCurrent && styles.stepContentActive,
+                  ]}
+                >
                   <Text style={styles.stepTitle}>{step.title}</Text>
                   <Text style={styles.stepDate}>{step.date}</Text>
+                  <View style={[styles.stageChip, stageLabelStyle]}>
+                    <Text style={styles.stageChipText}>{stageLabel}</Text>
+                  </View>
                 </View>
               </View>
             );
           })}
+        </View>
+
+        <View style={styles.historyCard}>
+          <Text style={styles.historyTitle}>Histórico de alterações</Text>
+          <View style={styles.historyList}>
+            {historyEntries.map((entry) => (
+              <View key={entry.id} style={styles.historyItem}>
+                <Text style={styles.historyItemTitle}>{entry.title}</Text>
+                {entry.subtitle ? <Text style={styles.historyItemSubtitle}>{entry.subtitle}</Text> : null}
+                <Text style={styles.historyItemMeta}>{entry.date}</Text>
+              </View>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </AuthenticatedLayout>
@@ -247,6 +409,12 @@ const styles = StyleSheet.create({
   timelineDotActive: {
     backgroundColor: "#5DA2E6",
   },
+  timelineDotDone: {
+    backgroundColor: "#22C55E",
+  },
+  timelineDotBlocked: {
+    backgroundColor: "#F87171",
+  },
   timelineLine: {
     width: 2,
     flex: 1,
@@ -266,6 +434,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(93, 162, 230, 0.6)",
   },
+  stepContentDone: {
+    borderWidth: 1,
+    borderColor: "rgba(34, 197, 94, 0.5)",
+  },
+  stepContentBlocked: {
+    borderWidth: 1,
+    borderColor: "rgba(248, 113, 113, 0.5)",
+  },
   stepTitle: {
     color: "#E6E8EA",
     fontSize: 13,
@@ -277,5 +453,73 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 4,
     textAlign: "center",
+  },
+  stageChip: {
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    alignSelf: "center",
+    borderWidth: 1,
+  },
+  stageChipText: {
+    color: "#E6E8EA",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  stageChipCurrent: {
+    backgroundColor: "rgba(93, 162, 230, 0.22)",
+    borderColor: "rgba(93, 162, 230, 0.5)",
+  },
+  stageChipDone: {
+    backgroundColor: "rgba(34, 197, 94, 0.2)",
+    borderColor: "rgba(34, 197, 94, 0.45)",
+  },
+  stageChipBlocked: {
+    backgroundColor: "rgba(248, 113, 113, 0.2)",
+    borderColor: "rgba(248, 113, 113, 0.45)",
+  },
+  stageChipPending: {
+    backgroundColor: "rgba(140, 152, 168, 0.2)",
+    borderColor: "rgba(140, 152, 168, 0.45)",
+  },
+  historyCard: {
+    marginTop: 8,
+    marginBottom: 12,
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 20,
+    padding: 14,
+  },
+  historyTitle: {
+    color: "#E6E8EA",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  historyList: {
+    marginTop: 10,
+    gap: 8,
+  },
+  historyItem: {
+    borderRadius: 12,
+    backgroundColor: "rgba(31, 36, 46, 0.92)",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "rgba(66, 77, 94, 0.5)",
+  },
+  historyItemTitle: {
+    color: "#E6E8EA",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  historyItemSubtitle: {
+    color: "#A6B0BF",
+    fontSize: 11,
+    marginTop: 4,
+  },
+  historyItemMeta: {
+    color: "#8C98A8",
+    fontSize: 10,
+    marginTop: 4,
   },
 });
