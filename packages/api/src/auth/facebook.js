@@ -9,6 +9,17 @@ const {
 const FACEBOOK_AUTH_URL = "https://www.facebook.com/v19.0/dialog/oauth"
 const FACEBOOK_TOKEN_URL = "https://graph.facebook.com/v19.0/oauth/access_token"
 const FACEBOOK_ME_URL = "https://graph.facebook.com/me"
+const isEmail = (value) => typeof value === "string" && value.includes("@")
+const maskEmail = (value) => {
+  if (!isEmail(value)) return value || null
+  const [user, domain] = value.split("@")
+  const maskedUser = user.length <= 2 ? `${user[0] || ""}*` : `${user.slice(0, 2)}***`
+  return `${maskedUser}@${domain}`
+}
+const readHeaderValue = (value) => {
+  if (Array.isArray(value)) return value[0] || null
+  return value || null
+}
 
 class FacebookAuthService extends AbstractAuthModuleProvider {
   static identifier = "facebook"
@@ -43,8 +54,16 @@ class FacebookAuthService extends AbstractAuthModuleProvider {
   async authenticate(req, authIdentityService) {
     const query = req.query ?? {}
     const body = req.body ?? {}
+    const flowId = readHeaderValue(req.headers?.["x-debug-flow-id"])
 
     if (query.error) {
+      this.logger_?.warn?.(
+        JSON.stringify({
+          msg: "facebook authenticate provider error",
+          flow_id: flowId,
+          error: `${query.error_description || query.error}, read more at: ${query.error_uri}`,
+        })
+      )
       return {
         success: false,
         error: `${query.error_description || query.error}, read more at: ${query.error_uri}`,
@@ -55,6 +74,13 @@ class FacebookAuthService extends AbstractAuthModuleProvider {
     const state = {
       callback_url: body?.callback_url ?? this.config_.callbackUrl,
     }
+    this.logger_?.info?.(
+      JSON.stringify({
+        msg: "facebook authenticate start",
+        flow_id: flowId,
+        callback_url: state.callback_url,
+      })
+    )
 
     await authIdentityService.setState(stateKey, state)
     return this.getRedirect_(this.config_.clientId, state.callback_url, stateKey)
@@ -63,13 +89,33 @@ class FacebookAuthService extends AbstractAuthModuleProvider {
   async validateCallback(req, authIdentityService) {
     const query = req.query ?? {}
     const body = req.body ?? {}
+    const flowId = readHeaderValue(req.headers?.["x-debug-flow-id"])
+    const hasAccessToken = !!(body?.access_token || query?.access_token)
+    const hasCode = !!(query?.code ?? body?.code)
+    const hasState = !!(query?.state ?? body?.state)
 
     if (query.error || body.error) {
+      this.logger_?.warn?.(
+        JSON.stringify({
+          msg: "facebook validateCallback provider error",
+          flow_id: flowId,
+          error: query.error_description || body.error_description || query.error || body.error,
+        })
+      )
       return {
         success: false,
         error: query.error_description || body.error_description || query.error || body.error,
       }
     }
+    this.logger_?.info?.(
+      JSON.stringify({
+        msg: "facebook validateCallback start",
+        flow_id: flowId,
+        has_access_token: hasAccessToken,
+        has_code: hasCode,
+        has_state: hasState,
+      })
+    )
 
     const accessToken =
       body?.access_token ||
@@ -78,8 +124,23 @@ class FacebookAuthService extends AbstractAuthModuleProvider {
     if (accessToken) {
       try {
         const { authIdentity, success } = await this.verify_(accessToken, authIdentityService)
+        this.logger_?.info?.(
+          JSON.stringify({
+            msg: "facebook validateCallback access token verified",
+            flow_id: flowId,
+            success,
+            auth_identity_id: authIdentity?.id || null,
+          })
+        )
         return { success, authIdentity }
       } catch (error) {
+        this.logger_?.warn?.(
+          JSON.stringify({
+            msg: "facebook validateCallback access token failed",
+            flow_id: flowId,
+            error: error?.message || "unknown_error",
+          })
+        )
         return { success: false, error: error.message }
       }
     }
@@ -92,6 +153,12 @@ class FacebookAuthService extends AbstractAuthModuleProvider {
     const stateKey = query?.state ?? body?.state
     const state = await authIdentityService.getState(stateKey)
     if (!state) {
+      this.logger_?.warn?.(
+        JSON.stringify({
+          msg: "facebook validateCallback missing state",
+          flow_id: flowId,
+        })
+      )
       return { success: false, error: "No state provided, or session expired" }
     }
 
@@ -113,11 +180,26 @@ class FacebookAuthService extends AbstractAuthModuleProvider {
       })
 
       const { authIdentity, success } = await this.verify_(response.access_token, authIdentityService)
+      this.logger_?.info?.(
+        JSON.stringify({
+          msg: "facebook validateCallback code verified",
+          flow_id: flowId,
+          success,
+          auth_identity_id: authIdentity?.id || null,
+        })
+      )
       return {
         success,
         authIdentity,
       }
     } catch (error) {
+      this.logger_?.warn?.(
+        JSON.stringify({
+          msg: "facebook validateCallback code failed",
+          flow_id: flowId,
+          error: error?.message || "unknown_error",
+        })
+      )
       return { success: false, error: error.message }
     }
   }
@@ -158,6 +240,13 @@ class FacebookAuthService extends AbstractAuthModuleProvider {
       email: profile.email,
       picture: profile?.picture?.data?.url,
     }
+    this.logger_?.info?.(
+      JSON.stringify({
+        msg: "facebook verify profile",
+        entity_id: entity_id || null,
+        email: maskEmail(profile.email),
+      })
+    )
 
     let authIdentity
     try {

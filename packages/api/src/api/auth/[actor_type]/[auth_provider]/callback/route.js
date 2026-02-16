@@ -15,6 +15,10 @@ const maskEmail = (value) => {
   const maskedUser = user.length <= 2 ? `${user[0] || ""}*` : `${user.slice(0, 2)}***`
   return `${maskedUser}@${domain}`
 }
+const readHeaderValue = (value) => {
+  if (Array.isArray(value)) return value[0] || null
+  return value || null
+}
 
 const extractEmailFromIdToken = (req) => {
   const token =
@@ -130,6 +134,16 @@ const handle = async (req, res) => {
     req.body?.linkExisting === true ||
     req.body?.link_existing === "true" ||
     req.body?.linkExisting === "true"
+  const flow_id = readHeaderValue(req.headers?.["x-debug-flow-id"])
+  const hasIdentityToken = !!(
+    req.body?.identity_token ||
+    req.body?.id_token ||
+    req.query?.identity_token ||
+    req.query?.id_token
+  )
+  const hasAuthorizationCode = !!(req.body?.authorization_code || req.body?.code || req.query?.code)
+  const hasAccessToken = !!(req.body?.access_token || req.query?.access_token)
+  const hasState = !!(req.body?.state || req.query?.state)
   const authData = {
     url: req.url,
     headers: req.headers,
@@ -140,6 +154,22 @@ const handle = async (req, res) => {
 
   const { success, error, authIdentity } = await service.validateCallback(auth_provider, authData)
   if (!success || !authIdentity) {
+    try {
+      logger?.warn?.(
+        JSON.stringify({
+          msg: "auth callback validation failed",
+          actor_type,
+          auth_provider,
+          flow_id,
+          link_existing: linkExisting,
+          has_identity_token: hasIdentityToken,
+          has_authorization_code: hasAuthorizationCode,
+          has_access_token: hasAccessToken,
+          has_state: hasState,
+          error: error || "Authentication failed",
+        })
+      )
+    } catch {}
     throw new MedusaError(MedusaError.Types.UNAUTHORIZED, error || "Authentication failed")
   }
   try {
@@ -148,7 +178,12 @@ const handle = async (req, res) => {
         msg: "auth callback validated",
         actor_type,
         auth_provider,
+        flow_id,
         link_existing: linkExisting,
+        has_identity_token: hasIdentityToken,
+        has_authorization_code: hasAuthorizationCode,
+        has_access_token: hasAccessToken,
+        has_state: hasState,
         auth_identity_id: authIdentity?.id || null,
       })
     )
@@ -170,6 +205,7 @@ const handle = async (req, res) => {
           msg: "auth callback resolve customer",
           actor_type,
           auth_provider,
+          flow_id,
           link_existing: linkExisting,
           auth_identity_id: authIdentity?.id || null,
           email: maskEmail(email),
@@ -184,6 +220,7 @@ const handle = async (req, res) => {
             msg: "auth callback link required",
             actor_type,
             auth_provider,
+            flow_id,
             auth_identity_id: authIdentity?.id || null,
             email: maskEmail(email),
             existing_customer_id: existingId,
@@ -207,6 +244,7 @@ const handle = async (req, res) => {
             msg: "auth callback linked customer",
             actor_type,
             auth_provider,
+            flow_id,
             auth_identity_id: authIdentity?.id || null,
             customer_id: customerId,
           })
@@ -228,6 +266,7 @@ const handle = async (req, res) => {
         msg: "auth callback token issued",
         actor_type,
         auth_provider,
+        flow_id,
         actor_id: linkedCustomerId || effectiveIdentity?.app_metadata?.customer_id || "",
         link_existing: linkExisting,
         email_source: actor_type === "customer" && auth_provider === "apple" ? "resolved" : "n/a",

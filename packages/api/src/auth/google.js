@@ -6,6 +6,17 @@ const {
   ModuleProvider,
   Modules,
 } = require("@medusajs/framework/utils")
+const isEmail = (value) => typeof value === "string" && value.includes("@")
+const maskEmail = (value) => {
+  if (!isEmail(value)) return value || null
+  const [user, domain] = value.split("@")
+  const maskedUser = user.length <= 2 ? `${user[0] || ""}*` : `${user.slice(0, 2)}***`
+  return `${maskedUser}@${domain}`
+}
+const readHeaderValue = (value) => {
+  if (Array.isArray(value)) return value[0] || null
+  return value || null
+}
 
 class GoogleAuthService extends AbstractAuthModuleProvider {
   static identifier = "google"
@@ -40,8 +51,16 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
   async authenticate(req, authIdentityService) {
     const query = req.query ?? {}
     const body = req.body ?? {}
+    const flowId = readHeaderValue(req.headers?.["x-debug-flow-id"])
 
     if (query.error) {
+      this.logger_?.warn?.(
+        JSON.stringify({
+          msg: "google authenticate provider error",
+          flow_id: flowId,
+          error: `${query.error_description}, read more at: ${query.error_uri}`,
+        })
+      )
       return {
         success: false,
         error: `${query.error_description}, read more at: ${query.error_uri}`,
@@ -52,6 +71,13 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
     const state = {
       callback_url: body?.callback_url ?? this.config_.callbackUrl,
     }
+    this.logger_?.info?.(
+      JSON.stringify({
+        msg: "google authenticate start",
+        flow_id: flowId,
+        callback_url: state.callback_url,
+      })
+    )
 
     await authIdentityService.setState(stateKey, state)
     return this.getRedirect_(this.config_.clientId, state.callback_url, stateKey)
@@ -60,13 +86,38 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
   async validateCallback(req, authIdentityService) {
     const query = req.query ?? {}
     const body = req.body ?? {}
+    const flowId = readHeaderValue(req.headers?.["x-debug-flow-id"])
+    const hasIdentityToken = !!(
+      body?.identity_token ||
+      body?.id_token ||
+      query?.identity_token ||
+      query?.id_token
+    )
+    const hasCode = !!(query?.code ?? body?.code)
+    const hasState = !!(query?.state ?? body?.state)
 
     if (query.error || body.error) {
+      this.logger_?.warn?.(
+        JSON.stringify({
+          msg: "google validateCallback provider error",
+          flow_id: flowId,
+          error: query.error_description || body.error_description || query.error,
+        })
+      )
       return {
         success: false,
         error: query.error_description || body.error_description || query.error,
       }
     }
+    this.logger_?.info?.(
+      JSON.stringify({
+        msg: "google validateCallback start",
+        flow_id: flowId,
+        has_identity_token: hasIdentityToken,
+        has_code: hasCode,
+        has_state: hasState,
+      })
+    )
 
     const idToken =
       body?.identity_token ||
@@ -76,8 +127,23 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
     if (idToken) {
       try {
         const { authIdentity, success } = await this.verify_(idToken, authIdentityService)
+        this.logger_?.info?.(
+          JSON.stringify({
+            msg: "google validateCallback identity token verified",
+            flow_id: flowId,
+            success,
+            auth_identity_id: authIdentity?.id || null,
+          })
+        )
         return { success, authIdentity }
       } catch (error) {
+        this.logger_?.warn?.(
+          JSON.stringify({
+            msg: "google validateCallback identity token failed",
+            flow_id: flowId,
+            error: error?.message || "unknown_error",
+          })
+        )
         return { success: false, error: error.message }
       }
     }
@@ -89,6 +155,12 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
 
     const state = await authIdentityService.getState(query?.state)
     if (!state) {
+      this.logger_?.warn?.(
+        JSON.stringify({
+          msg: "google validateCallback missing state",
+          flow_id: flowId,
+        })
+      )
       return { success: false, error: "No state provided, or session expired" }
     }
 
@@ -109,11 +181,26 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
       })
 
       const { authIdentity, success } = await this.verify_(response.id_token, authIdentityService)
+      this.logger_?.info?.(
+        JSON.stringify({
+          msg: "google validateCallback code verified",
+          flow_id: flowId,
+          success,
+          auth_identity_id: authIdentity?.id || null,
+        })
+      )
       return {
         success,
         authIdentity,
       }
     } catch (error) {
+      this.logger_?.warn?.(
+        JSON.stringify({
+          msg: "google validateCallback code failed",
+          flow_id: flowId,
+          error: error?.message || "unknown_error",
+        })
+      )
       return { success: false, error: error.message }
     }
   }
@@ -141,6 +228,14 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
       given_name: payload.given_name,
       family_name: payload.family_name,
     }
+    this.logger_?.info?.(
+      JSON.stringify({
+        msg: "google verify payload",
+        entity_id: entity_id || null,
+        email: maskEmail(payload.email),
+        email_verified: payload.email_verified,
+      })
+    )
 
     let authIdentity
     try {

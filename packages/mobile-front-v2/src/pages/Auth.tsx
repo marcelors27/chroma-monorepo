@@ -29,6 +29,7 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState((route.params as { mode?: string } | undefined)?.mode === "login");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [lastSocialFlowId, setLastSocialFlowId] = useState<string | null>(null);
   const [linkPrompt, setLinkPrompt] = useState<{
     email?: string;
     credential?: { identityToken: string; authorizationCode?: string };
@@ -74,6 +75,8 @@ export default function Auth() {
     setIsLoading(true);
     try {
       const result = await loginWithSocial(provider, { mode: isLogin ? "login" : "signup" });
+      setLastSocialFlowId(result.flowId || null);
+      toast.info(`Flow ID: ${result.flowId}`);
       if (result.code === "link_required") {
         setLinkPrompt({ email: result.email, credential: result.credential });
         return;
@@ -99,6 +102,8 @@ export default function Auth() {
         linkExisting: true,
         credential: linkPrompt.credential,
       });
+      setLastSocialFlowId(result.flowId || null);
+      toast.info(`Flow ID: ${result.flowId}`);
       if (result.success) {
         toast.success("Conta vinculada!");
         return;
@@ -133,6 +138,10 @@ export default function Auth() {
           </Text>
           <Text style={styles.subtitle}>{isLogin ? "Entre na sua conta" : "Crie sua conta grátis"}</Text>
         </View>
+
+        {lastSocialFlowId ? (
+          <Text style={styles.debugFlowText}>Flow ID debug: {lastSocialFlowId}</Text>
+        ) : null}
 
         <View style={styles.socialBlock}>
           <Pressable
@@ -313,6 +322,12 @@ const styles = StyleSheet.create({
   subtitle: {
     color: "#8C98A8",
     fontSize: 16,
+  },
+  debugFlowText: {
+    color: "#8C98A8",
+    fontSize: 12,
+    marginTop: 10,
+    textAlign: "center",
   },
   socialBlock: {
     gap: 12,

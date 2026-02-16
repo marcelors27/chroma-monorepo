@@ -617,13 +617,18 @@ export const login = async (email: string, password: string) => {
   return data.token;
 };
 
-export const startSocialAuth = async (provider: string, callbackUrl: string) => {
+export const startSocialAuth = async (
+  provider: string,
+  callbackUrl: string,
+  debugFlowId?: string
+) => {
   const data = await apiFetch<{ location?: string; token?: string }>(
     `/auth/customer/${provider}`,
     {
       method: "POST",
       auth: false,
       body: JSON.stringify({ callback_url: callbackUrl }),
+      headers: debugFlowId ? { "x-debug-flow-id": debugFlowId } : undefined,
     }
   );
   if (data?.token) {
@@ -634,7 +639,8 @@ export const startSocialAuth = async (provider: string, callbackUrl: string) => 
 
 export const completeSocialAuth = async (
   provider: string,
-  params: { code: string; state?: string }
+  params: { code: string; state?: string },
+  debugFlowId?: string
 ) => {
   const search = new URLSearchParams({
     code: params.code,
@@ -642,7 +648,10 @@ export const completeSocialAuth = async (
   });
   const data = await apiFetch<{ token: string }>(
     `/auth/customer/${provider}/callback?${search.toString()}`,
-    { auth: false }
+    {
+      auth: false,
+      headers: debugFlowId ? { "x-debug-flow-id": debugFlowId } : undefined,
+    }
   );
   if (data?.token) {
     await setToken(data.token);
@@ -657,6 +666,7 @@ export const completeSocialAuthNative = async (
     authorizationCode?: string;
     linkExisting?: boolean;
     accessToken?: string;
+    debugFlowId?: string;
   }
 ) => {
   const payload = {
@@ -665,13 +675,43 @@ export const completeSocialAuthNative = async (
     ...(params.linkExisting ? { link_existing: true } : {}),
     ...(params.accessToken ? { access_token: params.accessToken } : {}),
   };
-  const data = await apiFetch<{ token: string }>(`/auth/customer/${provider}/callback`, {
-    method: "POST",
-    auth: false,
-    body: JSON.stringify(payload),
-  });
+  if (LOG_REQUESTS) {
+    console.info("[medusa] completeSocialAuthNative start", {
+      provider,
+      debugFlowId: params.debugFlowId || null,
+      linkExisting: !!params.linkExisting,
+      hasIdentityToken: !!params.identityToken,
+      hasAuthorizationCode: !!params.authorizationCode,
+      hasAccessToken: !!params.accessToken,
+    });
+  }
+  let data;
+  try {
+    data = await apiFetch<{ token: string }>(`/auth/customer/${provider}/callback`, {
+      method: "POST",
+      auth: false,
+      body: JSON.stringify(payload),
+      headers: params.debugFlowId ? { "x-debug-flow-id": params.debugFlowId } : undefined,
+    });
+  } catch (error: any) {
+    if (LOG_REQUESTS) {
+      console.info("[medusa] completeSocialAuthNative error", {
+        provider,
+        debugFlowId: params.debugFlowId || null,
+        message: error?.message || "unknown_error",
+      });
+    }
+    throw error;
+  }
   if (data?.token) {
     await setToken(data.token);
+  }
+  if (LOG_REQUESTS) {
+    console.info("[medusa] completeSocialAuthNative done", {
+      provider,
+      debugFlowId: params.debugFlowId || null,
+      hasToken: !!data?.token,
+    });
   }
   return data?.token || null;
 };
