@@ -307,6 +307,7 @@ const POST = async (req, res) => {
   const trade_name = body.trade_name || body.tradeName || body.company_name || body.companyName || body.company
   const fantasy_name = body.fantasy_name || body.fantasyName || body.fantasy || trade_name
   const cnpj = body.cnpj || body.cnpj_digits || body.cnpjDigits
+  const business_type = body.business_type || body.businessType || null
 
   if (!trade_name || !fantasy_name || !cnpj) {
     const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
@@ -339,6 +340,7 @@ const POST = async (req, res) => {
     trade_name,
     fantasy_name,
     cnpj,
+    business_type,
     approved: false,
     created_at: new Date().toISOString(),
     metadata: typeof body.metadata === "object" && body.metadata ? body.metadata : {},

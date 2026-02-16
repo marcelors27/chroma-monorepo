@@ -228,6 +228,7 @@ const PATCH = async (req, res) => {
   const trade_name = body.trade_name || body.tradeName
   const fantasy_name = body.fantasy_name || body.fantasyName
   const cnpj = body.cnpj || body.cnpj_digits || body.cnpjDigits
+  const business_type = body.business_type || body.businessType
   const metadata = typeof body.metadata === "object" && body.metadata ? body.metadata : null
 
   const current = companies[idx]
@@ -236,6 +237,7 @@ const PATCH = async (req, res) => {
     trade_name: trade_name !== undefined ? trade_name : current.trade_name,
     fantasy_name: fantasy_name !== undefined ? fantasy_name : current.fantasy_name,
     cnpj: cnpj !== undefined ? cnpj : current.cnpj,
+    business_type: business_type !== undefined ? business_type : current.business_type,
     metadata: metadata ? { ...(current.metadata || {}), ...metadata } : current.metadata,
   }
 

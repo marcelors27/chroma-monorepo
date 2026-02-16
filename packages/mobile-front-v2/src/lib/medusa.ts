@@ -746,6 +746,7 @@ export const registerAndCreateCompany = async (params: {
     cnpj: string;
     trade_name?: string;
     fantasy_name?: string;
+    business_type?: string;
     metadata?: Record<string, any>;
   };
 }) => {
@@ -766,6 +767,7 @@ export const createCompany = async (payload: {
   cnpj: string;
   trade_name?: string;
   fantasy_name?: string;
+  business_type?: string;
   metadata?: Record<string, any>;
 }) => {
   return apiFetch<{ company: any }>("/store/companies", {
@@ -781,6 +783,7 @@ export const updateCompany = async (
     trade_name?: string;
     fantasy_name?: string;
     cnpj?: string;
+    business_type?: string;
     metadata?: Record<string, any>;
   }
 ) => {

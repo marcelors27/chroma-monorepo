@@ -20,6 +20,7 @@ import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 type CondoForm = {
   id?: string;
   name: string;
+  businessType: string;
   address: string;
   neighborhood: string;
   city: string;
@@ -42,6 +43,7 @@ type CondoForm = {
 
 const emptyForm: CondoForm = {
   name: "",
+  businessType: "",
   address: "",
   neighborhood: "",
   city: "",
@@ -80,7 +82,7 @@ const formatCEP = (value: string) => {
 };
 
 export default function CondominioDetalhes() {
-  const { terms } = useBusinessTerms();
+  const { terms, businessTypes } = useBusinessTerms();
   const navigation = useNavigation();
   const route = useRoute();
   const queryClient = useQueryClient();
@@ -104,7 +106,10 @@ export default function CondominioDetalhes() {
   const [formData, setFormData] = useState<CondoForm>(defaultForm);
   const [isLoadingCNPJ, setIsLoadingCNPJ] = useState(false);
   const [isLoadingCEP, setIsLoadingCEP] = useState(false);
-  const canSaveNew = Boolean(formData.name.trim()) && formData.cnpj.replace(/\D/g, "").length === 14;
+  const canSaveNew =
+    Boolean(formData.name.trim()) &&
+    Boolean(formData.businessType) &&
+    formData.cnpj.replace(/\D/g, "").length === 14;
 
   useEffect(() => {
     if (!company) {
@@ -114,6 +119,7 @@ export default function CondominioDetalhes() {
     setFormData({
       id: company.id,
       name: company.fantasy_name || company.trade_name || company.name || "",
+      businessType: company.business_type || "",
       address: company.metadata?.address || "",
       neighborhood: company.metadata?.neighborhood || "",
       city: company.metadata?.city || "",
@@ -225,12 +231,17 @@ export default function CondominioDetalhes() {
       toast.error("Nome e CNPJ são obrigatórios.");
       return;
     }
+    if (!formData.businessType) {
+      toast.error("Selecione o tipo de negócio.");
+      return;
+    }
 
     const payload = {
       name: formData.name,
       cnpj: formData.cnpj.replace(/\D/g, ""),
       trade_name: formData.name,
       fantasy_name: formData.name,
+      business_type: formData.businessType,
       metadata: {
         address: formData.address,
         neighborhood: formData.neighborhood,
@@ -351,6 +362,33 @@ export default function CondominioDetalhes() {
             onChangeText={(value) => handleChange("name", value)}
             marginTop={4}
           />
+          <Label marginTop={12}>Tipo de negócio</Label>
+          <View style={styles.businessTypeWrap}>
+            {businessTypes.map((type) => {
+              const active = formData.businessType === type.key;
+              return (
+                <Pressable
+                  key={type.key}
+                  onPress={() => isEditing && handleChange("businessType", type.key)}
+                  disabled={!isEditing}
+                  style={[
+                    styles.businessTypeChip,
+                    active && styles.businessTypeChipActive,
+                    !isEditing && styles.businessTypeChipDisabled,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.businessTypeChipText,
+                      active && styles.businessTypeChipTextActive,
+                    ]}
+                  >
+                    {type.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <Label marginTop={12}>CEP</Label>
           <Input
             value={formData.zip}
@@ -587,6 +625,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 12,
+  },
+  businessTypeWrap: {
+    marginTop: 8,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  businessTypeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(140, 152, 168, 0.5)",
+    backgroundColor: "rgba(34, 38, 46, 0.9)",
+  },
+  businessTypeChipActive: {
+    borderColor: "rgba(93, 162, 230, 0.9)",
+    backgroundColor: "rgba(93, 162, 230, 0.2)",
+  },
+  businessTypeChipDisabled: {
+    opacity: 0.7,
+  },
+  businessTypeChipText: {
+    color: "#C6CCD4",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  businessTypeChipTextActive: {
+    color: "#E6E8EA",
   },
   actionRow: {
     flexDirection: "row",

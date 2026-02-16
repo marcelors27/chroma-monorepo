@@ -41,8 +41,7 @@ export default function PendingCondosSection({
   useEffect(() => {
     if (!isReviewMode) return
     const company = pendingCompanies.find((item) => item.id === resolvedCompanyId) || null
-    const initial =
-      company?.business_type || businessTypes?.[0]?.key || ""
+    const initial = company?.business_type || ""
     setSelectedType(initial)
   }, [isReviewMode, pendingCompanies, resolvedCompanyId, businessTypes])
 
@@ -105,7 +104,7 @@ export default function PendingCondosSection({
                 const ok = await setCompanyApproval(company.id, true, selectedType || undefined)
                 if (ok) navigate("/estabelecimentos-pendentes")
               }}
-              disabled={pendingCompanyActionId === company.id || !selectedType}
+              disabled={pendingCompanyActionId === company.id}
             >
               {pendingCompanyActionId === company.id ? "Salvando..." : "Aprovar"}
             </button>
@@ -141,12 +140,13 @@ export default function PendingCondosSection({
               <span>{formatCnpj(company.cnpj || undefined)}</span>
             </div>
             <div className="grid" style={{ gap: "0.35rem" }}>
-              <span className="muted">Tipo de negócio</span>
+              <span className="muted">Tipo de negócio (opcional alterar antes de aprovar)</span>
               <select
                 className="field-input"
                 value={selectedType}
                 onChange={(event) => setSelectedType(event.target.value)}
               >
+                <option value="">Manter tipo cadastrado</option>
                 {businessTypes.map((type) => (
                   <option key={type.key} value={type.key}>
                     {type.label}

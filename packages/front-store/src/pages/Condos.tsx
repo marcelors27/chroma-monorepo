@@ -54,6 +54,7 @@ interface Condo {
   // Dados Básicos
   name: string;
   cnpj: string;
+  businessType: string;
   razaoSocial: string;
   approved?: boolean;
   inscricaoEstadual: string;
@@ -97,6 +98,7 @@ interface Condo {
 const emptyFormData: Omit<Condo, 'id'> = {
   name: "",
   cnpj: "",
+  businessType: "",
   razaoSocial: "",
   inscricaoEstadual: "",
   inscricaoMunicipal: "",
@@ -135,7 +137,7 @@ const emptyFormData: Omit<Condo, 'id'> = {
 
 const Condos = () => {
   const { toast } = useToast();
-  const { terms } = useBusinessTerms();
+  const { terms, businessTypes } = useBusinessTerms();
   const defaultFormData = useMemo(
     () => ({ ...emptyFormData, role: terms.responsibleLabel }),
     [terms.responsibleLabel]
@@ -166,6 +168,7 @@ const Condos = () => {
       id: company.id,
       name: company.fantasy_name || company.trade_name || metadata.name || terms.label,
       cnpj: company.cnpj || metadata.cnpj || "",
+      businessType: company.business_type || metadata.business_type || "",
       razaoSocial: company.trade_name || metadata.razaoSocial || "",
       approved: Boolean(company.approved),
       inscricaoEstadual: metadata.inscricaoEstadual || "",
@@ -466,11 +469,21 @@ const Condos = () => {
       return;
     }
 
+    if (!formData.businessType) {
+      toast({
+        title: "Tipo de negócio obrigatório",
+        description: "Selecione o tipo de negócio para continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const payload = {
         trade_name: formData.name,
         fantasy_name: formData.name,
         cnpj: formData.cnpj.replace(/\D/g, ""),
+        business_type: formData.businessType,
         metadata: buildCompanyMetadata(formData),
       };
 
@@ -680,6 +693,24 @@ const Condos = () => {
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           />
                         </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="businessType">Tipo de negócio *</Label>
+                          <select
+                            id="businessType"
+                            className="h-12 border-2 rounded-md bg-background px-3 text-sm"
+                            value={formData.businessType}
+                            onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
+                          >
+                            <option value="" disabled>
+                              Selecione
+                            </option>
+                            {businessTypes.map((type) => (
+                              <option key={type.key} value={type.key}>
+                                {type.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
 
                       <div className="space-y-4">
@@ -848,6 +879,24 @@ const Condos = () => {
                           value={formData.role}
                           onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="businessTypeTab">Tipo de negócio *</Label>
+                        <select
+                          id="businessTypeTab"
+                          className="h-12 border-2 rounded-md bg-background px-3 text-sm"
+                          value={formData.businessType}
+                          onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
+                        >
+                          <option value="" disabled>
+                            Selecione
+                          </option>
+                          {businessTypes.map((type) => (
+                            <option key={type.key} value={type.key}>
+                              {type.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">

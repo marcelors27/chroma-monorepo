@@ -181,6 +181,7 @@ export default function App() {
         setPendingCompaniesError={setPendingCompaniesError}
         pendingCompanyActionId={pendingCompanyActionId}
         setPendingCompanyActionId={setPendingCompanyActionId}
+        businessTypes={businessTypes}
         mode="review"
         companyId={params.companyId}
       />
