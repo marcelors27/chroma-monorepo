@@ -153,12 +153,15 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
       return { success: false, error: "No code provided" }
     }
 
-    const state = await authIdentityService.getState(query?.state)
+    const stateKey = query?.state ?? body?.state
+    const state = await authIdentityService.getState(stateKey)
     if (!state) {
       this.logger_?.warn?.(
         JSON.stringify({
           msg: "google validateCallback missing state",
           flow_id: flowId,
+          has_state: hasState,
+          state_key_present: !!stateKey,
         })
       )
       return { success: false, error: "No state provided, or session expired" }

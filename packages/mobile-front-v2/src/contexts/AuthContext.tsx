@@ -80,6 +80,19 @@ const createSocialFlowId = () => {
   return `social-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 };
 
+const getErrorMessage = (error: any) => {
+  if (!error) return "unknown_error";
+  if (typeof error === "string") return error;
+  return (
+    error?.message ||
+    error?.error ||
+    error?.description ||
+    error?.nativeErrorMessage ||
+    error?.toString?.() ||
+    "unknown_error"
+  );
+};
+
 const waitForAuthRedirect = (authUrl: string, redirectBase: string) => {
   return new Promise<string>((resolve, reject) => {
     let resolved = false;
@@ -235,6 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           Settings?.initializeSDK?.();
           const result = await LoginManager.logInWithPermissions(["public_profile", "email"]);
           if (result?.isCancelled) {
+            console.info("[auth-mobile] facebook cancelled", { flowId });
             return { success: false, flowId };
           }
           const data = await AccessToken.getCurrentAccessToken();
@@ -244,8 +258,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { success: false, flowId };
           }
           await completeSocialAuthNative("facebook", { accessToken, debugFlowId: flowId });
-        } catch {
-          setAuthError("Não foi possível iniciar o login social.");
+        } catch (error: any) {
+          const message = getErrorMessage(error);
+          console.info("[auth-mobile] facebook native error", {
+            flowId,
+            message,
+          });
+          setAuthError(`Não foi possível iniciar o login com Facebook. ${message}`);
           return { success: false, flowId };
         }
 
@@ -254,7 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success, flowId };
       }
 
-      if (provider === "google" && Platform.OS === "android") {
+      if (provider === "google" && (Platform.OS === "android" || Platform.OS === "ios")) {
         if (!GOOGLE_WEB_CLIENT_ID) {
           setAuthError("Google login não configurado.");
           return { success: false, flowId };
@@ -275,7 +294,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         try {
-          await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+          if (Platform.OS === "android") {
+            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+          }
           const userInfo = await GoogleSignin.signIn();
 
           if (!userInfo?.idToken) {
@@ -288,8 +309,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             authorizationCode: userInfo.serverAuthCode || undefined,
             debugFlowId: flowId,
           });
-        } catch {
-          setAuthError("Não foi possível iniciar o login social.");
+        } catch (error: any) {
+          const message = getErrorMessage(error);
+          console.info("[auth-mobile] google native error", {
+            flowId,
+            platform: Platform.OS,
+            message,
+          });
+          setAuthError(`Não foi possível iniciar o login com Google. ${message}`);
           return { success: false, flowId };
         }
 
@@ -366,32 +393,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const redirectBase = Linking.createURL("auth-callback");
+      console.info("[auth-mobile] social web flow start", { flowId, provider, redirectBase });
       const start = await startSocialAuth(provider, redirectBase, flowId);
+      console.info("[auth-mobile] social web flow authenticate response", {
+        flowId,
+        provider,
+        hasToken: !!start?.token,
+        hasLocation: !!start?.location,
+      });
       if (!start?.token && start?.location) {
         const redirectUrl = await waitForAuthRedirect(start.location, redirectBase);
+        console.info("[auth-mobile] social web flow redirect received", {
+          flowId,
+          provider,
+          redirectUrl,
+        });
         const parsed = Linking.parse(redirectUrl);
         const code = parsed.queryParams?.code;
         const state = parsed.queryParams?.state;
         if (!code || typeof code !== "string") {
+          console.info("[auth-mobile] social web flow missing code", {
+            flowId,
+            provider,
+            queryParams: parsed.queryParams || null,
+          });
           setAuthError("Não foi possível concluir o login social.");
           return { success: false, flowId };
         }
-        await completeSocialAuth(
-          provider,
-          { code, state: typeof state === "string" ? state : undefined },
-          flowId
-        );
+        try {
+          await completeSocialAuth(
+            provider,
+            { code, state: typeof state === "string" ? state : undefined },
+            flowId
+          );
+        } catch (error: any) {
+          const message = getErrorMessage(error);
+          console.info("[auth-mobile] social web flow callback error", {
+            flowId,
+            provider,
+            message,
+            state: typeof state === "string" ? state : null,
+          });
+          setAuthError(`Falha no callback de login social (${provider}). ${message}`);
+          return { success: false, flowId };
+        }
       }
       const success = await finalizeLogin();
       console.info("[auth-mobile] social login done", { flowId, provider, success });
       return { success, flowId };
     } catch (error: any) {
+      const message = getErrorMessage(error);
       console.info("[auth-mobile] social login fatal error", {
         flowId,
         provider,
-        message: error?.message || "unknown_error",
+        message,
       });
-      setAuthError("Não foi possível iniciar o login social.");
+      setAuthError(`Não foi possível iniciar o login social. ${message}`);
       return { success: false, flowId };
     }
   };
