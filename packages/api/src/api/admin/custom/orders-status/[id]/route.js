@@ -108,4 +108,28 @@ const POST = async (req, res) => {
   }
 }
 
-module.exports = { POST }
+const DELETE = async (req, res) => {
+  const orderId = req.params?.id
+  if (!orderId) {
+    return res.status(400).json({ message: "order id é obrigatório" })
+  }
+
+  try {
+    const db = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
+    const now = new Date()
+    const updated = await db("order")
+      .where({ id: orderId })
+      .whereNull("deleted_at")
+      .update({ deleted_at: now, updated_at: now })
+
+    if (!updated) {
+      return res.status(404).json({ message: "Pedido não encontrado." })
+    }
+
+    return res.status(200).json({ id: orderId, object: "order", deleted: true })
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || "Erro ao excluir pedido." })
+  }
+}
+
+module.exports = { POST, DELETE }

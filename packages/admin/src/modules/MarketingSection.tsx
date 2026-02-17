@@ -4,7 +4,7 @@ import type { Dispatch, SetStateAction } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faImage, faPenToSquare, faSpinner, faTrash } from "@fortawesome/free-solid-svg-icons"
 
-import type { MarketingBanner } from "../types"
+import type { Manufacturer, MarketingBanner } from "../types"
 
 type ToastInput = { title: string; description?: string; variant?: "success" | "error" }
 
@@ -12,6 +12,7 @@ type MarketingSectionProps = {
   medusaUrl: string
   token: string
   headers: Record<string, string>
+  manufacturers: Manufacturer[]
   banners: MarketingBanner[]
   setBanners: Dispatch<SetStateAction<MarketingBanner[]>>
   bannersError: string | null
@@ -80,6 +81,7 @@ export default function MarketingSection({
   medusaUrl,
   token,
   headers,
+  manufacturers,
   banners,
   setBanners,
   bannersError,
@@ -206,7 +208,12 @@ export default function MarketingSection({
       setBannersError("Informe a URL de destino.")
       return
     }
-    if ((form.link_type === "product" || form.link_type === "area") && !form.link_value) {
+    if (
+      (form.link_type === "product" ||
+        form.link_type === "area" ||
+        form.link_type === "manufacturer") &&
+      !form.link_value
+    ) {
       setBannersError("Informe o destino do banner.")
       return
     }
@@ -541,6 +548,7 @@ export default function MarketingSection({
                     <option value="">Sem link</option>
                     <option value="url">URL externa</option>
                     <option value="product">Produto (ID)</option>
+                    <option value="manufacturer">Fabricante</option>
                     <option value="area">Área do sistema</option>
                   </select>
                 </label>
@@ -572,6 +580,26 @@ export default function MarketingSection({
                       className="field-input"
                       placeholder="prod_..."
                     />
+                  </label>
+                )}
+
+                {linkType === "manufacturer" && (
+                  <label className="grid" style={{ gap: "0.35rem" }}>
+                    <span className="muted">Fabricante</span>
+                    <select
+                      className="field-input"
+                      value={form.link_value}
+                      onChange={(e) => handleChange("link_value", e.target.value)}
+                    >
+                      <option value="">Selecione</option>
+                      {manufacturers
+                        .filter((item) => item.is_active !== false)
+                        .map((item) => (
+                          <option key={item.id} value={item.slug}>
+                            {item.name}
+                          </option>
+                        ))}
+                    </select>
                   </label>
                 )}
 

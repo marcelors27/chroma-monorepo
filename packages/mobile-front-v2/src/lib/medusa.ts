@@ -229,6 +229,15 @@ export type MedusaMarketingBanner = {
   updated_at?: string | null;
 };
 
+export type MedusaManufacturer = {
+  id: string;
+  name: string;
+  slug: string;
+  image_url?: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+};
+
 export type MedusaProductReview = {
   id: string;
   product_id: string;
@@ -1066,6 +1075,17 @@ export const listMarketingBanners = async (params?: { limit?: number; offset?: n
   const suffix = query.toString();
   return apiFetch<{ banners: MedusaMarketingBanner[] }>(
     `/store/marketing-banners${suffix ? `?${suffix}` : ""}`,
+    { method: "GET" }
+  );
+};
+
+export const listManufacturers = async (params?: { limit?: number; offset?: number }) => {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+  const suffix = query.toString();
+  return apiFetch<{ manufacturers: MedusaManufacturer[] }>(
+    `/store/manufacturers${suffix ? `?${suffix}` : ""}`,
     { method: "GET" }
   );
 };

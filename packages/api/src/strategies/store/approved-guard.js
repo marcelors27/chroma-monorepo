@@ -209,6 +209,8 @@ module.exports = () => {
       const isCartRoute = path.startsWith("/carts") || path.startsWith("/store/carts")
       const isMarketingRoute =
         path.startsWith("/marketing-banners") || path.startsWith("/store/marketing-banners")
+      const isManufacturersRoute =
+        path.startsWith("/manufacturers") || path.startsWith("/store/manufacturers")
       const isPushTokenRoute =
         path.startsWith("/push-tokens") || path.startsWith("/store/push-tokens")
       const isShippingRoute = path.startsWith("/shipping-options") || path.startsWith("/store/shipping-options")
@@ -221,6 +223,7 @@ module.exports = () => {
         isPasswordResetRoute ||
         isCartRoute ||
         isMarketingRoute ||
+        isManufacturersRoute ||
         isPushTokenRoute ||
         isShippingRoute ||
         isPaymentCollectionRoute ||

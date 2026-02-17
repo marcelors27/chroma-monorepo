@@ -118,6 +118,17 @@ export type MarketingBanner = {
   updated_at?: string | null
 }
 
+export type Manufacturer = {
+  id: string
+  name: string
+  slug: string
+  image_url?: string | null
+  is_active?: boolean
+  sort_order?: number
+  created_at?: string | null
+  updated_at?: string | null
+}
+
 export type EmailTemplate = {
   id: string
   name?: string
@@ -190,6 +201,7 @@ export type SectionId =
   | "pix-manual"
   | "pagamentos"
   | "produtos"
+  | "fabricantes"
   | "entregas"
   | "zonas-servico"
   | "estoque"

@@ -7,6 +7,7 @@ type OrdersSectionProps = {
   orders: Order[]
   medusaUrl: string
   headers: Record<string, string>
+  onOrderDeleted?: (orderId: string) => void
   mode?: "list" | "edit"
   orderId?: string
 }
@@ -73,6 +74,7 @@ export default function OrdersSection({
   orders,
   medusaUrl,
   headers,
+  onOrderDeleted,
   mode = "list",
   orderId,
 }: OrdersSectionProps) {
@@ -88,6 +90,7 @@ export default function OrdersSection({
   const [activeOrder, setActiveOrder] = useState<Order | null>(null)
   const [draft, setDraft] = useState<Partial<Order>>({})
   const [saving, setSaving] = useState(false)
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -171,6 +174,33 @@ export default function OrdersSection({
     }
   }
 
+  const deleteOrder = async (order: Order) => {
+    const identifier = order.display_id ? `#${order.display_id}` : order.id.slice(0, 6)
+    const confirmed = window.confirm(`Excluir o pedido ${identifier}? Essa ação não poderá ser desfeita.`)
+    if (!confirmed) return
+
+    setDeletingOrderId(order.id)
+    setError(null)
+    try {
+      const res = await fetch(`${medusaUrl}/admin/custom/orders-status/${order.id}`, {
+        method: "DELETE",
+        headers,
+      })
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || "Não foi possível excluir o pedido.")
+      }
+      onOrderDeleted?.(order.id)
+      if (isEditMode) {
+        navigate("/pedidos")
+      }
+    } catch (err: any) {
+      setError(err?.message || "Erro ao excluir pedido.")
+    } finally {
+      setDeletingOrderId((current) => (current === order.id ? null : current))
+    }
+  }
+
   if (isEditMode) {
     if (!activeOrder) {
       return (
@@ -199,9 +229,19 @@ export default function OrdersSection({
         </header>
 
         <div className="action-bar">
-          <button className="btn btn-secondary" type="button" onClick={() => navigate("/pedidos")}>
-            Voltar
-          </button>
+          <div className="action-bar-group">
+            <button className="btn btn-secondary" type="button" onClick={() => navigate("/pedidos")}>
+              Voltar
+            </button>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => deleteOrder(activeOrder)}
+              disabled={deletingOrderId === activeOrder.id}
+            >
+              {deletingOrderId === activeOrder.id ? "Excluindo..." : "Excluir pedido"}
+            </button>
+          </div>
           <button className="btn" type="button" onClick={saveOrder} disabled={!hasChanges() || saving}>
             {saving ? "Salvando..." : "Salvar alterações"}
           </button>
@@ -410,13 +450,23 @@ export default function OrdersSection({
                   </td>
                   <td>{formatMoney(o.total, o.currency_code)}</td>
                   <td>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      type="button"
-                      onClick={() => navigate(`/pedidos/${o.id}`)}
-                    >
-                      Editar
-                    </button>
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        onClick={() => navigate(`/pedidos/${o.id}`)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        onClick={() => deleteOrder(o)}
+                        disabled={deletingOrderId === o.id}
+                      >
+                        {deletingOrderId === o.id ? "Excluindo..." : "Excluir"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

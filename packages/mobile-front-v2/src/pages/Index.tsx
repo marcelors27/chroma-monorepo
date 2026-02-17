@@ -26,6 +26,8 @@ import {
   listNews,
   listProducts,
   listMarketingBanners,
+  listManufacturers,
+  MedusaManufacturer,
   MedusaMarketingBanner,
   MedusaNews,
   MedusaProduct,
@@ -97,6 +99,10 @@ export default function Index() {
   const { data: bannerData, isLoading: isLoadingBanners, refetch: refetchBanners } = useQuery({
     queryKey: ["home-banners"],
     queryFn: () => listMarketingBanners({ limit: 5 }),
+  });
+  const { data: manufacturersData } = useQuery({
+    queryKey: ["home-manufacturers"],
+    queryFn: () => listManufacturers({ limit: 30 }),
   });
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
@@ -199,6 +205,7 @@ export default function Index() {
   const featuredNews = newsItems[0];
   const listNewsItems = newsItems.slice(1);
   const banners = (bannerData?.banners || []) as MedusaMarketingBanner[];
+  const manufacturers = (manufacturersData?.manufacturers || []) as MedusaManufacturer[];
   const prefersReducedData =
     netInfo.isConnected === false ||
     netInfo.isInternetReachable === false ||
@@ -288,6 +295,13 @@ export default function Index() {
       navigation.navigate(
         "Produtos" as never,
         { screen: "ProductDetails", params: { id: banner.link_value } } as never
+      );
+      return;
+    }
+    if (banner.link_type === "manufacturer" && banner.link_value) {
+      navigation.navigate(
+        "Produtos" as never,
+        { screen: "ProdutosIndex", params: { manufacturerSlug: banner.link_value } } as never
       );
       return;
     }
@@ -427,6 +441,46 @@ export default function Index() {
             )}
           </View>
         ) : null}
+        {manufacturers.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Fabricantes</Text>
+              <Pressable onPress={() => navigation.navigate("Produtos" as never)} style={styles.linkRow}>
+                <Text style={styles.linkText}>Ver catálogo</Text>
+                <ArrowRight color="#8C98A8" size={14} />
+              </Pressable>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.manufacturersRow}
+            >
+              {manufacturers.map((manufacturer) => (
+                <Pressable
+                  key={manufacturer.id}
+                  style={styles.manufacturerCard}
+                  onPress={() =>
+                    navigation.navigate(
+                      "Produtos" as never,
+                      { screen: "ProdutosIndex", params: { manufacturerSlug: manufacturer.slug } } as never
+                    )
+                  }
+                >
+                  <View style={styles.manufacturerImageWrap}>
+                    {manufacturer.image_url ? (
+                      <Image source={{ uri: manufacturer.image_url }} style={styles.manufacturerImage} resizeMode="cover" />
+                    ) : (
+                      <Text style={styles.manufacturerImageFallback}>Sem imagem</Text>
+                    )}
+                  </View>
+                  <Text style={styles.manufacturerName} numberOfLines={2}>
+                    {manufacturer.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
         <View style={styles.metricsRow}>
           <View style={styles.metricCard}>
             <View style={styles.metricHeader}>
@@ -687,6 +741,41 @@ const styles = StyleSheet.create({
   bannerMedia: {
     width: "100%",
     height: "100%",
+  },
+  manufacturersRow: {
+    gap: 12,
+    paddingVertical: 4,
+  },
+  manufacturerCard: {
+    width: 138,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(70, 78, 90, 0.6)",
+    backgroundColor: "rgba(26, 30, 38, 0.92)",
+    padding: 10,
+    gap: 8,
+  },
+  manufacturerImageWrap: {
+    width: "100%",
+    height: 82,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "rgba(140, 152, 168, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  manufacturerImage: {
+    width: "100%",
+    height: "100%",
+  },
+  manufacturerImageFallback: {
+    color: "#8C98A8",
+    fontSize: 11,
+  },
+  manufacturerName: {
+    color: "#E6E8EA",
+    fontSize: 12,
+    fontWeight: "600",
   },
   bannerOverlay: {
     position: "absolute",

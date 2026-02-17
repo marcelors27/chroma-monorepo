@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Search } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
+import { useRoute } from "@react-navigation/native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { ProductCard } from "@/components/ui/ProductCard";
@@ -18,7 +19,9 @@ import {
   getProductImage,
   getVariant,
   getVariantPricing,
+  listManufacturers,
   listProducts,
+  MedusaManufacturer,
   MedusaProduct,
 } from "@/lib/medusa";
 
@@ -79,7 +82,9 @@ const hasPromotionFlag = (product?: MedusaProduct) => {
 };
 
 export default function Produtos() {
+  const route = useRoute<any>();
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedManufacturer, setSelectedManufacturer] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<ProductFilters>({
     priceRange: [0, MAX_PRICE_FALLBACK],
@@ -92,6 +97,10 @@ export default function Produtos() {
   const { terms } = useBusinessTerms();
   const { width } = useWindowDimensions();
   const { data, isLoading } = useQuery({ queryKey: ["products"], queryFn: listProducts });
+  const { data: manufacturersData } = useQuery({
+    queryKey: ["manufacturers"],
+    queryFn: () => listManufacturers({ limit: 300 }),
+  });
   const cardGap = 12;
   const horizontalPadding = 28;
   const cardWidth = Math.floor((width - horizontalPadding * 2 - cardGap) / 2);
@@ -110,6 +119,8 @@ export default function Produtos() {
           isOnPromotion: pricing.onSale || hasPromotionFlag(product),
           image: getProductImage(product) || "",
           category: getProductCategory(product),
+          manufacturerSlug: String((product.metadata as any)?.manufacturer_slug || ""),
+          manufacturerName: String((product.metadata as any)?.manufacturer_name || "Sem fabricante"),
           inStock: (variant?.inventory_quantity ?? 0) > 0,
           variantId: variant?.id || "",
           variantTitle: variant?.title || "",
@@ -135,6 +146,7 @@ export default function Produtos() {
   );
 
   const activeFiltersCount = [
+    selectedManufacturer !== "all",
     filters.priceRange[0] > 0 || filters.priceRange[1] < maxPrice,
     filters.onlyDiscounted,
     filters.inStock,
@@ -162,16 +174,38 @@ export default function Produtos() {
     return [{ id: "all", label: "Todos" }, ...Array.from(unique.entries()).map(([id, label]) => ({ id, label }))];
   }, [products]);
 
+  const manufacturers = useMemo(() => {
+    const fromProducts = new Map<string, string>();
+    products.forEach((product) => {
+      if (!product.manufacturerSlug) return;
+      fromProducts.set(product.manufacturerSlug, product.manufacturerName);
+    });
+    ((manufacturersData?.manufacturers || []) as MedusaManufacturer[]).forEach((item) => {
+      if (!item?.slug) return;
+      fromProducts.set(String(item.slug), String(item.name || item.slug));
+    });
+
+    return [{ id: "all", label: "Todos" }, ...Array.from(fromProducts.entries()).map(([id, label]) => ({ id, label }))];
+  }, [products, manufacturersData]);
+
+  useEffect(() => {
+    const slug = route?.params?.manufacturerSlug;
+    if (!slug) return;
+    setSelectedManufacturer(String(slug));
+  }, [route?.params?.manufacturerSlug]);
+
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
       const matchesCategory = selectedCategory === "all" || normalizeText(product.category) === normalizeText(selectedCategory);
+      const matchesManufacturer =
+        selectedManufacturer === "all" || product.manufacturerSlug === selectedManufacturer;
       const matchesSearch =
         normalizeText(product.name).includes(normalizeText(searchQuery)) ||
         normalizeText(product.description).includes(normalizeText(searchQuery));
       const matchesPrice = product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1];
       const matchesDiscount = !filters.onlyDiscounted || product.isOnPromotion;
       const matchesStock = !filters.inStock || product.inStock;
-      return matchesCategory && matchesSearch && matchesPrice && matchesDiscount && matchesStock;
+      return matchesCategory && matchesManufacturer && matchesSearch && matchesPrice && matchesDiscount && matchesStock;
     });
 
     switch (filters.sortBy) {
@@ -189,7 +223,7 @@ export default function Produtos() {
     }
 
     return result;
-  }, [selectedCategory, searchQuery, filters, products]);
+  }, [selectedCategory, selectedManufacturer, searchQuery, filters, products]);
 
   const handleAddToCart = async (product: (typeof products)[number]) => {
     if (!activeCondo) {
@@ -257,7 +291,12 @@ export default function Produtos() {
               {activeFiltersCount} filtro{activeFiltersCount > 1 ? "s" : ""} ativo
               {activeFiltersCount > 1 ? "s" : ""}
             </Text>
-            <Pressable onPress={() => setFilters(defaultFilters)}>
+            <Pressable
+              onPress={() => {
+                setFilters(defaultFilters);
+                setSelectedManufacturer("all");
+              }}
+            >
               <Text style={styles.clearFiltersText}>Limpar</Text>
             </Pressable>
           </View>
@@ -279,6 +318,30 @@ export default function Produtos() {
                 style={[styles.categoryChipText, selectedCategory === category.id && styles.categoryChipTextActive]}
               >
                 {category.label}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoriesScroll}
+          contentContainerStyle={styles.categoriesContent}
+        >
+          {manufacturers.map((manufacturer) => (
+            <Pressable
+              key={manufacturer.id}
+              onPress={() => setSelectedManufacturer(manufacturer.id)}
+              style={[styles.categoryChip, selectedManufacturer === manufacturer.id && styles.categoryChipActive]}
+            >
+              <Text
+                style={[
+                  styles.categoryChipText,
+                  selectedManufacturer === manufacturer.id && styles.categoryChipTextActive,
+                ]}
+              >
+                {manufacturer.label}
               </Text>
             </Pressable>
           ))}

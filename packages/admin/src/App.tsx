@@ -5,6 +5,7 @@ import ChannelsSection from "./modules/ChannelsSection"
 import DashboardSection from "./modules/DashboardSection"
 import NewsSection from "./modules/NewsSection"
 import MarketingSection from "./modules/MarketingSection"
+import ManufacturersSection from "./modules/ManufacturersSection"
 import EmailTemplatesSection from "./modules/EmailTemplatesSection"
 import BillingResendSection from "./modules/BillingResendSection"
 import EmailLogsSection from "./modules/EmailLogsSection"
@@ -40,6 +41,7 @@ import {
   StoreUser,
   StockLocation,
   BusinessType,
+  Manufacturer,
 } from "./types"
 
 const MEDUSA_URL = import.meta.env.VITE_MEDUSA_URL || "http://localhost:9000"
@@ -73,6 +75,8 @@ export default function App() {
   const [storeUsersError, setStoreUsersError] = useState<string | null>(null)
   const [businessTypes, setBusinessTypes] = useState<BusinessType[]>([])
   const [businessTypesError, setBusinessTypesError] = useState<string | null>(null)
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
+  const [manufacturersError, setManufacturersError] = useState<string | null>(null)
   const [salesChannels, setSalesChannels] = useState<SalesChannel[]>([])
   const [regions, setRegions] = useState<Region[]>([])
   const [stockLocations, setStockLocations] = useState<StockLocation[]>([])
@@ -95,6 +99,7 @@ export default function App() {
       salesChannels={salesChannels}
       shippingOptions={shippingOptions}
       shippingProfiles={shippingProfiles}
+      manufacturers={manufacturers}
       stockLocations={stockLocations}
       openOrders={openOrders}
       mode="create"
@@ -113,6 +118,7 @@ export default function App() {
         salesChannels={salesChannels}
         shippingOptions={shippingOptions}
         shippingProfiles={shippingProfiles}
+        manufacturers={manufacturers}
         stockLocations={stockLocations}
         openOrders={openOrders}
         mode="edit"
@@ -133,6 +139,7 @@ export default function App() {
         salesChannels={salesChannels}
         shippingOptions={shippingOptions}
         shippingProfiles={shippingProfiles}
+        manufacturers={manufacturers}
         stockLocations={stockLocations}
         openOrders={openOrders}
         mode="delete"
@@ -163,6 +170,7 @@ export default function App() {
         orders={orders}
         medusaUrl={MEDUSA_URL}
         headers={headers}
+        onOrderDeleted={handleOrderDeleted}
         mode="edit"
         orderId={params.orderId}
       />
@@ -276,6 +284,7 @@ export default function App() {
         count: pendingCompanies.length,
       },
       { id: "produtos", label: "Produtos", path: "/produtos", count: products.length },
+      { id: "fabricantes", label: "Fabricantes", path: "/fabricantes", count: manufacturers.length },
       { id: "entregas", label: "Formas de entrega", path: "/entregas", count: deliveryMethodsCount },
       { id: "zonas-servico", label: "Zonas de serviço", path: "/zonas-servico", count: serviceZonesCount },
       { id: "estoque", label: "Estoque", path: "/estoque", count: stockLocations.length },
@@ -303,6 +312,7 @@ export default function App() {
       stockLocations.length,
       storeUsers.length,
       businessTypes.length,
+      manufacturers.length,
     ]
   )
 
@@ -338,7 +348,7 @@ export default function App() {
       },
       {
         label: "Configurações",
-        items: ["estabelecimentos-pendentes", "canais", "usuarios", "tipos-negocio", "emails", "email-logs"]
+        items: ["estabelecimentos-pendentes", "canais", "usuarios", "tipos-negocio", "fabricantes", "emails", "email-logs"]
           .map((id) => sectionById.get(id))
           .filter(Boolean),
       },
@@ -353,6 +363,10 @@ export default function App() {
     }),
     [token]
   )
+
+  const handleOrderDeleted = (orderId: string) => {
+    setOrders((current) => current.filter((order) => order.id !== orderId))
+  }
 
   async function login(e?: FormEvent) {
     e?.preventDefault()
@@ -408,6 +422,7 @@ export default function App() {
           priceListsRes,
           storeUsersRes,
           businessTypesRes,
+          manufacturersRes,
           salesChannelsRes,
           regionsRes,
           stockLocationsRes,
@@ -423,6 +438,7 @@ export default function App() {
           fetch(`${MEDUSA_URL}/admin/price-lists?limit=50`, { headers }),
           fetch(`${MEDUSA_URL}/admin/store-users?limit=500`, { headers }),
           fetch(`${MEDUSA_URL}/admin/business-types`, { headers }),
+          fetch(`${MEDUSA_URL}/admin/manufacturers?limit=300`, { headers }),
           fetch(`${MEDUSA_URL}/admin/sales-channels?limit=200`, { headers }),
           fetch(`${MEDUSA_URL}/admin/regions?limit=200`, { headers }),
           fetch(stockLocationsUrl, { headers }),
@@ -513,6 +529,15 @@ export default function App() {
           setBusinessTypesError(body || "Não foi possível buscar tipos de negócio")
         }
 
+        if (manufacturersRes.ok) {
+          const json = await manufacturersRes.json()
+          setManufacturers(json.manufacturers ?? [])
+          setManufacturersError(null)
+        } else {
+          const body = await manufacturersRes.text()
+          setManufacturersError(body || "Não foi possível buscar fabricantes")
+        }
+
         if (salesChannelsRes.ok) {
           const json = await salesChannelsRes.json()
           setSalesChannels(json.sales_channels ?? json.salesChannels ?? [])
@@ -571,6 +596,7 @@ export default function App() {
         setMarketingError("Erro ao buscar banners")
         setPriceListsError("Erro ao buscar promoções")
         setStoreUsersError("Erro ao buscar usuários")
+        setManufacturersError("Erro ao buscar fabricantes")
         setCatalogError("Erro ao buscar dados de catálogo")
       }
     }
@@ -891,6 +917,7 @@ export default function App() {
                       medusaUrl={MEDUSA_URL}
                       token={token}
                       headers={headers}
+                      manufacturers={manufacturers}
                       banners={marketingBanners}
                       setBanners={setMarketingBanners}
                       bannersError={marketingError}
@@ -907,6 +934,7 @@ export default function App() {
                       medusaUrl={MEDUSA_URL}
                       token={token}
                       headers={headers}
+                      manufacturers={manufacturers}
                       banners={marketingBanners}
                       setBanners={setMarketingBanners}
                       bannersError={marketingError}
@@ -923,6 +951,7 @@ export default function App() {
                       medusaUrl={MEDUSA_URL}
                       token={token}
                       headers={headers}
+                      manufacturers={manufacturers}
                       banners={marketingBanners}
                       setBanners={setMarketingBanners}
                       bannersError={marketingError}
@@ -939,6 +968,7 @@ export default function App() {
                       medusaUrl={MEDUSA_URL}
                       token={token}
                       headers={headers}
+                      manufacturers={manufacturers}
                       banners={marketingBanners}
                       setBanners={setMarketingBanners}
                       bannersError={marketingError}
@@ -1088,6 +1118,20 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/fabricantes"
+                  element={
+                    <ManufacturersSection
+                      medusaUrl={MEDUSA_URL}
+                      token={token}
+                      headers={headers}
+                      manufacturers={manufacturers}
+                      setManufacturers={setManufacturers}
+                      manufacturersError={manufacturersError}
+                      setManufacturersError={setManufacturersError}
+                    />
+                  }
+                />
+                <Route
                   path="/produtos"
                   element={
                     <ProductsSection
@@ -1099,6 +1143,7 @@ export default function App() {
                       salesChannels={salesChannels}
                       shippingOptions={shippingOptions}
                       shippingProfiles={shippingProfiles}
+                      manufacturers={manufacturers}
                       stockLocations={stockLocations}
                       openOrders={openOrders}
                       mode="list"
@@ -1271,7 +1316,14 @@ export default function App() {
                 />
                 <Route
                   path="/pedidos"
-                  element={<OrdersSection orders={orders} medusaUrl={MEDUSA_URL} headers={headers} />}
+                  element={
+                    <OrdersSection
+                      orders={orders}
+                      medusaUrl={MEDUSA_URL}
+                      headers={headers}
+                      onOrderDeleted={handleOrderDeleted}
+                    />
+                  }
                 />
                 <Route path="/pedidos/:orderId" element={<OrdersEditRoute />} />
                 <Route

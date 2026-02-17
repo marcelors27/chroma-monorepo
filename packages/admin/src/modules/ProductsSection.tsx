@@ -15,6 +15,7 @@ import {
 import type { Dispatch, SetStateAction } from "react"
 
 import {
+  Manufacturer,
   MediaPayload,
   Product,
   SalesChannel,
@@ -35,6 +36,7 @@ type ProductsSectionProps = {
   salesChannels: SalesChannel[]
   shippingOptions: ShippingOption[]
   shippingProfiles: ShippingProfile[]
+  manufacturers: Manufacturer[]
   stockLocations: StockLocation[]
   openOrders: number
   mode?: "list" | "create" | "edit" | "delete"
@@ -50,6 +52,7 @@ export default function ProductsSection({
   salesChannels,
   shippingOptions,
   shippingProfiles,
+  manufacturers,
   stockLocations,
   openOrders,
   mode = "list",
@@ -97,6 +100,7 @@ export default function ProductsSection({
     stock_quantity: "",
     allowed_shipping_option_ids: [] as string[],
     shipping_profile_id: "",
+    manufacturer_id: "",
   })
   const [productOptions, setProductOptions] = useState<
     { id: string; title: string; values: string }[]
@@ -129,7 +133,9 @@ export default function ProductsSection({
     featured: false,
     allowed_shipping_option_ids: [] as string[],
     shipping_profile_id: "",
+    manufacturer_id: "",
   })
+  const [manufacturerFilter, setManufacturerFilter] = useState("")
 
   const totalInventory = useMemo(() => {
     return products.reduce((acc, p) => {
@@ -341,6 +347,7 @@ export default function ProductsSection({
       stock_quantity: "",
       allowed_shipping_option_ids: allShippingOptionIds,
       shipping_profile_id: shippingProfiles[0]?.id || "",
+      manufacturer_id: "",
     })
     setProductOptions([])
     setProductVariants([
@@ -669,7 +676,9 @@ export default function ProductsSection({
   }
 
   const refreshProduct = async (productId: string) => {
-    const fields = encodeURIComponent("+variants.inventory_quantity,+variants.prices,+variants.title")
+    const fields = encodeURIComponent(
+      "+variants.inventory_quantity,+variants.prices,+variants.title,+metadata,+shipping_profile_id"
+    )
     const res = await fetch(`${medusaUrl}/admin/products/${productId}?fields=${fields}`, {
       headers,
     })
@@ -862,9 +871,16 @@ export default function ProductsSection({
       const metadata: Record<string, any> | undefined = (() => {
         const featured = productForm.featured === true
         const hasMedia = mediaImages.length || mediaVideos.length || mediaYoutube.length
+        const selectedManufacturer = manufacturers.find((item) => item.id === productForm.manufacturer_id)
         const base: Record<string, any> = { allowed_shipping_option_ids: selectedShippingOptions }
         if (featured) {
           base.featured = true
+        }
+        if (selectedManufacturer) {
+          base.manufacturer_id = selectedManufacturer.id
+          base.manufacturer_slug = selectedManufacturer.slug
+          base.manufacturer_name = selectedManufacturer.name
+          base.manufacturer_image_url = selectedManufacturer.image_url || null
         }
         if (hasMedia) {
           base.media = {
@@ -1022,6 +1038,7 @@ export default function ProductsSection({
       : []
     const storedProfileId =
       product.shipping_profile_id || (metadata?.shipping_profile_id as string | undefined) || ""
+    const storedManufacturerId = String(metadata?.manufacturer_id || "")
     setEditingProductId(product.id)
     setProductEditMediaUploadError(null)
     setProductEditForm({
@@ -1033,6 +1050,7 @@ export default function ProductsSection({
         ? storedShippingOptions
         : allShippingOptionIds,
       shipping_profile_id: storedProfileId || shippingProfiles[0]?.id || "",
+      manufacturer_id: storedManufacturerId,
     })
   }
 
@@ -1111,11 +1129,16 @@ export default function ProductsSection({
     setProductEditSaving(true)
     setProductEditError(null)
     try {
+      const selectedManufacturer = manufacturers.find((item) => item.id === productEditForm.manufacturer_id)
       const payload = {
         shipping_profile_id: productEditForm.shipping_profile_id,
         metadata: {
           ...(product.metadata || {}),
           featured: productEditForm.featured === true,
+          manufacturer_id: selectedManufacturer?.id || null,
+          manufacturer_slug: selectedManufacturer?.slug || null,
+          manufacturer_name: selectedManufacturer?.name || null,
+          manufacturer_image_url: selectedManufacturer?.image_url || null,
           allowed_shipping_option_ids: productEditForm.allowed_shipping_option_ids,
           shipping_profile_id: productEditForm.shipping_profile_id,
           media: {
@@ -1145,6 +1168,14 @@ export default function ProductsSection({
       setProductEditSaving(false)
     }
   }
+
+  const filteredCatalogProducts = useMemo(() => {
+    if (!manufacturerFilter) return products
+    return products.filter((product) => {
+      const metadata = (product.metadata || {}) as Record<string, any>
+      return String(metadata.manufacturer_id || "") === manufacturerFilter
+    })
+  }, [products, manufacturerFilter])
 
   if (isDeleteMode) {
     if (!activeProduct) {
@@ -1311,6 +1342,24 @@ export default function ProductsSection({
                     {profile.name || profile.id}
                   </option>
                 ))}
+              </select>
+            </label>
+
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Fabricante</span>
+              <select
+                value={productForm.manufacturer_id}
+                onChange={(e) => handleProductChange("manufacturer_id", e.target.value)}
+                className="field-input"
+              >
+                <option value="">Selecionar</option>
+                {manufacturers
+                  .filter((item) => item.is_active !== false)
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
               </select>
             </label>
           </div>
@@ -1880,6 +1929,23 @@ export default function ProductsSection({
                 ))}
               </select>
             </label>
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Fabricante</span>
+              <select
+                value={productEditForm.manufacturer_id}
+                onChange={(e) => updateProductEditField("manufacturer_id", e.target.value)}
+                className="field-input"
+              >
+                <option value="">Sem fabricante</option>
+                {manufacturers
+                  .filter((item) => item.is_active !== false)
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
             <div className="panel grid" style={{ gap: "0.5rem" }}>
               <div
                 style={{
@@ -2033,7 +2099,7 @@ export default function ProductsSection({
         >
           <h3>Catálogo recente</h3>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span className="pill">{products.length} itens</span>
+            <span className="pill">{filteredCatalogProducts.length} itens</span>
             <button
               className="btn btn-secondary btn-sm btn-icon"
               type="button"
@@ -2045,6 +2111,30 @@ export default function ProductsSection({
             </button>
           </div>
         </div>
+        <div className="filters-grid" style={{ marginBottom: "0.75rem" }}>
+          <select
+            className="field-input"
+            value={manufacturerFilter}
+            onChange={(e) => setManufacturerFilter(e.target.value)}
+          >
+            <option value="">Fabricante (todos)</option>
+            {manufacturers
+              .filter((item) => item.is_active !== false)
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+          </select>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => setManufacturerFilter("")}
+            disabled={!manufacturerFilter}
+          >
+            Limpar filtro
+          </button>
+        </div>
         {productEditError && <div className="muted">Erro: {productEditError}</div>}
         <div style={{ overflowX: "auto" }}>
           <table className="table">
@@ -2052,6 +2142,7 @@ export default function ProductsSection({
               <tr>
                 <th />
                 <th>Título</th>
+                <th>Fabricante</th>
                 <th>Estoque</th>
                 <th>Preço</th>
                 <th>Mídias</th>
@@ -2059,7 +2150,7 @@ export default function ProductsSection({
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => {
+              {filteredCatalogProducts.map((p) => {
                 const variant = p.variants?.[0]
                 const price = variant?.prices?.[0]
                 const variants = p.variants || []
@@ -2091,6 +2182,7 @@ export default function ProductsSection({
                         {p.title}
                         {p.metadata?.featured && <span className="pill" style={{ marginLeft: "0.5rem" }}>Destaque</span>}
                       </td>
+                      <td>{String((p.metadata as Record<string, any> | undefined)?.manufacturer_name || "—")}</td>
                       <td>{hasStockData ? totalStock : "—"}</td>
                       <td>{formatMoney(price?.amount, price?.currency_code)}</td>
                       <td>
@@ -2118,7 +2210,7 @@ export default function ProductsSection({
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={6}>
+                        <td colSpan={7}>
                           <div className="panel" style={{ marginTop: "0.5rem" }}>
                             <div className="muted" style={{ marginBottom: "0.5rem" }}>
                               Variações e estoque por SKU

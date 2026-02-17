@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Search, Filter, X, ArrowUpDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useOutletContext } from "react-router-dom";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import dashboardBg from "@/assets/dashboard-bg.jpg";
@@ -22,7 +22,9 @@ import {
   getProductImage,
   getVariant,
   getVariantPricing,
+  listManufacturers,
   listProducts,
+  MedusaManufacturer,
   MedusaProduct,
   formatMoney,
 } from "@/lib/medusa";
@@ -43,6 +45,8 @@ type UiProduct = {
   name: string;
   price: number;
   category: string;
+  manufacturerSlug: string;
+  manufacturerName: string;
   image: string;
   isPromotion: boolean;
   onSale?: boolean;
@@ -107,6 +111,7 @@ const Dashboard = () => {
   const { selectedCondo } = useOutletContext<LayoutContext>();
   const [searchName, setSearchName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todos");
+  const [selectedManufacturer, setSelectedManufacturer] = useState("Todos");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [onlyOnSale, setOnlyOnSale] = useState(false);
@@ -114,11 +119,17 @@ const Dashboard = () => {
   const [sortBy, setSortBy] = useState<SortOption>("name-asc");
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const loaderRef = useRef<HTMLDivElement>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const { addItem } = useCart();
 
   const { data, isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: listProducts,
+    enabled: Boolean(selectedCondo),
+  });
+  const { data: manufacturersData } = useQuery({
+    queryKey: ["manufacturers"],
+    queryFn: () => listManufacturers({ limit: 300 }),
     enabled: Boolean(selectedCondo),
   });
 
@@ -132,6 +143,8 @@ const Dashboard = () => {
           name: product.title,
           price: pricing.finalPrice,
           category: getProductCategory(product),
+          manufacturerSlug: String((product.metadata as any)?.manufacturer_slug || ""),
+          manufacturerName: String((product.metadata as any)?.manufacturer_name || "Sem fabricante"),
           image: getProductImage(product),
           isPromotion: pricing.onSale || hasPromotionFlag(product),
           onSale: pricing.onSale,
@@ -143,6 +156,31 @@ const Dashboard = () => {
     );
   }, [data]);
 
+  const manufacturerOptions = useMemo(() => {
+    const fromProducts = new Map<string, string>();
+    products.forEach((product) => {
+      if (!product.manufacturerSlug) return;
+      fromProducts.set(product.manufacturerSlug, product.manufacturerName);
+    });
+    const fromApi =
+      ((manufacturersData?.manufacturers || []) as MedusaManufacturer[])
+        .filter((item) => item?.slug)
+        .map((item) => ({ slug: String(item.slug), name: String(item.name || item.slug) })) || [];
+
+    const merged = new Map<string, string>(fromProducts);
+    fromApi.forEach((item) => merged.set(item.slug, item.name));
+    return [
+      { value: "Todos", label: "Todos" },
+      ...Array.from(merged.entries()).map(([slug, name]) => ({ value: slug, label: name })),
+    ];
+  }, [products, manufacturersData]);
+
+  useEffect(() => {
+    const requestedManufacturer = searchParams.get("manufacturer") || "Todos";
+    const exists = manufacturerOptions.some((option) => option.value === requestedManufacturer);
+    setSelectedManufacturer(exists ? requestedManufacturer : "Todos");
+  }, [searchParams, manufacturerOptions]);
+
   const categories = useMemo(() => {
     const uniques = new Set<string>();
     products.forEach((p) => uniques.add(p.category || "Geral"));
@@ -153,6 +191,8 @@ const Dashboard = () => {
     const filtered = products.filter((product) => {
       const matchesName = product.name.toLowerCase().includes(searchName.toLowerCase());
       const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory;
+      const matchesManufacturer =
+        selectedManufacturer === "Todos" || product.manufacturerSlug === selectedManufacturer;
       const parsedMin = minPrice ? parseFloat(minPrice) : NaN;
       const parsedMax = maxPrice ? parseFloat(maxPrice) : NaN;
       const minAmount = Number.isFinite(parsedMin) ? parsedMin * 100 : null;
@@ -161,7 +201,7 @@ const Dashboard = () => {
       const matchesMaxPrice = !maxPrice || (maxAmount !== null && product.price <= maxAmount);
       const matchesOnSale = !onlyOnSale || product.isPromotion;
 
-      return matchesName && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesOnSale;
+      return matchesName && matchesCategory && matchesManufacturer && matchesMinPrice && matchesMaxPrice && matchesOnSale;
     });
 
     return [...filtered].sort((a, b) => {
@@ -178,7 +218,7 @@ const Dashboard = () => {
           return 0;
       }
     });
-  }, [products, searchName, selectedCategory, minPrice, maxPrice, onlyOnSale, sortBy]);
+  }, [products, searchName, selectedCategory, selectedManufacturer, minPrice, maxPrice, onlyOnSale, sortBy]);
 
   const visibleProducts = useMemo(() => {
     return filteredAndSortedProducts.slice(0, visibleCount);
@@ -189,7 +229,7 @@ const Dashboard = () => {
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(ITEMS_PER_PAGE);
-  }, [products.length, searchName, selectedCategory, minPrice, maxPrice, onlyOnSale, sortBy]);
+  }, [products.length, searchName, selectedCategory, selectedManufacturer, minPrice, maxPrice, onlyOnSale, sortBy]);
 
   // Infinite scroll observer
   const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
@@ -220,13 +260,26 @@ const Dashboard = () => {
   const clearFilters = () => {
     setSearchName("");
     setSelectedCategory("Todos");
+    setSelectedManufacturer("Todos");
     setMinPrice("");
     setMaxPrice("");
     setOnlyOnSale(false);
     setSortBy("name-asc");
   };
 
-  const hasActiveFilters = searchName || selectedCategory !== "Todos" || minPrice || maxPrice || onlyOnSale;
+  const hasActiveFilters = searchName || selectedCategory !== "Todos" || selectedManufacturer !== "Todos" || minPrice || maxPrice || onlyOnSale;
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (selectedManufacturer !== "Todos") {
+      next.set("manufacturer", selectedManufacturer);
+    } else {
+      next.delete("manufacturer");
+    }
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [selectedManufacturer, searchParams, setSearchParams]);
 
   const handleAddToCart = (product: UiProduct) => {
     if (!product.variantId) {
@@ -337,8 +390,8 @@ const Dashboard = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Preço mínimo</Label>
+            <div className="space-y-2">
+              <Label>Preço mínimo</Label>
                 <Input
                   type="number"
                   placeholder="R$ 0,00"
@@ -357,9 +410,28 @@ const Dashboard = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="block">Promoção</Label>
-                <div className="flex items-center gap-2 h-10">
+            <div className="space-y-2">
+              <Label>Fabricante</Label>
+              <Select value={selectedManufacturer} onValueChange={setSelectedManufacturer}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {manufacturerOptions.map((option) => (
+                    <SelectItem
+                      key={option.value === "Todos" ? "manufacturer-all" : `manufacturer-${option.value}`}
+                      value={option.value}
+                    >
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="block">Promoção</Label>
+              <div className="flex items-center gap-2 h-10">
                   <Checkbox
                     id="onSale"
                     checked={onlyOnSale}
