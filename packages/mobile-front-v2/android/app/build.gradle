@@ -92,8 +92,8 @@ android {
         applicationId 'com.chroma.mobilestore'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 39
-        versionName "0.2.35"
+        versionCode 40
+        versionName "0.2.36"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
