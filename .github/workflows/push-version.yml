@@ -10,6 +10,10 @@ on:
         description: "Version to bump (format: X.Y.Z or X.Y.Z-rc.1)"
         required: true
         type: string
+      build:
+        description: "Optional build number override (positive integer)"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -35,7 +39,7 @@ jobs:
       - name: Bump versions
         id: bump
         env:
-          COMMIT_MESSAGE: ${{ github.event_name == 'workflow_dispatch' && format('push-ver:{0}', github.event.inputs.version) || github.event.head_commit.message }}
+          COMMIT_MESSAGE: ${{ github.event_name == 'workflow_dispatch' && format('push-ver:{0}{1}', github.event.inputs.version, github.event.inputs.build != '' && format(' push-build:{0}', github.event.inputs.build) || '') || github.event.head_commit.message }}
           COMMIT_MESSAGES: ${{ toJson(github.event.commits.*.message) }}
         run: node scripts/ci/push-version.js
 

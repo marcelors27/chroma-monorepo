@@ -55,6 +55,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const USER_STORAGE_KEY = "chroma_front_v2_user";
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+const GOOGLE_IOS_CLIENT_ID_FALLBACK =
+  "633351241832-2t9hj3ptto4pdrk5akbmsi2f7otb2k9b.apps.googleusercontent.com";
+const RESOLVED_GOOGLE_IOS_CLIENT_ID = GOOGLE_IOS_CLIENT_ID || GOOGLE_IOS_CLIENT_ID_FALLBACK;
 
 const mapCustomerToUser = (customer: MedusaCustomer): User => ({
   id: customer.id,
@@ -246,7 +249,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
           Settings?.initializeSDK?.();
-          const result = await LoginManager.logInWithPermissions(["public_profile", "email"]);
+          const result =
+            Platform.OS === "ios"
+              ? await LoginManager.logInWithPermissions(
+                  ["public_profile", "email"],
+                  "enabled"
+                )
+              : await LoginManager.logInWithPermissions(["public_profile", "email"]);
           if (result?.isCancelled) {
             console.info("[auth-mobile] facebook cancelled", { flowId });
             return { success: false, flowId };
@@ -254,7 +263,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const data = await AccessToken.getCurrentAccessToken();
           const accessToken = data?.accessToken?.toString?.() || data?.accessToken;
           if (!accessToken) {
-            setAuthError("Não foi possível concluir o login com Facebook.");
+            setAuthError(
+              Platform.OS === "ios"
+                ? "Não foi possível concluir o login com Facebook. O iOS retornou login limitado (limited.facebook.com), sem access token."
+                : "Não foi possível concluir o login com Facebook."
+            );
             return { success: false, flowId };
           }
           await completeSocialAuthNative("facebook", { accessToken, debugFlowId: flowId });
@@ -274,10 +287,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (provider === "google" && (Platform.OS === "android" || Platform.OS === "ios")) {
-        if (Platform.OS === "ios" && !GOOGLE_IOS_CLIENT_ID) {
-          setAuthError("Google login iOS não configurado.");
-          return { success: false, flowId };
-        }
         let GoogleSignin;
         try {
           ({ GoogleSignin } = require("@react-native-google-signin/google-signin"));
@@ -287,7 +296,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         GoogleSignin.configure({
-          ...(GOOGLE_IOS_CLIENT_ID ? { iosClientId: GOOGLE_IOS_CLIENT_ID } : {}),
+          ...(Platform.OS === "ios"
+            ? { iosClientId: RESOLVED_GOOGLE_IOS_CLIENT_ID }
+            : {}),
           offlineAccess: false,
           scopes: ["email", "profile"],
         });

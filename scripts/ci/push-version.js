@@ -15,12 +15,17 @@ if (COMMIT_MESSAGES_RAW) {
   }
 }
 const MATCH = combinedMessages.match(/push-ver:([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)/);
+const BUILD_MATCH = combinedMessages.match(/push-build:(\d+)/);
 
 if (!MATCH) {
   process.exit(0);
 }
 
 const nextVersion = MATCH[1];
+const requestedBuild = BUILD_MATCH ? Number(BUILD_MATCH[1]) : null;
+if (requestedBuild !== null && (!Number.isInteger(requestedBuild) || requestedBuild < 1)) {
+  throw new Error("Invalid build number. Use push-build:<positive-integer>.");
+}
 
 const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, "utf8"));
 const writeJson = (filePath, data) => {
@@ -105,7 +110,7 @@ if (fs.existsSync(infoPlistPath)) {
   }
 }
 
-const nextBuild = Math.max(1, currentBuild + 1);
+const nextBuild = requestedBuild ?? Math.max(1, currentBuild + 1);
 
 if (appJson) {
   appJson.expo = appJson.expo || {};

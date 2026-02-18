@@ -213,11 +213,20 @@ class FacebookAuthService extends AbstractAuthModuleProvider {
     meUrl.searchParams.set("fields", "id,name,email,picture")
     meUrl.searchParams.set("access_token", accessToken)
 
-    const profile = await fetch(meUrl.toString(), { method: "GET" }).then((r) => {
+    const profile = await fetch(meUrl.toString(), { method: "GET" }).then(async (r) => {
       if (!r.ok) {
+        let providerMessage = ""
+        try {
+          const body = await r.json()
+          providerMessage = body?.error?.message || ""
+        } catch {}
+        const limitedLoginHint =
+          r.status === 400
+            ? " Facebook limited login detected on iOS. Request tracking-enabled login or use an identity token flow."
+            : ""
         throw new MedusaError(
           MedusaError.Types.INVALID_DATA,
-          `Could not fetch profile, ${r.status}, ${r.statusText}`
+          `Could not fetch profile, ${r.status}, ${r.statusText}.${providerMessage ? ` ${providerMessage}.` : ""}${limitedLoginHint}`
         )
       }
       return r.json()
