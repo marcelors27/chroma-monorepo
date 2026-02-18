@@ -7,6 +7,10 @@ const {
 const { createCustomerAccountWorkflow } = require("@medusajs/core-flows")
 const approvedGuard = require("../strategies/store/approved-guard")
 const { decryptLoginPayload } = require("../services/auth-encryption")
+const {
+  parsePaymentPolicyFromTerms,
+  resolveBusinessTypeFromValue,
+} = require("../services/business-type-payment-policy")
 
 const ALLOW_HEADERS =
   "Content-Type, Authorization, X-Publishable-Api-Key, X-Medusa-Sales-Channel-Id, X-Company-Id, X-Company, Accept"
@@ -194,6 +198,152 @@ const logPaymentSessionRequest = () => {
       safeLog(logger, { msg: "paymentSession:logFailed", error: err?.message })
     }
     next()
+  }
+}
+
+const resolveRequestedPaymentMethod = (body) => {
+  const providerId = String(body?.provider_id || "")
+  const types = Array.isArray(body?.data?.payment_method_types)
+    ? body.data.payment_method_types.map((item) => String(item || "").toLowerCase())
+    : []
+  if (providerId === "pp_pix_manual_pix_manual") return "pix"
+  if (types.includes("boleto")) return "boleto"
+  if (types.includes("pix")) return "pix"
+  if (types.includes("card")) return "credit"
+  return null
+}
+
+const resolveRequestedBoletoDays = (body) => {
+  const direct = Number(body?.data?.payment_method_options?.boleto?.expires_after_days)
+  if (Number.isInteger(direct) && direct > 0) return direct
+  const fallback = Number(body?.data?.boleto_expires_after_days)
+  if (Number.isInteger(fallback) && fallback > 0) return fallback
+  return null
+}
+
+const setRequestedBoletoDays = (body, days) => {
+  if (!body?.data) body.data = {}
+  if (!body.data.payment_method_options) body.data.payment_method_options = {}
+  if (!body.data.payment_method_options.boleto) body.data.payment_method_options.boleto = {}
+  body.data.payment_method_options.boleto.expires_after_days = days
+}
+
+const resolveCompanyIdFromPaymentCollection = async (scope, paymentCollectionId) => {
+  if (!paymentCollectionId) return null
+  const remoteQuery = scope.resolve(ContainerRegistrationKeys.REMOTE_QUERY)
+  const cartPaymentCollection = await remoteQuery(
+    remoteQueryObjectFromString({
+      entryPoint: "cart_payment_collection",
+      variables: { filters: { payment_collection_id: paymentCollectionId }, limit: 1 },
+      fields: ["cart_id"],
+    })
+  )
+  const cartId = cartPaymentCollection?.[0]?.cart_id
+  if (!cartId) return null
+  const carts = await remoteQuery(
+    remoteQueryObjectFromString({
+      entryPoint: "cart",
+      variables: { id: cartId },
+      fields: ["id", "shipping_address.metadata"],
+    })
+  )
+  const cart = Array.isArray(carts) ? carts[0] : carts
+  const metadata = cart?.shipping_address?.metadata || {}
+  return metadata?.company_id || metadata?.condo_id || null
+}
+
+const resolveCompanyAndPolicyForRequest = async (req, companyId) => {
+  if (!companyId) return { company: null, policy: null, businessType: null }
+  const actorType = req.auth_context?.actor_type
+  const customerId =
+    actorType === "customer"
+      ? req.auth_context?.actor_id || null
+      : req.auth_context?.customer_id || null
+  if (!customerId) return { company: null, policy: null, businessType: null }
+
+  const remoteQuery = req.scope.resolve(ContainerRegistrationKeys.REMOTE_QUERY)
+  const customers = await remoteQuery(
+    remoteQueryObjectFromString({
+      entryPoint: "customer",
+      variables: { filters: { id: customerId }, limit: 1 },
+      fields: ["id", "metadata"],
+    })
+  )
+  const customer = customers?.[0]
+  const companies = Array.isArray(customer?.metadata?.companies) ? customer.metadata.companies : []
+  const company = companies.find((item) => String(item?.id || "") === String(companyId))
+  if (!company) return { company: null, policy: null, businessType: null }
+
+  const db = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
+  const businessTypes = await db("business_types")
+    .select("id", "key", "label", "terms", "is_active")
+    .where({ is_active: true })
+  const businessType = resolveBusinessTypeFromValue(businessTypes, company?.business_type)
+  const policy = parsePaymentPolicyFromTerms(businessType?.terms || {})
+  return { company, policy, businessType }
+}
+
+const validatePaymentPolicyByBusinessType = () => {
+  return async (req, res, next) => {
+    const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
+    try {
+      const method = resolveRequestedPaymentMethod(req.body || {})
+      if (!method) return next()
+
+      const path = String(req.path || "")
+      const match = path.match(/\/payment-collections\/([^/]+)\/payment-sessions/)
+      const paymentCollectionId = match?.[1] || null
+      const requestedCompanyId =
+        req.body?.data?.company_id ||
+        req.headers["x-company-id"] ||
+        req.headers["x-company"] ||
+        (await resolveCompanyIdFromPaymentCollection(req.scope, paymentCollectionId))
+      if (!requestedCompanyId) return next()
+
+      const { policy, businessType } = await resolveCompanyAndPolicyForRequest(
+        req,
+        requestedCompanyId
+      )
+      if (!policy) return next()
+
+      const methodAllowed = Boolean(policy?.methods?.[method])
+      if (!methodAllowed) {
+        return res.status(400).json({
+          message: `Forma de pagamento '${method}' não permitida para o segmento da empresa.`,
+          code: "payment_method_not_allowed",
+          business_type: businessType?.key || businessType?.id || null,
+          method,
+        })
+      }
+
+      if (method === "boleto") {
+        const allowedDays = Array.isArray(policy?.boleto?.allowed_days)
+          ? policy.boleto.allowed_days
+          : []
+        if (allowedDays.length) {
+          const requestedDays = resolveRequestedBoletoDays(req.body || {})
+          if (requestedDays === null) {
+            const fallbackDay = Number(policy?.boleto?.default_day) || allowedDays[0]
+            setRequestedBoletoDays(req.body, fallbackDay)
+          } else if (!allowedDays.includes(requestedDays)) {
+            return res.status(400).json({
+              message: `Prazo de boleto (${requestedDays}) não permitido para o segmento da empresa.`,
+              code: "boleto_days_not_allowed",
+              allowed_days: allowedDays,
+              requested_days: requestedDays,
+            })
+          }
+        }
+      }
+
+      next()
+    } catch (err) {
+      safeLog(logger, {
+        msg: "paymentPolicy:validation_failed",
+        error: err?.message || "unknown_error",
+      })
+      return res.status(400).json({ message: "Não foi possível validar a política de pagamento." })
+    }
   }
 }
 
@@ -520,7 +670,7 @@ const middlewares = defineMiddlewares([
   {
     method: ["POST"],
     matcher: ["/store/payment-collections/*/payment-sessions"],
-    middlewares: [logPaymentSessionRequest()],
+    middlewares: [validatePaymentPolicyByBusinessType(), logPaymentSessionRequest()],
   },
   {
     method: ["ALL"],

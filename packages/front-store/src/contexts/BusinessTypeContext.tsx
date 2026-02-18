@@ -37,6 +37,11 @@ type BusinessTypeContextValue = {
   activeBusinessTypeKey: string | null
   setActiveBusinessTypeKey: (key: string | null) => void
   resolveTerms: (key?: string | null) => BusinessTerms
+  resolvePaymentPolicy: (key?: string | null) => {
+    methods: { credit: boolean; pix: boolean; boleto: boolean }
+    boleto: { allowedDays: number[]; defaultDay: number }
+    pix: { allowedDays: number[]; defaultDay: number }
+  }
 }
 
 const DEFAULT_TERMS: BusinessTerms = {
@@ -73,6 +78,20 @@ const DEFAULT_TERMS: BusinessTerms = {
 const BusinessTypeContext = createContext<BusinessTypeContextValue | undefined>(undefined)
 
 const lowerFirst = (value: string) => (value ? value.charAt(0).toLowerCase() + value.slice(1) : value)
+const DEFAULT_PAYMENT_POLICY = {
+  methods: { credit: true, pix: true, boleto: true },
+  boleto: { allowedDays: [1, 3, 15, 30], defaultDay: 3 },
+  pix: { allowedDays: [15, 30], defaultDay: 15 },
+}
+
+const normalizeDays = (value: unknown, fallback: number[]) => {
+  const list = Array.isArray(value) ? value : fallback
+  const parsed = list
+    .map((item) => Number(item))
+    .filter((item) => Number.isInteger(item) && item > 0)
+  const unique = [...new Set(parsed)].sort((a, b) => a - b)
+  return unique.length ? unique : fallback
+}
 
 export function BusinessTypeProvider({ children }: { children: React.ReactNode }) {
   const [businessTypes, setBusinessTypes] = useState<BusinessType[]>([])
@@ -86,7 +105,13 @@ export function BusinessTypeProvider({ children }: { children: React.ReactNode }
 
   const resolveTerms = (key?: string | null): BusinessTerms => {
     if (!key) return DEFAULT_TERMS
-    const found = businessTypes.find((type) => type.key === key)
+    const normalizedKey = String(key).toLowerCase()
+    const found = businessTypes.find(
+      (type) =>
+        type.key === key ||
+        type.id === key ||
+        String(type.label || "").toLowerCase() === normalizedKey
+    )
     if (!found) return DEFAULT_TERMS
     const label = found.label || DEFAULT_TERMS.label
     const labelPlural = found.label_plural || `${label}s`
@@ -138,12 +163,60 @@ export function BusinessTypeProvider({ children }: { children: React.ReactNode }
     }
   }
 
+  const resolvePaymentPolicy = (key?: string | null) => {
+    if (!key) return DEFAULT_PAYMENT_POLICY
+    const found = businessTypes.find(
+      (type) => type.key === key || type.id === key || String(type.label || "").toLowerCase() === String(key).toLowerCase()
+    )
+    if (!found) return DEFAULT_PAYMENT_POLICY
+    const policy = (found.terms as any)?.payment_policy || {}
+    const boletoAllowedDays = normalizeDays(
+      policy?.boleto?.allowed_days,
+      DEFAULT_PAYMENT_POLICY.boleto.allowedDays
+    )
+    const pixAllowedDays = normalizeDays(
+      policy?.pix?.allowed_days,
+      DEFAULT_PAYMENT_POLICY.pix.allowedDays
+    )
+    const boletoDefaultCandidate = Number(policy?.boleto?.default_day)
+    const pixDefaultCandidate = Number(policy?.pix?.default_day)
+    return {
+      methods: {
+        credit:
+          typeof policy?.methods?.credit === "boolean"
+            ? policy.methods.credit
+            : DEFAULT_PAYMENT_POLICY.methods.credit,
+        pix:
+          typeof policy?.methods?.pix === "boolean"
+            ? policy.methods.pix
+            : DEFAULT_PAYMENT_POLICY.methods.pix,
+        boleto:
+          typeof policy?.methods?.boleto === "boolean"
+            ? policy.methods.boleto
+            : DEFAULT_PAYMENT_POLICY.methods.boleto,
+      },
+      boleto: {
+        allowedDays: boletoAllowedDays,
+        defaultDay: boletoAllowedDays.includes(boletoDefaultCandidate)
+          ? boletoDefaultCandidate
+          : boletoAllowedDays[0],
+      },
+      pix: {
+        allowedDays: pixAllowedDays,
+        defaultDay: pixAllowedDays.includes(pixDefaultCandidate)
+          ? pixDefaultCandidate
+          : pixAllowedDays[0],
+      },
+    }
+  }
+
   const value = useMemo(
     () => ({
       businessTypes,
       activeBusinessTypeKey,
       setActiveBusinessTypeKey,
       resolveTerms,
+      resolvePaymentPolicy,
     }),
     [businessTypes, activeBusinessTypeKey]
   )
@@ -158,6 +231,7 @@ export function useBusinessTerms() {
       terms: DEFAULT_TERMS,
       businessTypes: [],
       setActiveBusinessTypeKey: (_key: string | null) => undefined,
+      resolvePaymentPolicy: (_key?: string | null) => DEFAULT_PAYMENT_POLICY,
     }
   }
   const terms = context.resolveTerms(context.activeBusinessTypeKey)
@@ -166,5 +240,6 @@ export function useBusinessTerms() {
     businessTypes: context.businessTypes,
     setActiveBusinessTypeKey: context.setActiveBusinessTypeKey,
     resolveTerms: context.resolveTerms,
+    resolvePaymentPolicy: context.resolvePaymentPolicy,
   }
 }

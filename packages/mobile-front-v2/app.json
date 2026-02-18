@@ -24,6 +24,7 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Usamos a camera para permitir que voce tire fotos para o seu perfil e envio de conteudos no app.",
+        "NSUserTrackingUsageDescription": "Usamos este identificador para habilitar login com Facebook e melhorar a seguranca da autenticacao.",
         "ITSAppUsesNonExemptEncryption": false,
         "UIStatusBarStyle": "UIStatusBarStyleLightContent",
         "UIViewControllerBasedStatusBarAppearance": false

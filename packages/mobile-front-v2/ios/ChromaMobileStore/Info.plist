@@ -70,6 +70,8 @@
     </dict>
     <key>NSCameraUsageDescription</key>
     <string>Usamos a camera para permitir que voce tire fotos para o seu perfil e envio de conteudos no app.</string>
+    <key>NSUserTrackingUsageDescription</key>
+    <string>Usamos este identificador para habilitar login com Facebook e melhorar a seguranca da autenticacao.</string>
     <key>FacebookAppID</key>
     <string>25537440289289848</string>
     <key>FacebookClientToken</key>

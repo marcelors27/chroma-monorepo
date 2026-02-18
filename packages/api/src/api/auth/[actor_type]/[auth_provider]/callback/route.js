@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken")
+const { sendEmail } = require("../../../../../services/send-email")
 const {
   ContainerRegistrationKeys,
   Modules,
@@ -18,6 +19,44 @@ const maskEmail = (value) => {
 const readHeaderValue = (value) => {
   if (Array.isArray(value)) return value[0] || null
   return value || null
+}
+const providerLabel = (provider) => {
+  if (provider === "google") return "Google"
+  if (provider === "facebook") return "Facebook"
+  if (provider === "apple") return "Apple"
+  return provider || "social"
+}
+
+const sendSocialLinkEmail = async ({ email, authProvider, logger, flowId }) => {
+  if (!isEmail(email)) return
+  const label = providerLabel(authProvider)
+  const subject = `Novo login ${label} vinculado a sua conta Chroma`
+  const text = [
+    `Um novo login social (${label}) foi vinculado a sua conta Chroma.`,
+    "Se voce nao reconhece esta acao, altere sua senha e entre em contato com o suporte.",
+  ].join(" ")
+  const html = [
+    `<p>Um novo login social (<strong>${label}</strong>) foi vinculado a sua conta Chroma.</p>`,
+    "<p>Se voce nao reconhece esta acao, altere sua senha e entre em contato com o suporte.</p>",
+  ].join("")
+
+  await sendEmail({
+    to: [email],
+    subject,
+    text,
+    html,
+    logger,
+  })
+  try {
+    logger?.info?.(
+      JSON.stringify({
+        msg: "auth callback social link email sent",
+        flow_id: flowId,
+        auth_provider: authProvider,
+        email: maskEmail(email),
+      })
+    )
+  } catch {}
 }
 
 const extractEmailFromIdToken = (req) => {
@@ -233,11 +272,16 @@ const handle = async (req, res) => {
         email,
       })
     }
+    const previousCustomerId = authIdentity?.app_metadata?.customer_id || null
     const customerId =
       existingId || (await ensureCustomerId(req.scope, authIdentity.id, email))
     if (customerId) {
       linkedCustomerId = customerId
       effectiveIdentity = await updateAuthIdentityMetadata(req.scope, authIdentity, customerId)
+      const isExistingCustomerLink = !!existingId
+      const isNewSocialLink =
+        isExistingCustomerLink &&
+        String(previousCustomerId || "") !== String(customerId)
       try {
         logger?.info?.(
           JSON.stringify({
@@ -247,9 +291,33 @@ const handle = async (req, res) => {
             flow_id,
             auth_identity_id: authIdentity?.id || null,
             customer_id: customerId,
+            previous_customer_id: previousCustomerId,
+            is_new_social_link: isNewSocialLink,
           })
         )
       } catch {}
+      if (isNewSocialLink && email) {
+        try {
+          await sendSocialLinkEmail({
+            email,
+            authProvider: auth_provider,
+            logger,
+            flowId: flow_id,
+          })
+        } catch (err) {
+          try {
+            logger?.warn?.(
+              JSON.stringify({
+                msg: "auth callback social link email failed",
+                flow_id: flow_id,
+                auth_provider,
+                email: maskEmail(email),
+                error: err?.message || "unknown_error",
+              })
+            )
+          } catch {}
+        }
+      }
     }
   }
 

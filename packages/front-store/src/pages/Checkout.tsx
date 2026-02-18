@@ -46,7 +46,7 @@ const ENABLE_PIX = import.meta.env.VITE_ENABLE_PIX === "true";
 
 const Checkout = () => {
   const { items, totalPrice, clearCart, completeBackendCheckout, cartId, isCartLoading } = useCart();
-  const { terms } = useBusinessTerms();
+  const { terms, resolvePaymentPolicy } = useBusinessTerms();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
@@ -72,16 +72,29 @@ const Checkout = () => {
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
   const [boletoExpiresAfterDays, setBoletoExpiresAfterDays] = useState(3);
+  const activeCondo = getActiveCondo();
+  const paymentPolicy = resolvePaymentPolicy(activeCondo?.business_type || null);
+  const allowedPaymentMethods = (
+    [
+      paymentPolicy.methods.credit ? "credit" : null,
+      ENABLE_PIX && paymentPolicy.methods.pix ? "pix" : null,
+      paymentPolicy.methods.boleto ? "boleto" : null,
+    ] as Array<PaymentMethod | null>
+  ).filter(Boolean) as PaymentMethod[];
+  const availableBoletoDays = paymentPolicy.boleto.allowedDays;
+  const availablePixDays = paymentPolicy.pix.allowedDays;
   const availableSavedMethods = savedPaymentMethods.filter(
-    (method) => ENABLE_PIX || method.type !== "pix"
+    (method) =>
+      allowedPaymentMethods.includes(method.type) &&
+      (ENABLE_PIX || method.type !== "pix")
   );
 
   useEffect(() => {
     if (paymentMethod !== "pix") return;
-    if (!pixExpiresAfterDays) {
-      setPixExpiresAfterDays(15);
+    if (!availablePixDays.includes(pixExpiresAfterDays)) {
+      setPixExpiresAfterDays(paymentPolicy.pix.defaultDay);
     }
-  }, [paymentMethod, pixExpiresAfterDays]);
+  }, [paymentMethod, pixExpiresAfterDays, availablePixDays, paymentPolicy.pix.defaultDay]);
 
   useEffect(() => {
     const pendingId = searchParams.get("pending");
@@ -98,13 +111,13 @@ const Checkout = () => {
     if (paymentMethod) return;
     const method = searchParams.get("method");
     if (
-      method === "credit" ||
-      (method === "pix" && ENABLE_PIX) ||
-      method === "boleto"
+      (method === "credit" && allowedPaymentMethods.includes("credit")) ||
+      (method === "pix" && ENABLE_PIX && allowedPaymentMethods.includes("pix")) ||
+      (method === "boleto" && allowedPaymentMethods.includes("boleto"))
     ) {
       setPaymentMethod(method);
     }
-  }, [paymentMethod, searchParams]);
+  }, [paymentMethod, searchParams, ENABLE_PIX, allowedPaymentMethods]);
 
   useEffect(() => {
     const normalizeEmails = (value: unknown) => {
@@ -127,34 +140,38 @@ const Checkout = () => {
 
   useEffect(() => {
     if (paymentMethod) return;
-    const availableMethods = savedPaymentMethods.filter(
-      (method) => ENABLE_PIX || method.type !== "pix"
-    );
     const savedDefault =
-      availableMethods.find((method) => method.is_default) || availableMethods[0];
+      availableSavedMethods.find((method) => method.is_default) || availableSavedMethods[0];
     if (savedDefault) {
       setPaymentMethod(savedDefault.type);
       if (savedDefault.type === "boleto") {
         const days = savedDefault.details?.boleto_expires_after_days;
-        if (typeof days === "number") {
+        if (typeof days === "number" && availableBoletoDays.includes(days)) {
           setBoletoExpiresAfterDays(days);
         }
       }
+      return;
     }
-  }, [paymentMethod, savedPaymentMethods]);
+    setPaymentMethod(allowedPaymentMethods[0] || "");
+  }, [
+    paymentMethod,
+    availableSavedMethods,
+    availableBoletoDays,
+    allowedPaymentMethods,
+  ]);
 
   useEffect(() => {
-    if (!ENABLE_PIX && paymentMethod === "pix") {
-      setPaymentMethod("boleto");
+    if (paymentMethod && !allowedPaymentMethods.includes(paymentMethod)) {
+      setPaymentMethod(allowedPaymentMethods[0] || "");
     }
-  }, [paymentMethod]);
+  }, [paymentMethod, allowedPaymentMethods]);
 
   useEffect(() => {
     if (paymentMethod !== "boleto") return;
-    if (!boletoExpiresAfterDays) {
-      setBoletoExpiresAfterDays(3);
+    if (!availableBoletoDays.includes(boletoExpiresAfterDays)) {
+      setBoletoExpiresAfterDays(paymentPolicy.boleto.defaultDay);
     }
-  }, [paymentMethod, boletoExpiresAfterDays]);
+  }, [paymentMethod, boletoExpiresAfterDays, availableBoletoDays, paymentPolicy.boleto.defaultDay]);
 
   useEffect(() => {
     if (!cartId) return;
@@ -331,7 +348,6 @@ const Checkout = () => {
     try {
       const totalBefore = totalPrice;
       setOrderTotal(totalBefore);
-      const activeCondo = getActiveCondo();
       const shippingAddress = {
       first_name: terms.label,
         last_name: "Compras",
@@ -835,6 +851,11 @@ const Checkout = () => {
                   {errors.paymentMethod && (
                     <p className="text-sm text-destructive mb-3">{errors.paymentMethod}</p>
                   )}
+                  {allowedPaymentMethods.length === 0 && (
+                    <p className="text-sm text-destructive mb-3">
+                      Nenhuma forma de pagamento está liberada para o segmento {terms.articleSingular} {terms.labelLower}.
+                    </p>
+                  )}
                   {availableSavedMethods.length > 0 && (
                     <div className="mb-4 border-2 border-border p-3 bg-background/40">
                       <p className="text-xs text-muted-foreground mb-2">Métodos salvos</p>
@@ -880,22 +901,24 @@ const Checkout = () => {
                     }}
                     className="space-y-3"
                   >
-                    <label 
-                      className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-colors ${
-                        paymentMethod === "credit" ? "border-primary bg-primary/5" : errors.paymentMethod ? "border-destructive" : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <RadioGroupItem value="credit" id="credit" />
-                      <CreditCard className="h-5 w-5" />
-                      <div className="flex-1">
-                        <p className="font-medium">Cartão de Crédito/Débito</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Truck className="h-3 w-3" />
-                          Pagamento na entrega
-                        </p>
-                      </div>
-                    </label>
-                    {ENABLE_PIX && (
+                    {allowedPaymentMethods.includes("credit") && (
+                      <label 
+                        className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-colors ${
+                          paymentMethod === "credit" ? "border-primary bg-primary/5" : errors.paymentMethod ? "border-destructive" : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <RadioGroupItem value="credit" id="credit" />
+                        <CreditCard className="h-5 w-5" />
+                        <div className="flex-1">
+                          <p className="font-medium">Cartão de Crédito/Débito</p>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Truck className="h-3 w-3" />
+                            Pagamento na entrega
+                          </p>
+                        </div>
+                      </label>
+                    )}
+                    {ENABLE_PIX && allowedPaymentMethods.includes("pix") && (
                       <label 
                         className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-colors ${
                           paymentMethod === "pix" ? "border-primary bg-primary/5" : errors.paymentMethod ? "border-destructive" : "border-border hover:border-primary/50"
@@ -917,7 +940,7 @@ const Checkout = () => {
                                 value={pixExpiresAfterDays}
                                 onChange={(e) => setPixExpiresAfterDays(Number(e.target.value))}
                               >
-                                {[15, 30].map((days) => (
+                                {availablePixDays.map((days) => (
                                   <option key={days} value={days}>
                                     {days} {days === 1 ? "dia" : "dias"}
                                   </option>
@@ -928,40 +951,42 @@ const Checkout = () => {
                         </div>
                       </label>
                     )}
-                    <label 
-                      className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-colors ${
-                        paymentMethod === "boleto" ? "border-primary bg-primary/5" : errors.paymentMethod ? "border-destructive" : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <RadioGroupItem value="boleto" id="boleto" />
-                      <Barcode className="h-5 w-5" />
-                      <div className="flex-1">
-                        <p className="font-medium">Boleto</p>
-                        <p className="text-sm text-muted-foreground">
-                          Vencimento em {boletoExpiresAfterDays} dias
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Enviaremos o boleto para:{" "}
-                          <span className="font-semibold text-foreground">{boletoEmailText}</span>
-                        </p>
-                        {paymentMethod === "boleto" && (
-                          <div className="mt-3">
-                            <Label className="text-xs">Prazo de vencimento</Label>
-                            <select
-                              className="mt-1 h-10 border-2 rounded-md bg-background px-3 w-full text-sm"
-                              value={boletoExpiresAfterDays}
-                              onChange={(e) => setBoletoExpiresAfterDays(Number(e.target.value))}
-                            >
-                              {[1, 3, 15, 30].map((days) => (
-                                <option key={days} value={days}>
-                                  {days} {days === 1 ? "dia" : "dias"}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                      </div>
-                    </label>
+                    {allowedPaymentMethods.includes("boleto") && (
+                      <label 
+                        className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-colors ${
+                          paymentMethod === "boleto" ? "border-primary bg-primary/5" : errors.paymentMethod ? "border-destructive" : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <RadioGroupItem value="boleto" id="boleto" />
+                        <Barcode className="h-5 w-5" />
+                        <div className="flex-1">
+                          <p className="font-medium">Boleto</p>
+                          <p className="text-sm text-muted-foreground">
+                            Vencimento em {boletoExpiresAfterDays} dias
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Enviaremos o boleto para:{" "}
+                            <span className="font-semibold text-foreground">{boletoEmailText}</span>
+                          </p>
+                          {paymentMethod === "boleto" && (
+                            <div className="mt-3">
+                              <Label className="text-xs">Prazo de vencimento</Label>
+                              <select
+                                className="mt-1 h-10 border-2 rounded-md bg-background px-3 w-full text-sm"
+                                value={boletoExpiresAfterDays}
+                                onChange={(e) => setBoletoExpiresAfterDays(Number(e.target.value))}
+                              >
+                                {availableBoletoDays.map((days) => (
+                                  <option key={days} value={days}>
+                                    {days} {days === 1 ? "dia" : "dias"}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    )}
                   </RadioGroup>
 
                 </div>

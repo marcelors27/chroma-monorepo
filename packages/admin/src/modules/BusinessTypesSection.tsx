@@ -19,7 +19,79 @@ const emptyForm = {
   article_singular: "",
   article_plural: "",
   terms_json: "{}",
+  allow_credit: true,
+  allow_pix: true,
+  allow_boleto: true,
+  boleto_allowed_days: "1,3,15,30",
+  boleto_default_day: "3",
   is_active: true,
+}
+
+const parseTermsJson = (value: string) => {
+  if (!value || !value.trim()) return {}
+  const parsed = JSON.parse(value)
+  return parsed && typeof parsed === "object" ? parsed : null
+}
+
+const parseDays = (value: string, fallback: number[]) => {
+  const parsed = String(value || "")
+    .split(",")
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isInteger(item) && item > 0)
+  const unique = [...new Set(parsed)]
+  return unique.length ? unique.sort((a, b) => a - b) : [...fallback]
+}
+
+const parsePolicyFromTerms = (terms: Record<string, any>) => {
+  const policy = terms?.payment_policy || {}
+  const allowedDays = parseDays(
+    Array.isArray(policy?.boleto?.allowed_days)
+      ? policy.boleto.allowed_days.join(",")
+      : "",
+    [1, 3, 15, 30]
+  )
+  const defaultDayCandidate = Number(policy?.boleto?.default_day)
+  const defaultDay = allowedDays.includes(defaultDayCandidate)
+    ? defaultDayCandidate
+    : allowedDays[0] || 3
+  return {
+    allow_credit: policy?.methods?.credit !== false,
+    allow_pix: policy?.methods?.pix !== false,
+    allow_boleto: policy?.methods?.boleto !== false,
+    boleto_allowed_days: allowedDays.join(","),
+    boleto_default_day: String(defaultDay),
+  }
+}
+
+const mergeTermsWithPaymentPolicy = (
+  terms: Record<string, any>,
+  formState: {
+    allow_credit: boolean
+    allow_pix: boolean
+    allow_boleto: boolean
+    boleto_allowed_days: string
+    boleto_default_day: string
+  }
+) => {
+  const allowedDays = parseDays(formState.boleto_allowed_days, [1, 3, 15, 30])
+  const defaultDayCandidate = Number(formState.boleto_default_day)
+  const defaultDay = allowedDays.includes(defaultDayCandidate)
+    ? defaultDayCandidate
+    : allowedDays[0] || 3
+  return {
+    ...(terms || {}),
+    payment_policy: {
+      methods: {
+        credit: Boolean(formState.allow_credit),
+        pix: Boolean(formState.allow_pix),
+        boleto: Boolean(formState.allow_boleto),
+      },
+      boleto: {
+        allowed_days: allowedDays,
+        default_day: defaultDay,
+      },
+    },
+  }
 }
 
 export default function BusinessTypesSection({
@@ -56,20 +128,17 @@ export default function BusinessTypesSection({
       setBusinessTypesError("Informe key, label e label plural")
       return
     }
-    let terms: Record<string, string> = {}
-    if (form.terms_json && form.terms_json.trim()) {
-      try {
-        const parsed = JSON.parse(form.terms_json)
-        if (parsed && typeof parsed === "object") {
-          terms = parsed
-        } else {
-          setBusinessTypesError("Termos precisa ser um JSON válido")
-          return
-        }
-      } catch {
+    let terms: Record<string, any> = {}
+    try {
+      const parsed = parseTermsJson(form.terms_json)
+      if (!parsed) {
         setBusinessTypesError("Termos precisa ser um JSON válido")
         return
       }
+      terms = mergeTermsWithPaymentPolicy(parsed, form)
+    } catch {
+      setBusinessTypesError("Termos precisa ser um JSON válido")
+      return
     }
     setCreating(true)
     setBusinessTypesError(null)
@@ -94,6 +163,7 @@ export default function BusinessTypesSection({
   }
 
   const startEdit = (item: BusinessType) => {
+    const policy = parsePolicyFromTerms(item.terms || {})
     setEditingId(item.id)
     setEditingForm({
       key: item.key,
@@ -102,6 +172,11 @@ export default function BusinessTypesSection({
       article_singular: item.article_singular || "",
       article_plural: item.article_plural || "",
       terms_json: JSON.stringify(item.terms || {}, null, 2),
+      allow_credit: policy.allow_credit,
+      allow_pix: policy.allow_pix,
+      allow_boleto: policy.allow_boleto,
+      boleto_allowed_days: policy.boleto_allowed_days,
+      boleto_default_day: policy.boleto_default_day,
       is_active: item.is_active ?? true,
     })
   }
@@ -112,20 +187,17 @@ export default function BusinessTypesSection({
 
   const handleUpdate = async (id: string) => {
     setBusinessTypesError(null)
-    let terms: Record<string, string> = {}
-    if (editingForm.terms_json && editingForm.terms_json.trim()) {
-      try {
-        const parsed = JSON.parse(editingForm.terms_json)
-        if (parsed && typeof parsed === "object") {
-          terms = parsed
-        } else {
-          setBusinessTypesError("Termos precisa ser um JSON válido")
-          return
-        }
-      } catch {
+    let terms: Record<string, any> = {}
+    try {
+      const parsed = parseTermsJson(editingForm.terms_json)
+      if (!parsed) {
         setBusinessTypesError("Termos precisa ser um JSON válido")
         return
       }
+      terms = mergeTermsWithPaymentPolicy(parsed, editingForm)
+    } catch {
+      setBusinessTypesError("Termos precisa ser um JSON válido")
+      return
     }
     try {
       const res = await fetch(`${medusaUrl}/admin/business-types/${id}`, {
@@ -226,6 +298,46 @@ export default function BusinessTypesSection({
               onChange={(event) => setForm((prev) => ({ ...prev, terms_json: event.target.value }))}
             />
           </label>
+          <div className="grid" style={{ gap: "0.5rem", gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <input
+                type="checkbox"
+                checked={form.allow_credit}
+                onChange={(event) => setForm((prev) => ({ ...prev, allow_credit: event.target.checked }))}
+              />
+              Permitir Cartão
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <input
+                type="checkbox"
+                checked={form.allow_pix}
+                onChange={(event) => setForm((prev) => ({ ...prev, allow_pix: event.target.checked }))}
+              />
+              Permitir PIX
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <input
+                type="checkbox"
+                checked={form.allow_boleto}
+                onChange={(event) => setForm((prev) => ({ ...prev, allow_boleto: event.target.checked }))}
+              />
+              Permitir Boleto
+            </label>
+          </div>
+          <div className="grid" style={{ gap: "0.5rem", gridTemplateColumns: "1fr 1fr" }}>
+            <input
+              className="field-input"
+              placeholder="Prazos boleto (ex: 15,30)"
+              value={form.boleto_allowed_days}
+              onChange={(event) => setForm((prev) => ({ ...prev, boleto_allowed_days: event.target.value }))}
+            />
+            <input
+              className="field-input"
+              placeholder="Padrão boleto (ex: 15)"
+              value={form.boleto_default_day}
+              onChange={(event) => setForm((prev) => ({ ...prev, boleto_default_day: event.target.value }))}
+            />
+          </div>
           <div>
             <button className="btn" type="submit" disabled={creating}>
               {creating ? "Criando..." : "Criar tipo"}
@@ -250,6 +362,7 @@ export default function BusinessTypesSection({
                 <th>Plural</th>
                 <th>Artigo</th>
                 <th>Termos</th>
+                <th>Pagamentos</th>
                 <th>Ativo</th>
                 <th>Ações</th>
               </tr>
@@ -257,7 +370,7 @@ export default function BusinessTypesSection({
             <tbody>
               {businessTypes.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center" }}>
+                  <td colSpan={8} style={{ textAlign: "center" }}>
                     Nenhum tipo cadastrado.
                   </td>
                 </tr>
@@ -327,6 +440,67 @@ export default function BusinessTypesSection({
                       ) : (
                         Object.keys(item.terms || {}).length ? "Personalizado" : "—"
                       )}</td>
+                      <td>{isEditing ? (
+                        <div style={{ display: "grid", gap: "0.35rem" }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            <input
+                              type="checkbox"
+                              checked={editingForm.allow_credit}
+                              onChange={(event) =>
+                                setEditingForm((prev) => ({ ...prev, allow_credit: event.target.checked }))
+                              }
+                            />
+                            Cartão
+                          </label>
+                          <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            <input
+                              type="checkbox"
+                              checked={editingForm.allow_pix}
+                              onChange={(event) =>
+                                setEditingForm((prev) => ({ ...prev, allow_pix: event.target.checked }))
+                              }
+                            />
+                            PIX
+                          </label>
+                          <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            <input
+                              type="checkbox"
+                              checked={editingForm.allow_boleto}
+                              onChange={(event) =>
+                                setEditingForm((prev) => ({ ...prev, allow_boleto: event.target.checked }))
+                              }
+                            />
+                            Boleto
+                          </label>
+                          <input
+                            className="field-input"
+                            placeholder="Prazos boleto"
+                            value={editingForm.boleto_allowed_days}
+                            onChange={(event) =>
+                              setEditingForm((prev) => ({ ...prev, boleto_allowed_days: event.target.value }))
+                            }
+                          />
+                          <input
+                            className="field-input"
+                            placeholder="Padrão boleto"
+                            value={editingForm.boleto_default_day}
+                            onChange={(event) =>
+                              setEditingForm((prev) => ({ ...prev, boleto_default_day: event.target.value }))
+                            }
+                          />
+                        </div>
+                      ) : (() => {
+                        const policy = parsePolicyFromTerms(item.terms || {})
+                        const methods = [
+                          policy.allow_credit ? "Cartão" : null,
+                          policy.allow_pix ? "PIX" : null,
+                          policy.allow_boleto ? "Boleto" : null,
+                        ]
+                          .filter(Boolean)
+                          .join(", ")
+                        const days = policy.boleto_allowed_days || ""
+                        return `${methods || "—"} | boleto: ${days || "—"}`
+                      })()}</td>
                       <td>{isEditing ? (
                         <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                           <input

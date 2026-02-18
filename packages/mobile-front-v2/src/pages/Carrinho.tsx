@@ -58,14 +58,27 @@ export default function Carrinho() {
     completeBackendCheckout,
     clearCart,
     cartId,
+    refreshCart,
   } = useCart();
   const { activeCondo } = useCondo();
-  const { terms } = useBusinessTerms();
+  const { terms, resolvePaymentPolicy } = useBusinessTerms();
+  const paymentPolicy = resolvePaymentPolicy(activeCondo?.business_type || null);
+  const allowedPaymentMethods = (
+    [
+      paymentPolicy.methods.credit ? "cartao" : null,
+      ENABLE_PIX && paymentPolicy.methods.pix ? "pix" : null,
+      paymentPolicy.methods.boleto ? "boleto" : null,
+    ] as Array<"pix" | "cartao" | "boleto" | null>
+  ).filter(Boolean) as Array<"pix" | "cartao" | "boleto">;
+  const availableBoletoDays = paymentPolicy.boleto.allowedDays;
+  const availablePixDays = paymentPolicy.pix.allowedDays;
   const availableSavedMethods = savedPaymentMethods.filter(
-    (method) => ENABLE_PIX || method.type !== "pix"
+    (method) =>
+      allowedPaymentMethods.includes(method.type === "credit" ? "cartao" : method.type) &&
+      (ENABLE_PIX || method.type !== "pix")
   );
   const paymentOptions = [
-    ...(ENABLE_PIX
+    ...(ENABLE_PIX && allowedPaymentMethods.includes("pix")
       ? [
           {
             id: "pix" as const,
@@ -75,13 +88,19 @@ export default function Carrinho() {
           },
         ]
       : []),
-    { id: "cartao" as const, title: "Cartão", subtitle: "Crédito ou débito", icon: CreditCard },
-    {
-      id: "boleto" as const,
-      title: "Boleto",
-      subtitle: `Vencimento em ${boletoExpiresAfterDays} dias`,
-      icon: Receipt,
-    },
+    ...(allowedPaymentMethods.includes("cartao")
+      ? [{ id: "cartao" as const, title: "Cartão", subtitle: "Crédito ou débito", icon: CreditCard }]
+      : []),
+    ...(allowedPaymentMethods.includes("boleto")
+      ? [
+          {
+            id: "boleto" as const,
+            title: "Boleto",
+            subtitle: `Vencimento em ${boletoExpiresAfterDays} dias`,
+            icon: Receipt,
+          },
+        ]
+      : []),
   ];
 
   const formattedTotal = formatMoney(totalPrice);
@@ -131,41 +150,38 @@ export default function Carrinho() {
 
   useEffect(() => {
     if (!savedPaymentMethods.length) return;
-    const availableMethods = savedPaymentMethods.filter(
-      (method) => ENABLE_PIX || method.type !== "pix"
-    );
     const defaultMethod =
-      availableMethods.find((method) => method.is_default) || availableMethods[0];
+      availableSavedMethods.find((method) => method.is_default) || availableSavedMethods[0];
     if (!defaultMethod) return;
     const mapped = defaultMethod.type === "credit" ? "cartao" : defaultMethod.type;
     setSelectedPayment(mapped);
     if (defaultMethod.type === "boleto") {
       const days = defaultMethod.details?.boleto_expires_after_days;
-      if (typeof days === "number") {
+      if (typeof days === "number" && availableBoletoDays.includes(days)) {
         setBoletoExpiresAfterDays(days);
       }
     }
-  }, [savedPaymentMethods]);
+  }, [savedPaymentMethods, availableSavedMethods, availableBoletoDays]);
 
   useEffect(() => {
-    if (!ENABLE_PIX && selectedPayment === "pix") {
-      setSelectedPayment("boleto");
+    if (!allowedPaymentMethods.includes(selectedPayment)) {
+      setSelectedPayment(allowedPaymentMethods[0] || "cartao");
     }
-  }, [selectedPayment]);
+  }, [selectedPayment, allowedPaymentMethods]);
 
   useEffect(() => {
     if (selectedPayment !== "boleto") return;
-    if (!boletoExpiresAfterDays) {
-      setBoletoExpiresAfterDays(3);
+    if (!availableBoletoDays.includes(boletoExpiresAfterDays)) {
+      setBoletoExpiresAfterDays(paymentPolicy.boleto.defaultDay);
     }
-  }, [selectedPayment, boletoExpiresAfterDays]);
+  }, [selectedPayment, boletoExpiresAfterDays, availableBoletoDays, paymentPolicy.boleto.defaultDay]);
 
   useEffect(() => {
     if (selectedPayment !== "pix") return;
-    if (!pixExpiresAfterDays) {
-      setPixExpiresAfterDays(15);
+    if (!availablePixDays.includes(pixExpiresAfterDays)) {
+      setPixExpiresAfterDays(paymentPolicy.pix.defaultDay);
     }
-  }, [selectedPayment, pixExpiresAfterDays]);
+  }, [selectedPayment, pixExpiresAfterDays, availablePixDays, paymentPolicy.pix.defaultDay]);
 
 
   useEffect(() => {
@@ -214,6 +230,10 @@ export default function Carrinho() {
     }
     if (!activeCondo) {
       toast.error(`Selecione ${terms.articleSingular} ${terms.labelLower} antes de finalizar.`);
+      return;
+    }
+    if (!allowedPaymentMethods.length) {
+      toast.error(`Nenhuma forma de pagamento está liberada para ${terms.articleSingular} ${terms.labelLower}.`);
       return;
     }
 
@@ -447,6 +467,11 @@ export default function Carrinho() {
         )}
 
         <Text style={styles.sectionTitle}>Forma de pagamento</Text>
+        {allowedPaymentMethods.length === 0 && (
+          <Text style={styles.errorText}>
+            Nenhuma forma de pagamento está liberada para este segmento.
+          </Text>
+        )}
         {availableSavedMethods.length > 0 && (
           <View style={styles.savedPayments}>
             <Text style={styles.savedPaymentsTitle}>Métodos salvos</Text>
@@ -496,7 +521,7 @@ export default function Carrinho() {
             <Text style={styles.boletoInfoValue}>{boletoEmailText}</Text>
             <Text style={[styles.boletoInfoText, { marginTop: 12 }]}>Prazo de vencimento</Text>
             <View style={styles.boletoDaysRow}>
-              {[1, 3, 15, 30].map((days) => {
+              {availableBoletoDays.map((days) => {
                 const active = boletoExpiresAfterDays === days;
                 return (
                   <Pressable
@@ -517,7 +542,7 @@ export default function Carrinho() {
           <View style={styles.boletoInfo}>
             <Text style={styles.boletoInfoText}>Prazo de vencimento do PIX</Text>
             <View style={styles.boletoDaysRow}>
-              {[15, 30].map((days) => {
+              {availablePixDays.map((days) => {
                 const active = pixExpiresAfterDays === days;
                 return (
                   <Pressable

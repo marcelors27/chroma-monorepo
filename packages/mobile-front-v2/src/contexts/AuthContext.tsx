@@ -96,6 +96,43 @@ const getErrorMessage = (error: any) => {
   );
 };
 
+const ensureIosTrackingForFacebook = async (Settings: any, flowId: string) => {
+  if (Platform.OS !== "ios") return;
+
+  let trackingGranted = true;
+  let trackingSource: "module" | "fallback_enabled" = "fallback_enabled";
+  try {
+    const TrackingTransparency = require("expo-tracking-transparency");
+    const current = await TrackingTransparency.getTrackingPermissionsAsync();
+    const result =
+      current?.status === "undetermined"
+        ? await TrackingTransparency.requestTrackingPermissionsAsync()
+        : current;
+    trackingGranted = !!result?.granted;
+    trackingSource = "module";
+  } catch (error: any) {
+    console.info("[auth-mobile] tracking permission module unavailable", {
+      flowId,
+      message: getErrorMessage(error),
+    });
+  }
+
+  try {
+    Settings?.setAdvertiserTrackingEnabled?.(trackingGranted);
+  } catch (error: any) {
+    console.info("[auth-mobile] setAdvertiserTrackingEnabled failed", {
+      flowId,
+      message: getErrorMessage(error),
+    });
+  }
+
+  console.info("[auth-mobile] facebook tracking status", {
+    flowId,
+    trackingGranted,
+    trackingSource,
+  });
+};
+
 const waitForAuthRedirect = (authUrl: string, redirectBase: string) => {
   return new Promise<string>((resolve, reject) => {
     let resolved = false;
@@ -249,6 +286,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
           Settings?.initializeSDK?.();
+          await ensureIosTrackingForFacebook(Settings, flowId);
+          LoginManager.logOut();
           const result =
             Platform.OS === "ios"
               ? await LoginManager.logInWithPermissions(
@@ -265,7 +304,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!accessToken) {
             setAuthError(
               Platform.OS === "ios"
-                ? "Não foi possível concluir o login com Facebook. O iOS retornou login limitado (limited.facebook.com), sem access token."
+                ? "Não foi possível concluir o login com Facebook. O iOS retornou login limitado (limited.facebook.com), sem access token. Ative o rastreamento para este app e tente novamente."
                 : "Não foi possível concluir o login com Facebook."
             );
             return { success: false, flowId };

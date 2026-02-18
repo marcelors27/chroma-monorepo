@@ -87,7 +87,7 @@ export type BusinessType = {
   label_plural: string;
   article_singular?: string | null;
   article_plural?: string | null;
-  terms?: Record<string, string> | null;
+  terms?: Record<string, any> | null;
   is_active?: boolean;
 };
 
