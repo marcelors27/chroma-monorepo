@@ -1,6 +1,6 @@
 {
   "name": "@chroma/api",
-  "version": "0.2.36",
+  "version": "0.2.38",
   "private": true,
   "description": "API Medusa para o e-commerce de materiais de construção Chroma",
   "scripts": {

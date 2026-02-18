@@ -1,6 +1,6 @@
 {
   "name": "@chroma/admin",
-  "version": "0.2.36",
+  "version": "0.2.38",
   "private": true,
   "description": "Painel administrativo Chroma conectado ao Medusa",
   "scripts": {
