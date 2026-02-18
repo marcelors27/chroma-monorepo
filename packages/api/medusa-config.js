@@ -87,6 +87,8 @@ module.exports = {
               clientId: process.env.GOOGLE_CLIENT_ID,
               clientSecret: process.env.GOOGLE_CLIENT_SECRET,
               callbackUrl: process.env.GOOGLE_CALLBACK_URL,
+              mobileIosClientId: process.env.GOOGLE_MOBILE_IOS_CLIENT_ID,
+              mobileAndroidClientId: process.env.GOOGLE_MOBILE_ANDROID_CLIENT_ID,
             },
           },
           {

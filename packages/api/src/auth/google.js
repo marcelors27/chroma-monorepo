@@ -95,6 +95,7 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
     )
     const hasCode = !!(query?.code ?? body?.code)
     const hasState = !!(query?.state ?? body?.state)
+    const hasAccessToken = !!(body?.access_token || query?.access_token)
 
     if (query.error || body.error) {
       this.logger_?.warn?.(
@@ -114,6 +115,7 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
         msg: "google validateCallback start",
         flow_id: flowId,
         has_identity_token: hasIdentityToken,
+        has_access_token: hasAccessToken,
         has_code: hasCode,
         has_state: hasState,
       })
@@ -140,6 +142,34 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
         this.logger_?.warn?.(
           JSON.stringify({
             msg: "google validateCallback identity token failed",
+            flow_id: flowId,
+            error: error?.message || "unknown_error",
+          })
+        )
+        return { success: false, error: error.message }
+      }
+    }
+
+    const accessToken = body?.access_token || query?.access_token
+    if (accessToken) {
+      try {
+        const { authIdentity, success } = await this.verifyAccessToken_(
+          accessToken,
+          authIdentityService
+        )
+        this.logger_?.info?.(
+          JSON.stringify({
+            msg: "google validateCallback access token verified",
+            flow_id: flowId,
+            success,
+            auth_identity_id: authIdentity?.id || null,
+          })
+        )
+        return { success, authIdentity }
+      } catch (error) {
+        this.logger_?.warn?.(
+          JSON.stringify({
+            msg: "google validateCallback access token failed",
             flow_id: flowId,
             error: error?.message || "unknown_error",
           })
@@ -223,6 +253,8 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
       )
     }
 
+    this.assertAudience_(payload.aud)
+
     const entity_id = payload.sub
     const userMetadata = {
       name: payload.name,
@@ -260,6 +292,96 @@ class GoogleAuthService extends AbstractAuthModuleProvider {
     return {
       success: true,
       authIdentity,
+    }
+  }
+
+  async verifyAccessToken_(accessToken, authIdentityService) {
+    if (!accessToken) {
+      return { success: false, error: "No access token provided" }
+    }
+
+    const profile = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }).then((r) => {
+      if (!r.ok) {
+        throw new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          `Could not fetch Google profile, ${r.status}, ${r.statusText}`
+        )
+      }
+      return r.json()
+    })
+
+    if (!profile?.sub) {
+      throw new MedusaError(MedusaError.Types.INVALID_DATA, "Google profile not found")
+    }
+    if (!profile?.email) {
+      throw new MedusaError(MedusaError.Types.INVALID_DATA, "Email not provided by Google")
+    }
+    if (profile?.email_verified === false) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "Email not verified, cannot proceed with authentication"
+      )
+    }
+
+    const entity_id = profile.sub
+    const userMetadata = {
+      name: profile.name,
+      email: profile.email,
+      picture: profile.picture,
+      given_name: profile.given_name,
+      family_name: profile.family_name,
+    }
+    this.logger_?.info?.(
+      JSON.stringify({
+        msg: "google verify access token profile",
+        entity_id: entity_id || null,
+        email: maskEmail(profile.email),
+        email_verified: profile.email_verified,
+      })
+    )
+
+    let authIdentity
+    try {
+      authIdentity = await authIdentityService.retrieve({
+        entity_id,
+      })
+    } catch (error) {
+      if (error.type === MedusaError.Types.NOT_FOUND) {
+        const createdAuthIdentity = await authIdentityService.create({
+          entity_id,
+          user_metadata: userMetadata,
+        })
+        authIdentity = createdAuthIdentity
+      } else {
+        return { success: false, error: error.message }
+      }
+    }
+
+    return {
+      success: true,
+      authIdentity,
+    }
+  }
+
+  assertAudience_(audience) {
+    const allowed = [
+      this.config_.clientId,
+      this.config_.mobileIosClientId,
+      this.config_.mobileAndroidClientId,
+    ].filter(Boolean)
+    if (!allowed.length || !audience) {
+      return
+    }
+    if (!allowed.includes(audience)) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "Invalid Google token audience"
+      )
     }
   }
 

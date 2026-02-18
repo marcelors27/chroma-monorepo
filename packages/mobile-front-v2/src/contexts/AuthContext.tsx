@@ -54,7 +54,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const USER_STORAGE_KEY = "chroma_front_v2_user";
-const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
 const mapCustomerToUser = (customer: MedusaCustomer): User => ({
   id: customer.id,
@@ -274,11 +274,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (provider === "google" && (Platform.OS === "android" || Platform.OS === "ios")) {
-        if (!GOOGLE_WEB_CLIENT_ID) {
-          setAuthError("Google login não configurado.");
+        if (Platform.OS === "ios" && !GOOGLE_IOS_CLIENT_ID) {
+          setAuthError("Google login iOS não configurado.");
           return { success: false, flowId };
         }
-
         let GoogleSignin;
         try {
           ({ GoogleSignin } = require("@react-native-google-signin/google-signin"));
@@ -288,8 +287,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         GoogleSignin.configure({
-          webClientId: GOOGLE_WEB_CLIENT_ID,
-          offlineAccess: true,
+          ...(GOOGLE_IOS_CLIENT_ID ? { iosClientId: GOOGLE_IOS_CLIENT_ID } : {}),
+          offlineAccess: false,
           scopes: ["email", "profile"],
         });
 
@@ -298,14 +297,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
           }
           const userInfo = await GoogleSignin.signIn();
+          const tokens = await GoogleSignin.getTokens();
+          const idToken =
+            userInfo?.idToken ||
+            tokens?.idToken ||
+            undefined;
+          const accessToken = tokens?.accessToken || undefined;
 
-          if (!userInfo?.idToken) {
+          if (!idToken && !accessToken) {
             setAuthError("Não foi possível concluir o login com Google.");
             return { success: false, flowId };
           }
 
           await completeSocialAuthNative("google", {
-            identityToken: userInfo.idToken,
+            identityToken: idToken,
+            accessToken,
             authorizationCode: userInfo.serverAuthCode || undefined,
             debugFlowId: flowId,
           });
