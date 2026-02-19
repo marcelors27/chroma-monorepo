@@ -6,11 +6,13 @@ const {
   BOLETO_ADMIN_TEMPLATE_NAME,
   PIX_ADMIN_TEMPLATE_NAME,
   PASSWORD_RESET_TEMPLATE_NAME,
+  SOCIAL_LOGIN_LINKED_TEMPLATE_NAME,
   buildWelcomeTemplate,
   buildCompanyAddedTemplate,
   buildBoletoAdminTemplate,
   buildPixAdminTemplate,
   buildPasswordResetTemplate,
+  buildSocialLoginLinkedTemplate,
   renderTemplateHtml,
 } = require("./email-templates")
 
@@ -184,10 +186,28 @@ const sendPasswordResetEmail = async ({ to, name, password, logger }) => {
   })
 }
 
+const sendSocialLoginLinkedEmail = async ({ to, providerLabel, logger }) => {
+  if (!to) return { skipped: true }
+  const template = buildSocialLoginLinkedTemplate()
+  const variables = {
+    PROVIDER_LABEL: providerLabel || "Social",
+  }
+
+  return sendTemplateOrFallback({
+    to,
+    subject: template.subject,
+    templateName: SOCIAL_LOGIN_LINKED_TEMPLATE_NAME,
+    templateDefinition: template,
+    variables,
+    logger,
+  })
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendCompanyAddedEmail,
   sendBoletoAdminEmail,
   sendPixAdminEmail,
   sendPasswordResetEmail,
+  sendSocialLoginLinkedEmail,
 }

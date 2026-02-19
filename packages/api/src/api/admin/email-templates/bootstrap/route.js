@@ -8,6 +8,7 @@ const {
   buildCompanyAddedTemplate,
   buildBoletoAdminTemplate,
   buildPasswordResetTemplate,
+  buildSocialLoginLinkedTemplate,
 } = require("../../../../services/email-templates")
 
 const upsertTemplate = async (definition) => {
@@ -37,12 +38,14 @@ const POST = async (_req, res) => {
     const companyAdded = buildCompanyAddedTemplate()
     const boletoAdmin = buildBoletoAdminTemplate()
     const passwordReset = buildPasswordResetTemplate()
+    const socialLoginLinked = buildSocialLoginLinkedTemplate()
 
     const results = []
     results.push(await upsertTemplate(welcome))
     results.push(await upsertTemplate(companyAdded))
     results.push(await upsertTemplate(boletoAdmin))
     results.push(await upsertTemplate(passwordReset))
+    results.push(await upsertTemplate(socialLoginLinked))
 
     const published = []
     for (const entry of results) {

@@ -3,6 +3,7 @@ const COMPANY_ADDED_TEMPLATE_NAME = "Chroma | Condominio adicionado"
 const BOLETO_ADMIN_TEMPLATE_NAME = "Chroma | Boleto para administradora"
 const PIX_ADMIN_TEMPLATE_NAME = "Chroma | PIX para administradora"
 const PASSWORD_RESET_TEMPLATE_NAME = "Chroma | Reset de senha"
+const SOCIAL_LOGIN_LINKED_TEMPLATE_NAME = "Chroma | Novo login social vinculado"
 
 const buildWelcomeTemplate = () => {
   const html = `
@@ -138,6 +139,27 @@ const buildPasswordResetTemplate = () => {
   }
 }
 
+const buildSocialLoginLinkedTemplate = () => {
+  const html = `
+  <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
+    <h2 style="margin: 0 0 16px;">Novo login social vinculado</h2>
+    <p style="margin: 0 0 12px;">
+      Um novo login social (<strong>{{{PROVIDER_LABEL}}}</strong>) foi vinculado a sua conta Chroma.
+    </p>
+    <p style="margin: 16px 0 0;">
+      Se voce nao reconhece esta acao, altere sua senha e entre em contato com o suporte.
+    </p>
+  </div>
+  `.trim()
+
+  return {
+    name: SOCIAL_LOGIN_LINKED_TEMPLATE_NAME,
+    subject: "Novo login social vinculado a sua conta Chroma",
+    html,
+    variables: [{ key: "PROVIDER_LABEL", type: "string", fallback: "Social" }],
+  }
+}
+
 const renderTemplateHtml = (template, variables) => {
   let html = template.html
   Object.entries(variables || {}).forEach(([key, value]) => {
@@ -155,10 +177,12 @@ module.exports = {
   BOLETO_ADMIN_TEMPLATE_NAME,
   PIX_ADMIN_TEMPLATE_NAME,
   PASSWORD_RESET_TEMPLATE_NAME,
+  SOCIAL_LOGIN_LINKED_TEMPLATE_NAME,
   buildWelcomeTemplate,
   buildCompanyAddedTemplate,
   buildBoletoAdminTemplate,
   buildPixAdminTemplate,
   buildPasswordResetTemplate,
+  buildSocialLoginLinkedTemplate,
   renderTemplateHtml,
 }

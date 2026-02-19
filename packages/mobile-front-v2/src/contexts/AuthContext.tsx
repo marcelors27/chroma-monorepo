@@ -96,43 +96,6 @@ const getErrorMessage = (error: any) => {
   );
 };
 
-const ensureIosTrackingForFacebook = async (Settings: any, flowId: string) => {
-  if (Platform.OS !== "ios") return;
-
-  let trackingGranted = true;
-  let trackingSource: "module" | "fallback_enabled" = "fallback_enabled";
-  try {
-    const TrackingTransparency = require("expo-tracking-transparency");
-    const current = await TrackingTransparency.getTrackingPermissionsAsync();
-    const result =
-      current?.status === "undetermined"
-        ? await TrackingTransparency.requestTrackingPermissionsAsync()
-        : current;
-    trackingGranted = !!result?.granted;
-    trackingSource = "module";
-  } catch (error: any) {
-    console.info("[auth-mobile] tracking permission module unavailable", {
-      flowId,
-      message: getErrorMessage(error),
-    });
-  }
-
-  try {
-    Settings?.setAdvertiserTrackingEnabled?.(trackingGranted);
-  } catch (error: any) {
-    console.info("[auth-mobile] setAdvertiserTrackingEnabled failed", {
-      flowId,
-      message: getErrorMessage(error),
-    });
-  }
-
-  console.info("[auth-mobile] facebook tracking status", {
-    flowId,
-    trackingGranted,
-    trackingSource,
-  });
-};
-
 const waitForAuthRedirect = (authUrl: string, redirectBase: string) => {
   return new Promise<string>((resolve, reject) => {
     let resolved = false;
@@ -273,13 +236,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasCredentialCode: !!options?.credential?.authorizationCode,
     });
     try {
-      if (provider === "facebook") {
+      if (provider === "facebook" && Platform.OS === "android") {
         let LoginManager;
         let AccessToken;
-        let AuthenticationToken;
         let Settings;
         try {
-          ({ LoginManager, AccessToken, AuthenticationToken, Settings } = require("react-native-fbsdk-next"));
+          ({ LoginManager, AccessToken, Settings } = require("react-native-fbsdk-next"));
         } catch {
           setAuthError("Facebook login indisponível no momento.");
           return { success: false, flowId };
@@ -287,43 +249,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
           Settings?.initializeSDK?.();
-          await ensureIosTrackingForFacebook(Settings, flowId);
           LoginManager.logOut();
-          const result =
-            Platform.OS === "ios"
-              ? await LoginManager.logInWithPermissions(
-                  ["public_profile", "email"],
-                  "enabled"
-                )
-              : await LoginManager.logInWithPermissions(["public_profile", "email"]);
+          const result = await LoginManager.logInWithPermissions(["public_profile", "email"]);
           if (result?.isCancelled) {
             console.info("[auth-mobile] facebook cancelled", { flowId });
             return { success: false, flowId };
           }
           const data = await AccessToken.getCurrentAccessToken();
           const accessToken = data?.accessToken?.toString?.() || data?.accessToken;
-          const authTokenData =
-            Platform.OS === "ios"
-              ? await AuthenticationToken?.getAuthenticationTokenIOS?.()
-              : null;
-          const identityToken = authTokenData?.authenticationToken || authTokenData?.token || null;
           console.info("[auth-mobile] facebook tokens", {
             flowId,
             hasAccessToken: !!accessToken,
-            hasIdentityToken: !!identityToken,
             platform: Platform.OS,
           });
-          if (!accessToken && !identityToken) {
-            setAuthError(
-              Platform.OS === "ios"
-                ? "Não foi possível concluir o login com Facebook. O iOS retornou login limitado (limited.facebook.com), sem access token. Ative o rastreamento para este app e tente novamente."
-                : "Não foi possível concluir o login com Facebook."
-            );
+          if (!accessToken) {
+            setAuthError("Não foi possível concluir o login com Facebook.");
             return { success: false, flowId };
           }
           await completeSocialAuthNative("facebook", {
             accessToken: accessToken || undefined,
-            identityToken: identityToken || undefined,
             debugFlowId: flowId,
           });
         } catch (error: any) {
@@ -339,6 +283,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const success = await finalizeLogin();
         console.info("[auth-mobile] social login done", { flowId, provider, success });
         return { success, flowId };
+      }
+
+      if (provider === "facebook" && Platform.OS === "ios") {
+        console.info("[auth-mobile] facebook using web oauth on ios", { flowId });
       }
 
       if (provider === "google" && (Platform.OS === "android" || Platform.OS === "ios")) {

@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken")
-const { sendEmail } = require("../../../../../services/send-email")
+const { sendSocialLoginLinkedEmail } = require("../../../../../services/email-template-sender")
 const {
   ContainerRegistrationKeys,
   Modules,
@@ -30,21 +30,9 @@ const providerLabel = (provider) => {
 const sendSocialLinkEmail = async ({ email, authProvider, logger, flowId }) => {
   if (!isEmail(email)) return
   const label = providerLabel(authProvider)
-  const subject = `Novo login ${label} vinculado a sua conta Chroma`
-  const text = [
-    `Um novo login social (${label}) foi vinculado a sua conta Chroma.`,
-    "Se voce nao reconhece esta acao, altere sua senha e entre em contato com o suporte.",
-  ].join(" ")
-  const html = [
-    `<p>Um novo login social (<strong>${label}</strong>) foi vinculado a sua conta Chroma.</p>`,
-    "<p>Se voce nao reconhece esta acao, altere sua senha e entre em contato com o suporte.</p>",
-  ].join("")
-
-  await sendEmail({
+  await sendSocialLoginLinkedEmail({
     to: [email],
-    subject,
-    text,
-    html,
+    providerLabel: label,
     logger,
   })
   try {
