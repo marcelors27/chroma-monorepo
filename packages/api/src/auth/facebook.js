@@ -1,4 +1,5 @@
 const crypto = require("crypto")
+const jwt = require("jsonwebtoken")
 const {
   AbstractAuthModuleProvider,
   MedusaError,
@@ -90,6 +91,12 @@ class FacebookAuthService extends AbstractAuthModuleProvider {
     const query = req.query ?? {}
     const body = req.body ?? {}
     const flowId = readHeaderValue(req.headers?.["x-debug-flow-id"])
+    const hasIdentityToken = !!(
+      body?.identity_token ||
+      body?.id_token ||
+      query?.identity_token ||
+      query?.id_token
+    )
     const hasAccessToken = !!(body?.access_token || query?.access_token)
     const hasCode = !!(query?.code ?? body?.code)
     const hasState = !!(query?.state ?? body?.state)
@@ -111,11 +118,45 @@ class FacebookAuthService extends AbstractAuthModuleProvider {
       JSON.stringify({
         msg: "facebook validateCallback start",
         flow_id: flowId,
+        has_identity_token: hasIdentityToken,
         has_access_token: hasAccessToken,
         has_code: hasCode,
         has_state: hasState,
       })
     )
+
+    const identityToken =
+      body?.identity_token ||
+      body?.id_token ||
+      query?.identity_token ||
+      query?.id_token
+
+    if (identityToken) {
+      try {
+        const { authIdentity, success } = await this.verifyIdentityToken_(
+          identityToken,
+          authIdentityService
+        )
+        this.logger_?.info?.(
+          JSON.stringify({
+            msg: "facebook validateCallback identity token verified",
+            flow_id: flowId,
+            success,
+            auth_identity_id: authIdentity?.id || null,
+          })
+        )
+        return { success, authIdentity }
+      } catch (error) {
+        this.logger_?.warn?.(
+          JSON.stringify({
+            msg: "facebook validateCallback identity token failed",
+            flow_id: flowId,
+            error: error?.message || "unknown_error",
+          })
+        )
+        return { success: false, error: error.message }
+      }
+    }
 
     const accessToken =
       body?.access_token ||
@@ -254,6 +295,75 @@ class FacebookAuthService extends AbstractAuthModuleProvider {
         msg: "facebook verify profile",
         entity_id: entity_id || null,
         email: maskEmail(profile.email),
+      })
+    )
+
+    let authIdentity
+    try {
+      authIdentity = await authIdentityService.retrieve({
+        entity_id,
+      })
+    } catch (error) {
+      if (error.type === MedusaError.Types.NOT_FOUND) {
+        const createdAuthIdentity = await authIdentityService.create({
+          entity_id,
+          user_metadata: userMetadata,
+        })
+        authIdentity = createdAuthIdentity
+      } else {
+        return { success: false, error: error.message }
+      }
+    }
+
+    return {
+      success: true,
+      authIdentity,
+    }
+  }
+
+  async verifyIdentityToken_(idToken, authIdentityService) {
+    if (!idToken) {
+      return { success: false, error: "No identity token provided" }
+    }
+
+    const decoded = jwt.decode(idToken, { complete: true })
+    const payload = decoded?.payload ?? {}
+    const entity_id = payload?.sub
+
+    if (!entity_id) {
+      throw new MedusaError(MedusaError.Types.INVALID_DATA, "Facebook identity token missing subject")
+    }
+
+    const aud = payload?.aud
+    if (aud) {
+      const audiences = Array.isArray(aud) ? aud : [aud]
+      if (!audiences.includes(this.config_.clientId)) {
+        throw new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          "Facebook identity token audience mismatch"
+        )
+      }
+    }
+
+    const issuer = payload?.iss
+    if (issuer && typeof issuer === "string" && !issuer.toLowerCase().includes("facebook")) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "Facebook identity token issuer is invalid"
+      )
+    }
+
+    const userMetadata = {
+      name: payload?.name || null,
+      email: payload?.email || null,
+      picture: payload?.picture || null,
+    }
+
+    this.logger_?.info?.(
+      JSON.stringify({
+        msg: "facebook verify identity token",
+        entity_id: entity_id || null,
+        email: maskEmail(userMetadata.email),
       })
     )
 

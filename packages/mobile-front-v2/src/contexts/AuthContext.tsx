@@ -276,9 +276,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (provider === "facebook") {
         let LoginManager;
         let AccessToken;
+        let AuthenticationToken;
         let Settings;
         try {
-          ({ LoginManager, AccessToken, Settings } = require("react-native-fbsdk-next"));
+          ({ LoginManager, AccessToken, AuthenticationToken, Settings } = require("react-native-fbsdk-next"));
         } catch {
           setAuthError("Facebook login indisponível no momento.");
           return { success: false, flowId };
@@ -301,7 +302,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           const data = await AccessToken.getCurrentAccessToken();
           const accessToken = data?.accessToken?.toString?.() || data?.accessToken;
-          if (!accessToken) {
+          const authTokenData =
+            Platform.OS === "ios"
+              ? await AuthenticationToken?.getAuthenticationTokenIOS?.()
+              : null;
+          const identityToken = authTokenData?.authenticationToken || authTokenData?.token || null;
+          console.info("[auth-mobile] facebook tokens", {
+            flowId,
+            hasAccessToken: !!accessToken,
+            hasIdentityToken: !!identityToken,
+            platform: Platform.OS,
+          });
+          if (!accessToken && !identityToken) {
             setAuthError(
               Platform.OS === "ios"
                 ? "Não foi possível concluir o login com Facebook. O iOS retornou login limitado (limited.facebook.com), sem access token. Ative o rastreamento para este app e tente novamente."
@@ -309,7 +321,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             );
             return { success: false, flowId };
           }
-          await completeSocialAuthNative("facebook", { accessToken, debugFlowId: flowId });
+          await completeSocialAuthNative("facebook", {
+            accessToken: accessToken || undefined,
+            identityToken: identityToken || undefined,
+            debugFlowId: flowId,
+          });
         } catch (error: any) {
           const message = getErrorMessage(error);
           console.info("[auth-mobile] facebook native error", {
