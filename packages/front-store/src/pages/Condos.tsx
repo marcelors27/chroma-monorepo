@@ -46,7 +46,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import condosBg from "@/assets/condos-bg.jpg";
+import { resolveBusinessBackground } from "@/lib/business-background";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface Condo {
@@ -137,7 +137,7 @@ const emptyFormData: Omit<Condo, 'id'> = {
 
 const Condos = () => {
   const { toast } = useToast();
-  const { terms, businessTypes } = useBusinessTerms();
+  const { terms, businessTypes, activeBusinessTypeKey } = useBusinessTerms();
   const defaultFormData = useMemo(
     () => ({ ...emptyFormData, role: terms.responsibleLabel }),
     [terms.responsibleLabel]
@@ -623,7 +623,7 @@ const Condos = () => {
     <div 
       className="min-h-screen relative -m-4 lg:-m-8 p-4 lg:p-8"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.92), hsl(var(--background) / 0.95)), url(${condosBg})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',

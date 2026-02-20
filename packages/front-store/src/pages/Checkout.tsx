@@ -16,6 +16,7 @@ import {
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
+import { resolveBusinessBackground } from "@/lib/business-background";
 import {
   completeCart,
   createRecurrence,
@@ -36,7 +37,6 @@ import {
   upsertSavedPaymentMethod,
 } from "@/lib/medusa";
 import { toast } from "@/hooks/use-toast";
-import condosBg from "@/assets/condos-bg.jpg";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 type PaymentMethod = "credit" | "pix" | "boleto";
@@ -46,7 +46,7 @@ const ENABLE_PIX = import.meta.env.VITE_ENABLE_PIX === "true";
 
 const Checkout = () => {
   const { items, totalPrice, clearCart, completeBackendCheckout, cartId, isCartLoading } = useCart();
-  const { terms, resolvePaymentPolicy } = useBusinessTerms();
+  const { terms, activeBusinessTypeKey, resolvePaymentPolicy } = useBusinessTerms();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
@@ -511,7 +511,7 @@ const Checkout = () => {
       <div 
         className="min-h-full flex items-center justify-center py-8"
         style={{
-          backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.92), hsl(var(--background) / 0.95)), url(${condosBg})`,
+          backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
@@ -716,7 +716,7 @@ const Checkout = () => {
     <div 
       className="min-h-screen relative -m-4 lg:-m-8 p-4 lg:p-8"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.92), hsl(var(--background) / 0.95)), url(${condosBg})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',

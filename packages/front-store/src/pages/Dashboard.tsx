@@ -15,7 +15,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
-import dashboardBg from "@/assets/dashboard-bg.jpg";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
+import { resolveBusinessBackground } from "@/lib/business-background";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   getProductCategory,
@@ -108,6 +109,7 @@ interface LayoutContext {
 }
 
 const Dashboard = () => {
+  const { terms, activeBusinessTypeKey } = useBusinessTerms();
   const { selectedCondo } = useOutletContext<LayoutContext>();
   const [searchName, setSearchName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todos");
@@ -300,7 +302,7 @@ const Dashboard = () => {
     <div 
       className="min-h-screen relative -m-4 lg:-m-8 p-4 lg:p-8"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.92), hsl(var(--background) / 0.95)), url(${dashboardBg})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',

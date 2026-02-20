@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
+import { Alert, Linking as NativeLinking, Platform } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as Linking from "expo-linking";
 import { Buffer } from "buffer";
@@ -54,6 +54,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const USER_STORAGE_KEY = "chroma_front_v2_user";
+const IOS_TRACKING_PROMPTED_KEY = "chroma_front_v2_ios_tracking_prompted_v1";
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 const GOOGLE_IOS_CLIENT_ID_FALLBACK =
   "633351241832-2t9hj3ptto4pdrk5akbmsi2f7otb2k9b.apps.googleusercontent.com";
@@ -96,6 +97,81 @@ const getErrorMessage = (error: any) => {
   );
 };
 
+const ensureIosTrackingForFacebook = async (Settings: any, flowId: string) => {
+  if (Platform.OS !== "ios") return;
+
+  let trackingGranted = true;
+  let trackingSource: "module" | "fallback_enabled" = "fallback_enabled";
+  try {
+    const TrackingTransparency = require("expo-tracking-transparency");
+    const current = await TrackingTransparency.getTrackingPermissionsAsync();
+    const result =
+      current?.status === "undetermined"
+        ? await TrackingTransparency.requestTrackingPermissionsAsync()
+        : current;
+    trackingGranted = !!result?.granted;
+    trackingSource = "module";
+  } catch (error: any) {
+    console.info("[auth-mobile] tracking permission module unavailable", {
+      flowId,
+      message: getErrorMessage(error),
+    });
+  }
+
+  try {
+    Settings?.setAdvertiserTrackingEnabled?.(trackingGranted);
+  } catch (error: any) {
+    console.info("[auth-mobile] setAdvertiserTrackingEnabled failed", {
+      flowId,
+      message: getErrorMessage(error),
+    });
+  }
+
+  console.info("[auth-mobile] facebook tracking status", {
+    flowId,
+    trackingGranted,
+    trackingSource,
+  });
+};
+
+const requestIosTrackingOnFirstOpen = async () => {
+  if (Platform.OS !== "ios") return;
+
+  let TrackingTransparency: any;
+  try {
+    TrackingTransparency = require("expo-tracking-transparency");
+  } catch {
+    return;
+  }
+
+  const alreadyPrompted = await AsyncStorage.getItem(IOS_TRACKING_PROMPTED_KEY);
+  if (alreadyPrompted) return;
+
+  await AsyncStorage.setItem(IOS_TRACKING_PROMPTED_KEY, "1");
+
+  const current = await TrackingTransparency.getTrackingPermissionsAsync();
+  const result =
+    current?.status === "undetermined"
+      ? await TrackingTransparency.requestTrackingPermissionsAsync()
+      : current;
+
+  if (result?.granted) return;
+
+  Alert.alert(
+    "Ative o rastreamento",
+    "Para melhorar o login com Facebook no iOS, habilite o rastreamento para este app nos Ajustes.",
+    [
+      { text: "Agora não", style: "cancel" },
+      {
+        text: "Abrir Ajustes",
+        onPress: () => {
+          NativeLinking.openSettings().catch(() => undefined);
+        },
+      },
+    ]
+  );
+};
+
 const waitForAuthRedirect = (authUrl: string, redirectBase: string) => {
   return new Promise<string>((resolve, reject) => {
     let resolved = false;
@@ -130,6 +206,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const { terms } = useBusinessTerms();
+
+  useEffect(() => {
+    requestIosTrackingOnFirstOpen().catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -236,12 +316,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasCredentialCode: !!options?.credential?.authorizationCode,
     });
     try {
-      if (provider === "facebook" && Platform.OS === "android") {
+      if (provider === "facebook" && (Platform.OS === "android" || Platform.OS === "ios")) {
         let LoginManager;
         let AccessToken;
+        let AuthenticationToken;
         let Settings;
         try {
-          ({ LoginManager, AccessToken, Settings } = require("react-native-fbsdk-next"));
+          ({ LoginManager, AccessToken, AuthenticationToken, Settings } = require("react-native-fbsdk-next"));
         } catch {
           setAuthError("Facebook login indisponível no momento.");
           return { success: false, flowId };
@@ -249,25 +330,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
           Settings?.initializeSDK?.();
+          await ensureIosTrackingForFacebook(Settings, flowId);
           LoginManager.logOut();
-          const result = await LoginManager.logInWithPermissions(["public_profile", "email"]);
+          const result =
+            Platform.OS === "ios"
+              ? await LoginManager.logInWithPermissions(["public_profile", "email"], "enabled")
+              : await LoginManager.logInWithPermissions(["public_profile", "email"]);
           if (result?.isCancelled) {
             console.info("[auth-mobile] facebook cancelled", { flowId });
             return { success: false, flowId };
           }
           const data = await AccessToken.getCurrentAccessToken();
           const accessToken = data?.accessToken?.toString?.() || data?.accessToken;
+          const authTokenData =
+            Platform.OS === "ios"
+              ? await AuthenticationToken?.getAuthenticationTokenIOS?.()
+              : null;
+          const identityToken = authTokenData?.authenticationToken || authTokenData?.token || null;
           console.info("[auth-mobile] facebook tokens", {
             flowId,
             hasAccessToken: !!accessToken,
+            hasIdentityToken: !!identityToken,
             platform: Platform.OS,
           });
-          if (!accessToken) {
-            setAuthError("Não foi possível concluir o login com Facebook.");
+          if (!accessToken && !identityToken) {
+            setAuthError(
+              Platform.OS === "ios"
+                ? "Não foi possível concluir o login com Facebook. O iOS retornou login limitado (limited.facebook.com), sem access token. Ative o rastreamento para este app e tente novamente."
+                : "Não foi possível concluir o login com Facebook."
+            );
             return { success: false, flowId };
           }
           await completeSocialAuthNative("facebook", {
             accessToken: accessToken || undefined,
+            identityToken: identityToken || undefined,
             debugFlowId: flowId,
           });
         } catch (error: any) {
@@ -283,10 +379,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const success = await finalizeLogin();
         console.info("[auth-mobile] social login done", { flowId, provider, success });
         return { success, flowId };
-      }
-
-      if (provider === "facebook" && Platform.OS === "ios") {
-        console.info("[auth-mobile] facebook using web oauth on ios", { flowId });
       }
 
       if (provider === "google" && (Platform.OS === "android" || Platform.OS === "ios")) {

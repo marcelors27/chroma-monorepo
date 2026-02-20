@@ -18,9 +18,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import condosBg from "@/assets/condos-bg.jpg";
 import { toast } from "@/hooks/use-toast";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
+import { resolveBusinessBackground } from "@/lib/business-background";
 import {
   createRecurrence,
   fetchPendingPaymentsFromBackend,
@@ -208,7 +208,7 @@ const ENABLE_TEST_BOLETO = import.meta.env.VITE_ENABLE_TEST_BOLETO === "true";
 const IS_DEV = import.meta.env.DEV === true;
 
 const Orders = () => {
-  const { terms } = useBusinessTerms();
+  const { terms, activeBusinessTypeKey } = useBusinessTerms();
   const [selectedOrder, setSelectedOrder] = useState<MedusaOrder | null>(null);
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
   const [activeTab, setActiveTab] = useState<"pending" | "progress" | "history">("pending");
@@ -477,7 +477,7 @@ const Orders = () => {
     <div
       className="min-h-screen relative -m-4 lg:-m-8 p-4 lg:p-8"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.92), hsl(var(--background) / 0.95)), url(${condosBg})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",

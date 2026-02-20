@@ -501,7 +501,7 @@ export default function Index() {
               <Text style={styles.metricLabel}>Economia</Text>
             </View>
             <Text style={styles.metricValue}>R$ 430</Text>
-            <Text style={styles.metricHint}>Em descontos</Text>
+            <Text style={styles.metricHint}>Cashback disponível</Text>
           </View>
         </View>
 

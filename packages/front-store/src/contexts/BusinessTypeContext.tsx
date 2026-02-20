@@ -230,6 +230,7 @@ export function useBusinessTerms() {
     return {
       terms: DEFAULT_TERMS,
       businessTypes: [],
+      activeBusinessTypeKey: null,
       setActiveBusinessTypeKey: (_key: string | null) => undefined,
       resolvePaymentPolicy: (_key?: string | null) => DEFAULT_PAYMENT_POLICY,
     }
@@ -238,6 +239,7 @@ export function useBusinessTerms() {
   return {
     terms,
     businessTypes: context.businessTypes,
+    activeBusinessTypeKey: context.activeBusinessTypeKey,
     setActiveBusinessTypeKey: context.setActiveBusinessTypeKey,
     resolveTerms: context.resolveTerms,
     resolvePaymentPolicy: context.resolvePaymentPolicy,

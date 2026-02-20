@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Image,
   ImageBackground,
@@ -20,6 +21,7 @@ import { suspendGlobalLoading } from "@/lib/global-loading";
 import { LOGO_SIZE } from "@/constants/ui";
 
 const AUTH_BG = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&auto=format&fit=crop&q=80";
+const IOS_TRACKING_PROMPTED_KEY = "chroma_front_v2_ios_tracking_prompted_v1";
 
 export default function Auth() {
   const navigation = useNavigation();
@@ -47,6 +49,15 @@ export default function Auth() {
     email: "",
     password: "",
   });
+
+  const resetTrackingPromptFlag = async () => {
+    try {
+      await AsyncStorage.removeItem(IOS_TRACKING_PROMPTED_KEY);
+      toast.success("Prompt de rastreamento resetado. Reabra o app para testar.");
+    } catch {
+      toast.error("Não foi possível resetar o prompt agora.");
+    }
+  };
 
   const handleSubmit = async () => {
     if (isLoading) return;
@@ -141,6 +152,11 @@ export default function Auth() {
 
         {lastSocialFlowId ? (
           <Text style={styles.debugFlowText}>Flow ID debug: {lastSocialFlowId}</Text>
+        ) : null}
+        {Platform.OS === "ios" ? (
+          <Pressable onPress={resetTrackingPromptFlag} style={styles.debugAction} hitSlop={8}>
+            <Text style={styles.debugActionText}>[TEMP] Resetar prompt de rastreamento</Text>
+          </Pressable>
         ) : null}
 
         <View style={styles.socialBlock}>
@@ -328,6 +344,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 10,
     textAlign: "center",
+  },
+  debugAction: {
+    marginTop: 8,
+    marginBottom: 8,
+    alignItems: "center",
+  },
+  debugActionText: {
+    color: "#5DA2E6",
+    fontSize: 12,
+    fontWeight: "600",
   },
   socialBlock: {
     gap: 12,

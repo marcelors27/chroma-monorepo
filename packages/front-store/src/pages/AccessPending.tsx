@@ -1,17 +1,17 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert } from "lucide-react";
-import authBg from "@/assets/auth-bg.jpg";
+import { resolveBusinessBackground } from "@/lib/business-background";
 import logo from "@/assets/logo.png";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 
 const AccessPending = () => {
-  const { terms } = useBusinessTerms();
+  const { terms, activeBusinessTypeKey } = useBusinessTerms();
   return (
     <div
       className="min-h-screen bg-background flex items-center justify-center px-6 py-12"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.92), hsl(var(--background) / 0.97)), url(${authBg})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.88)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",

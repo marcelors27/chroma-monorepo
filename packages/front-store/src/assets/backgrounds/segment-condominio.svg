@@ -1,0 +1,34 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1080" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#20415F"/>
+      <stop offset="1" stop-color="#0C1A2A"/>
+    </linearGradient>
+    <linearGradient id="tower" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#9EB6CB"/>
+      <stop offset="1" stop-color="#5B738A"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <circle cx="1540" cy="190" r="120" fill="#E9F2FF" fill-opacity="0.13"/>
+  <rect x="0" y="770" width="1920" height="310" fill="#10263B"/>
+  <rect x="120" y="440" width="210" height="380" rx="8" fill="url(#tower)"/>
+  <rect x="370" y="360" width="250" height="460" rx="8" fill="url(#tower)"/>
+  <rect x="670" y="420" width="185" height="400" rx="8" fill="url(#tower)"/>
+  <rect x="890" y="310" width="290" height="510" rx="8" fill="url(#tower)"/>
+  <rect x="1210" y="390" width="230" height="430" rx="8" fill="url(#tower)"/>
+  <rect x="1470" y="330" width="260" height="490" rx="8" fill="url(#tower)"/>
+  <rect x="1760" y="460" width="95" height="360" rx="8" fill="url(#tower)"/>
+  <rect x="120" y="820" width="1735" height="42" fill="#132D46"/>
+  <rect x="220" y="865" width="1500" height="12" fill="#1D3B57"/>
+  <g fill="#D4E8FF" fill-opacity="0.35">
+    <rect x="155" y="480" width="24" height="20"/><rect x="195" y="480" width="24" height="20"/><rect x="235" y="480" width="24" height="20"/>
+    <rect x="155" y="520" width="24" height="20"/><rect x="195" y="520" width="24" height="20"/><rect x="235" y="520" width="24" height="20"/>
+    <rect x="410" y="410" width="26" height="20"/><rect x="454" y="410" width="26" height="20"/><rect x="498" y="410" width="26" height="20"/><rect x="542" y="410" width="26" height="20"/>
+    <rect x="930" y="360" width="30" height="22"/><rect x="980" y="360" width="30" height="22"/><rect x="1030" y="360" width="30" height="22"/>
+    <rect x="930" y="404" width="30" height="22"/><rect x="980" y="404" width="30" height="22"/><rect x="1030" y="404" width="30" height="22"/>
+    <rect x="1260" y="440" width="28" height="20"/><rect x="1306" y="440" width="28" height="20"/><rect x="1352" y="440" width="28" height="20"/>
+    <rect x="1520" y="390" width="28" height="20"/><rect x="1566" y="390" width="28" height="20"/><rect x="1612" y="390" width="28" height="20"/>
+  </g>
+  <rect x="0" y="900" width="1920" height="180" fill="#0B1A28" fill-opacity="0.74"/>
+</svg>

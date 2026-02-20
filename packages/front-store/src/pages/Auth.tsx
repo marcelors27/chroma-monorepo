@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Mail, Lock, User, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import authBg from "@/assets/auth-bg.jpg";
+import { resolveBusinessBackground } from "@/lib/business-background";
 import logo from "@/assets/logo.png";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
@@ -23,7 +23,7 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { terms } = useBusinessTerms();
+  const { terms, activeBusinessTypeKey } = useBusinessTerms();
   const [isLogin, setIsLogin] = useState(searchParams.get("mode") !== "register");
   const [isLoading, setIsLoading] = useState(false);
   const [showReset, setShowReset] = useState(false);
@@ -463,12 +463,12 @@ const Auth = () => {
       <div 
         className="hidden lg:flex flex-1 items-center justify-center p-12 relative"
         style={{
-          backgroundImage: `url(${authBg})`,
+          backgroundImage: `url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
       >
-        <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-background/45 backdrop-blur-[1px]" />
         <div className="max-w-md text-foreground relative z-10">
           <img src={logo} alt="Chroma" className="h-16 w-16 mb-8" />
           <h2 className="text-4xl font-bold mb-4">

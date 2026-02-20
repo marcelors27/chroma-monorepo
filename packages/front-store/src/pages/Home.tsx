@@ -16,7 +16,7 @@ import {
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
-import homeBg from "@/assets/home-bg.jpg";
+import { resolveBusinessBackground } from "@/lib/business-background";
 import {
   getProductCategory,
   getProductImage,
@@ -84,7 +84,7 @@ const hasPromotionFlag = (product?: MedusaProduct) => {
 };
 
 const Home = () => {
-  const { terms } = useBusinessTerms();
+  const { terms, activeBusinessTypeKey } = useBusinessTerms();
   const { addItem } = useCart();
   const navigate = useNavigate();
   const authToken = getTokenValue();
@@ -356,7 +356,7 @@ const Home = () => {
     <div 
       className="min-h-screen relative -m-4 lg:-m-8 p-4 lg:p-8"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.92), hsl(var(--background) / 0.95)), url(${homeBg})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',

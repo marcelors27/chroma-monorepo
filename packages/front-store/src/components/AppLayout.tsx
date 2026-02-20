@@ -22,7 +22,7 @@ import CartDrawer from "@/components/CartDrawer";
 import { clearSession, getActiveCondo, listCompanies, setActiveCondo } from "@/lib/medusa";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import { registerWebPush } from "@/lib/push";
-import dashboardBg from "@/assets/dashboard-bg.jpg";
+import { resolveBusinessBackground } from "@/lib/business-background";
 import logo from "@/assets/logo.png";
 
 type CondoOption = {
@@ -40,7 +40,7 @@ const AppLayout = () => {
   const [condos, setCondos] = useState<CondoOption[]>([]);
   const [selectedCondo, setSelectedCondo] = useState<CondoOption | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { terms, setActiveBusinessTypeKey } = useBusinessTerms();
+  const { terms, activeBusinessTypeKey, setActiveBusinessTypeKey } = useBusinessTerms();
   const isFirstAccessCondos = location.pathname === "/condos" && condos.length === 0;
   const showSidebar = !isFirstAccessCondos;
   const showMobileHeader = !isFirstAccessCondos;
@@ -138,7 +138,7 @@ const AppLayout = () => {
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: `linear-gradient(180deg, rgba(16, 20, 26, 0.92) 0%, rgba(16, 20, 26, 0.82) 45%, rgba(16, 20, 26, 0.95) 100%), url(${dashboardBg})`,
+          backgroundImage: `linear-gradient(180deg, rgba(16, 20, 26, 0.78) 0%, rgba(16, 20, 26, 0.6) 45%, rgba(16, 20, 26, 0.82) 100%), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
         }}
       />
 

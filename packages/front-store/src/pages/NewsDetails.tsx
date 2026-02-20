@@ -5,11 +5,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import homeBg from "@/assets/home-bg.jpg";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
+import { resolveBusinessBackground } from "@/lib/business-background";
 import { getNews, listNews, MedusaNews } from "@/lib/medusa";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const NewsDetails = () => {
+  const { terms, activeBusinessTypeKey } = useBusinessTerms();
   const { id } = useParams();
   const { data: newsData, isLoading } = useQuery({
     queryKey: ["news-detail", id],
@@ -70,7 +72,7 @@ const NewsDetails = () => {
     <div 
       className="min-h-screen relative -m-4 lg:-m-8 p-4 lg:p-8"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.92), hsl(var(--background) / 0.95)), url(${homeBg})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',

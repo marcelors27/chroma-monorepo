@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Upload, FileText, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatCNPJ, validateCNPJ } from "@/lib/cnpj";
-import authBg from "@/assets/auth-bg.jpg";
+import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
+import { resolveBusinessBackground } from "@/lib/business-background";
 import logo from "@/assets/logo.png";
 
 interface Company {
@@ -18,6 +19,7 @@ interface Company {
 }
 
 const CompanyLink = () => {
+  const { terms, activeBusinessTypeKey } = useBusinessTerms();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -138,7 +140,7 @@ const CompanyLink = () => {
     <div
       className="min-h-screen bg-background flex flex-col"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.92), hsl(var(--background) / 0.97)), url(${authBg})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.88)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
