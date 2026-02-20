@@ -15,8 +15,19 @@ const hasAnyKeyword = (value: string, keywords: string[]) =>
 
 export const resolveBusinessBackground = (
   businessTypeKey?: string | null,
-  termsLabel?: string | null
+  termsLabel?: string | null,
+  businessTerms?: Record<string, unknown> | null
 ) => {
+  const explicitImage =
+    String(
+      (businessTerms as any)?.background_image_url ||
+      (businessTerms as any)?.background?.image_url ||
+      ""
+    ).trim()
+  if (explicitImage) {
+    return explicitImage
+  }
+
   const key = normalize(businessTypeKey);
   const label = normalize(termsLabel);
   const source = `${key} ${label}`;

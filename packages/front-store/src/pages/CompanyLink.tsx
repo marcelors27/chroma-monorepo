@@ -19,7 +19,7 @@ interface Company {
 }
 
 const CompanyLink = () => {
-  const { terms, activeBusinessTypeKey } = useBusinessTerms();
+  const { terms, activeBusinessType, activeBusinessTypeKey } = useBusinessTerms();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -140,7 +140,7 @@ const CompanyLink = () => {
     <div
       className="min-h-screen bg-background flex flex-col"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.88)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.88)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower, activeBusinessType?.terms || null)})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",

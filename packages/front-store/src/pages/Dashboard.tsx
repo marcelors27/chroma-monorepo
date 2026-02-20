@@ -109,7 +109,7 @@ interface LayoutContext {
 }
 
 const Dashboard = () => {
-  const { terms, activeBusinessTypeKey } = useBusinessTerms();
+  const { terms, activeBusinessType, activeBusinessTypeKey } = useBusinessTerms();
   const { selectedCondo } = useOutletContext<LayoutContext>();
   const [searchName, setSearchName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todos");
@@ -302,7 +302,7 @@ const Dashboard = () => {
     <div 
       className="min-h-screen relative -m-4 lg:-m-8 p-4 lg:p-8"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower, activeBusinessType?.terms || null)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',

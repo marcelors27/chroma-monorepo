@@ -6,12 +6,12 @@ import logo from "@/assets/logo.png";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 
 const AccessPending = () => {
-  const { terms, activeBusinessTypeKey } = useBusinessTerms();
+  const { terms, activeBusinessType, activeBusinessTypeKey } = useBusinessTerms();
   return (
     <div
       className="min-h-screen bg-background flex items-center justify-center px-6 py-12"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.88)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.88)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower, activeBusinessType?.terms || null)})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",

@@ -11,7 +11,7 @@ import { getNews, listNews, MedusaNews } from "@/lib/medusa";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const NewsDetails = () => {
-  const { terms, activeBusinessTypeKey } = useBusinessTerms();
+  const { terms, activeBusinessType, activeBusinessTypeKey } = useBusinessTerms();
   const { id } = useParams();
   const { data: newsData, isLoading } = useQuery({
     queryKey: ["news-detail", id],
@@ -72,7 +72,7 @@ const NewsDetails = () => {
     <div 
       className="min-h-screen relative -m-4 lg:-m-8 p-4 lg:p-8"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower, activeBusinessType?.terms || null)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',

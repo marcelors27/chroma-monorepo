@@ -31,7 +31,7 @@ import { getCustomerMe, updateCustomerMe, updatePassword } from "@/lib/medusa";
 
 const Settings = () => {
   const { toast } = useToast();
-  const { terms, activeBusinessTypeKey } = useBusinessTerms();
+  const { terms, activeBusinessType, activeBusinessTypeKey } = useBusinessTerms();
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [customerMetadata, setCustomerMetadata] = useState<Record<string, any>>({});
@@ -197,7 +197,7 @@ const Settings = () => {
     <div 
       className="min-h-screen relative -m-4 lg:-m-8 p-4 lg:p-8"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower, activeBusinessType?.terms || null)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',

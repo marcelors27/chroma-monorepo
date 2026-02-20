@@ -265,6 +265,40 @@ export default function App() {
     )
   }
 
+  const BusinessTypeEditRoute = () => {
+    const params = useParams()
+    return (
+      <BusinessTypesSection
+        medusaUrl={MEDUSA_URL}
+        token={token}
+        headers={headers}
+        businessTypes={businessTypes}
+        setBusinessTypes={setBusinessTypes}
+        businessTypesError={businessTypesError}
+        setBusinessTypesError={setBusinessTypesError}
+        mode="edit"
+        businessTypeId={params.businessTypeId}
+      />
+    )
+  }
+
+  const BusinessTypeDeleteRoute = () => {
+    const params = useParams()
+    return (
+      <BusinessTypesSection
+        medusaUrl={MEDUSA_URL}
+        token={token}
+        headers={headers}
+        businessTypes={businessTypes}
+        setBusinessTypes={setBusinessTypes}
+        businessTypesError={businessTypesError}
+        setBusinessTypesError={setBusinessTypesError}
+        mode="delete"
+        businessTypeId={params.businessTypeId}
+      />
+    )
+  }
+
   const sections = useMemo(
     () => [
       { id: "dashboard", label: "Dashboard", path: "/dashboard", count: orders.length },
@@ -1466,6 +1500,7 @@ export default function App() {
                   element={
                     <BusinessTypesSection
                       medusaUrl={MEDUSA_URL}
+                      token={token}
                       headers={headers}
                       businessTypes={businessTypes}
                       setBusinessTypes={setBusinessTypes}
@@ -1474,6 +1509,23 @@ export default function App() {
                     />
                   }
                 />
+                <Route
+                  path="/tipos-negocio/novo"
+                  element={
+                    <BusinessTypesSection
+                      medusaUrl={MEDUSA_URL}
+                      token={token}
+                      headers={headers}
+                      businessTypes={businessTypes}
+                      setBusinessTypes={setBusinessTypes}
+                      businessTypesError={businessTypesError}
+                      setBusinessTypesError={setBusinessTypesError}
+                      mode="create"
+                    />
+                  }
+                />
+                <Route path="/tipos-negocio/:businessTypeId" element={<BusinessTypeEditRoute />} />
+                <Route path="/tipos-negocio/:businessTypeId/excluir" element={<BusinessTypeDeleteRoute />} />
                 <Route path="/usuarios/:userId/resetar-senha" element={<UsersResetRoute />} />
                 <Route path="/usuarios/:userId/status" element={<UsersStatusRoute />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -23,7 +23,7 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { terms, activeBusinessTypeKey } = useBusinessTerms();
+  const { terms, activeBusinessType, activeBusinessTypeKey } = useBusinessTerms();
   const [isLogin, setIsLogin] = useState(searchParams.get("mode") !== "register");
   const [isLoading, setIsLoading] = useState(false);
   const [showReset, setShowReset] = useState(false);
@@ -463,7 +463,7 @@ const Auth = () => {
       <div 
         className="hidden lg:flex flex-1 items-center justify-center p-12 relative"
         style={{
-          backgroundImage: `url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
+          backgroundImage: `url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower, activeBusinessType?.terms || null)})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}

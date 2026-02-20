@@ -46,7 +46,7 @@ const ENABLE_PIX = import.meta.env.VITE_ENABLE_PIX === "true";
 
 const Checkout = () => {
   const { items, totalPrice, clearCart, completeBackendCheckout, cartId, isCartLoading } = useCart();
-  const { terms, activeBusinessTypeKey, resolvePaymentPolicy } = useBusinessTerms();
+  const { terms, activeBusinessType, activeBusinessTypeKey, resolvePaymentPolicy } = useBusinessTerms();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
@@ -511,7 +511,7 @@ const Checkout = () => {
       <div 
         className="min-h-full flex items-center justify-center py-8"
         style={{
-          backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
+          backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower, activeBusinessType?.terms || null)})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
@@ -716,7 +716,7 @@ const Checkout = () => {
     <div 
       className="min-h-screen relative -m-4 lg:-m-8 p-4 lg:p-8"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower, activeBusinessType?.terms || null)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',

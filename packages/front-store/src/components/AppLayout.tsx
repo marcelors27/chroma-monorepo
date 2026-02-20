@@ -40,7 +40,7 @@ const AppLayout = () => {
   const [condos, setCondos] = useState<CondoOption[]>([]);
   const [selectedCondo, setSelectedCondo] = useState<CondoOption | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { terms, activeBusinessTypeKey, setActiveBusinessTypeKey } = useBusinessTerms();
+  const { terms, activeBusinessType, activeBusinessTypeKey, setActiveBusinessTypeKey } = useBusinessTerms();
   const isFirstAccessCondos = location.pathname === "/condos" && condos.length === 0;
   const showSidebar = !isFirstAccessCondos;
   const showMobileHeader = !isFirstAccessCondos;
@@ -138,7 +138,7 @@ const AppLayout = () => {
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: `linear-gradient(180deg, rgba(16, 20, 26, 0.78) 0%, rgba(16, 20, 26, 0.6) 45%, rgba(16, 20, 26, 0.82) 100%), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
+          backgroundImage: `linear-gradient(180deg, rgba(16, 20, 26, 0.78) 0%, rgba(16, 20, 26, 0.6) 45%, rgba(16, 20, 26, 0.82) 100%), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower, activeBusinessType?.terms || null)})`,
         }}
       />
 

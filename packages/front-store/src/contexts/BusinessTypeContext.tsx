@@ -35,6 +35,7 @@ type BusinessTerms = {
 type BusinessTypeContextValue = {
   businessTypes: BusinessType[]
   activeBusinessTypeKey: string | null
+  activeBusinessType: BusinessType | null
   setActiveBusinessTypeKey: (key: string | null) => void
   resolveTerms: (key?: string | null) => BusinessTerms
   resolvePaymentPolicy: (key?: string | null) => {
@@ -211,13 +212,22 @@ export function BusinessTypeProvider({ children }: { children: React.ReactNode }
   }
 
   const value = useMemo(
-    () => ({
-      businessTypes,
-      activeBusinessTypeKey,
-      setActiveBusinessTypeKey,
-      resolveTerms,
-      resolvePaymentPolicy,
-    }),
+    () => {
+      const activeBusinessType = businessTypes.find(
+        (item) =>
+          item.key === activeBusinessTypeKey ||
+          item.id === activeBusinessTypeKey ||
+          String(item.label || "").toLowerCase() === String(activeBusinessTypeKey || "").toLowerCase()
+      ) || null
+      return {
+        businessTypes,
+        activeBusinessTypeKey,
+        activeBusinessType,
+        setActiveBusinessTypeKey,
+        resolveTerms,
+        resolvePaymentPolicy,
+      }
+    },
     [businessTypes, activeBusinessTypeKey]
   )
 
@@ -231,6 +241,7 @@ export function useBusinessTerms() {
       terms: DEFAULT_TERMS,
       businessTypes: [],
       activeBusinessTypeKey: null,
+      activeBusinessType: null,
       setActiveBusinessTypeKey: (_key: string | null) => undefined,
       resolvePaymentPolicy: (_key?: string | null) => DEFAULT_PAYMENT_POLICY,
     }
@@ -240,6 +251,7 @@ export function useBusinessTerms() {
     terms,
     businessTypes: context.businessTypes,
     activeBusinessTypeKey: context.activeBusinessTypeKey,
+    activeBusinessType: context.activeBusinessType,
     setActiveBusinessTypeKey: context.setActiveBusinessTypeKey,
     resolveTerms: context.resolveTerms,
     resolvePaymentPolicy: context.resolvePaymentPolicy,

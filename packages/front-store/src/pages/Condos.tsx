@@ -137,7 +137,7 @@ const emptyFormData: Omit<Condo, 'id'> = {
 
 const Condos = () => {
   const { toast } = useToast();
-  const { terms, businessTypes, activeBusinessTypeKey } = useBusinessTerms();
+  const { terms, businessTypes, activeBusinessType, activeBusinessTypeKey } = useBusinessTerms();
   const defaultFormData = useMemo(
     () => ({ ...emptyFormData, role: terms.responsibleLabel }),
     [terms.responsibleLabel]
@@ -623,7 +623,7 @@ const Condos = () => {
     <div 
       className="min-h-screen relative -m-4 lg:-m-8 p-4 lg:p-8"
       style={{
-        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower)})`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(--background) / 0.78), hsl(var(--background) / 0.86)), url(${resolveBusinessBackground(activeBusinessTypeKey, terms.labelLower, activeBusinessType?.terms || null)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',
