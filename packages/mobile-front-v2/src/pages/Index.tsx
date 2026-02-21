@@ -1,5 +1,5 @@
 import { Dimensions, Linking, Pressable, ScrollView, StyleSheet, Text, View, Image, NativeSyntheticEvent, NativeScrollEvent } from "react-native";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { ArrowRight, MessageCircle, Newspaper, Package, Star, TrendingUp } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
@@ -32,6 +32,7 @@ import {
   MedusaNews,
   MedusaProduct,
 } from "@/lib/medusa";
+import { matchesBusinessType } from "@/lib/segment-filter";
 
 const PROMO_KEYWORDS = ["promo", "promoc", "sale", "oferta", "desconto"];
 
@@ -118,7 +119,15 @@ export default function Index() {
   const whatsappTarget = process.env.EXPO_PUBLIC_WHATSAPP_TARGET || "+55 51 981975736";
   const pullThreshold = 80;
 
-  const featuredProducts = (data?.products || [])
+  const segmentProducts = useMemo(
+    () =>
+      ((data?.products || []) as MedusaProduct[]).filter((product) =>
+        matchesBusinessType(activeCondo?.business_type || null, (product.metadata || null) as Record<string, unknown> | null)
+      ),
+    [data?.products, activeCondo?.business_type]
+  );
+
+  const featuredProducts = segmentProducts
     .map((product: MedusaProduct) => {
       const variant = getVariant(product);
       const pricing = getVariantPricing(variant);
@@ -137,7 +146,7 @@ export default function Index() {
     })
     .slice(0, 2);
 
-  const promotionHighlights = (data?.products || [])
+  const promotionHighlights = segmentProducts
     .map((product: MedusaProduct) => {
       const variant = getVariant(product);
       const pricing = getVariantPricing(variant);
@@ -201,7 +210,17 @@ export default function Index() {
     await Linking.openURL(url);
   };
 
-  const newsItems = (newsData?.news || []) as MedusaNews[];
+  const newsItems = useMemo(
+    () =>
+      ((newsData?.news || []) as MedusaNews[]).filter((news) =>
+        matchesBusinessType(
+          activeCondo?.business_type || null,
+          (news.metadata || null) as Record<string, unknown> | null,
+          news.category
+        )
+      ),
+    [newsData?.news, activeCondo?.business_type]
+  );
   const featuredNews = newsItems[0];
   const listNewsItems = newsItems.slice(1);
   const banners = (bannerData?.banners || []) as MedusaMarketingBanner[];

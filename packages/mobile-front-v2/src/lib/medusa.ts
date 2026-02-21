@@ -199,6 +199,7 @@ export type MedusaNews = {
   summary: string;
   content: string;
   category?: string | null;
+  metadata?: Record<string, unknown>;
   image_url?: string | null;
   author?: string | null;
   source?: string | null;

@@ -10,6 +10,7 @@ import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { suspendGlobalLoading } from "@/lib/global-loading";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
+import { useCondo } from "@/contexts/CondoContext";
 import {
   fetchPendingPaymentsFromBackend,
   formatMoney,
@@ -69,6 +70,7 @@ const resolveStatusTone = (order: MedusaOrder): StatusTone => {
 
 export default function Pedidos() {
   const { terms } = useBusinessTerms();
+  const { activeCondo } = useCondo();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const ENABLE_TEST_BOLETO = process.env.EXPO_PUBLIC_ENABLE_TEST_BOLETO === "true";
@@ -108,8 +110,18 @@ export default function Pedidos() {
     return map;
   }, [pendingPayments]);
 
+  const filteredOrders = useMemo(() => {
+    const source = (data?.orders || []) as MedusaOrder[];
+    if (!activeCondo?.id) return source;
+    return source.filter((order) => {
+      const metadata = (order.shipping_address?.metadata || {}) as Record<string, any>;
+      const companyId = metadata.company_id || metadata.condo_id || null;
+      return companyId === activeCondo.id;
+    });
+  }, [data?.orders, activeCondo?.id]);
+
   const orders = useMemo(() => {
-    return (data?.orders || []).map((order) => {
+    return filteredOrders.map((order) => {
       const statusTone = resolveStatusTone(order);
       const condoName =
         order.shipping_address?.metadata?.company_name ||
@@ -134,7 +146,7 @@ export default function Pedidos() {
           order.status === "completed",
       };
     });
-  }, [data, terms.label]);
+  }, [filteredOrders, terms.label]);
 
   const ordersWithoutPending = useMemo(() => {
     return orders.filter(
@@ -142,19 +154,29 @@ export default function Pedidos() {
     );
   }, [orders, pendingByCollection]);
 
+  const filteredPendingPayments = useMemo(
+    () =>
+      pendingPayments.filter((pending) => {
+        if (!activeCondo?.id) return true;
+        return pending.details?.company_id === activeCondo.id;
+      }),
+    [pendingPayments, activeCondo?.id]
+  );
+
   const inProgressOrders = useMemo(() => ordersWithoutPending.filter((order) => !order.isHistory), [ordersWithoutPending]);
   const historyOrders = useMemo(() => ordersWithoutPending.filter((order) => order.isHistory), [ordersWithoutPending]);
 
   const { pendingCount, progressCount, historyCount } = useMemo(() => {
     return {
-      pendingCount: pendingPayments.length,
+      pendingCount: filteredPendingPayments.length,
       progressCount: inProgressOrders.length,
       historyCount: historyOrders.length,
     };
-  }, [pendingPayments.length, inProgressOrders.length, historyOrders.length]);
+  }, [filteredPendingPayments.length, inProgressOrders.length, historyOrders.length]);
 
   const visibleOrders = useMemo(() => {
-    const pendingMapped = pendingPayments.map((pending) => ({
+    const pendingMapped = filteredPendingPayments
+      .map((pending) => ({
       id: pending.payment_collection_id,
       status: "Pagamento pendente",
       statusTone: "warning" as StatusTone,
@@ -168,7 +190,7 @@ export default function Pedidos() {
       isPendingPayment: true,
       paymentType: pending.details?.method || "pagamento",
       payment_collection_id: pending.payment_collection_id,
-    }));
+      }));
 
     if (activeTab === "pending") {
       return pendingMapped;
@@ -177,7 +199,7 @@ export default function Pedidos() {
       return inProgressOrders;
     }
     return historyOrders;
-  }, [activeTab, pendingPayments, inProgressOrders, historyOrders, terms.label]);
+  }, [activeTab, filteredPendingPayments, inProgressOrders, historyOrders, terms.label]);
 
   const showSkeleton = isLoading && visibleOrders.length === 0;
 

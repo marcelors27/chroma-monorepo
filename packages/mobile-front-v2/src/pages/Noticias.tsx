@@ -10,14 +10,27 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { NewsCard } from "@/components/ui/NewsCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { useCondo } from "@/contexts/CondoContext";
 import { listNews, MedusaNews } from "@/lib/medusa";
+import { matchesBusinessType } from "@/lib/segment-filter";
 
 export default function Noticias() {
   const navigation = useNavigation();
+  const { activeCondo } = useCondo();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const { data, isLoading } = useQuery({ queryKey: ["news-list"], queryFn: () => listNews({ limit: 100 }) });
-  const allNews = (data?.news || []) as MedusaNews[];
+  const allNews = useMemo(
+    () =>
+      ((data?.news || []) as MedusaNews[]).filter((news) =>
+        matchesBusinessType(
+          activeCondo?.business_type || null,
+          (news.metadata || null) as Record<string, unknown> | null,
+          news.category
+        )
+      ),
+    [data?.news, activeCondo?.business_type]
+  );
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -40,7 +53,7 @@ export default function Noticias() {
       const matchesCategory = selectedCategory === "Todas" || news.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [allNews, searchQuery, selectedCategory]);
 
   return (
     <AuthenticatedLayout>

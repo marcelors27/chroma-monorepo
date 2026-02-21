@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   User,
   Building2,
@@ -67,7 +67,7 @@ const getInitials = (name?: string) => {
 export default function Conta() {
   const navigation = useNavigation();
   const { logout, user } = useAuth();
-  const { condos } = useCondo();
+  const { condos, activeCondo } = useCondo();
   const { terms } = useBusinessTerms();
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["orders"],
@@ -77,7 +77,15 @@ export default function Conta() {
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const pullThreshold = 80;
-  const ordersCount = data?.orders?.length || 0;
+  const ordersCount = useMemo(() => {
+    const source = data?.orders || [];
+    if (!activeCondo?.id) return source.length;
+    return source.filter((order) => {
+      const metadata = (order?.shipping_address?.metadata || {}) as Record<string, any>;
+      const companyId = metadata.company_id || metadata.condo_id || null;
+      return companyId === activeCondo.id;
+    }).length;
+  }, [data?.orders, activeCondo?.id]);
 
   const handleRefresh = async () => {
     if (refreshing) return;
