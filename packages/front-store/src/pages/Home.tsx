@@ -539,48 +539,6 @@ const Home = () => {
         </section>
       )}
 
-      {manufacturers.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Tag className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold">Fabricantes</h2>
-            </div>
-            <Link to="/dashboard">
-              <Button variant="ghost" className="gap-1">
-                Ver catálogo
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {manufacturers.map((manufacturer) => (
-              <Link
-                key={manufacturer.id}
-                to={`/dashboard?manufacturer=${encodeURIComponent(manufacturer.slug)}`}
-                className="min-w-[160px] border-2 border-border bg-card p-3 hover:border-primary transition-colors"
-              >
-                <div className="aspect-[4/3] bg-secondary border border-border overflow-hidden mb-2 rounded-md">
-                  {manufacturer.image_url ? (
-                    <img
-                      src={manufacturer.image_url}
-                      alt={manufacturer.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                      Sem imagem
-                    </div>
-                  )}
-                </div>
-                <p className="font-medium text-sm line-clamp-2">{manufacturer.name}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* Promotions Section */}
       <section>
         <div className="flex items-center justify-between mb-4">
@@ -804,6 +762,48 @@ const Home = () => {
           </Card>
         </Link>
       </section>
+
+      {manufacturers.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Tag className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-bold">Fabricantes</h2>
+            </div>
+            <Link to="/dashboard">
+              <Button variant="ghost" className="gap-1">
+                Ver catálogo
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {manufacturers.map((manufacturer) => (
+              <Link
+                key={manufacturer.id}
+                to={`/dashboard?manufacturer=${encodeURIComponent(manufacturer.slug)}`}
+                className="min-w-[160px] border-2 border-border bg-card p-3 hover:border-primary transition-colors"
+              >
+                <div className="aspect-[4/3] bg-secondary border border-border overflow-hidden mb-2 rounded-md">
+                  {manufacturer.image_url ? (
+                    <img
+                      src={manufacturer.image_url}
+                      alt={manufacturer.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                      Sem imagem
+                    </div>
+                  )}
+                </div>
+                <p className="font-medium text-sm line-clamp-2">{manufacturer.name}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
       </div>
     </div>
   );

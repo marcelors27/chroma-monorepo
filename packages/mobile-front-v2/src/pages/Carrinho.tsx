@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, View, Pressable, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import {
@@ -48,6 +48,7 @@ export default function Carrinho() {
   const [shippingError, setShippingError] = useState<string | null>(null);
   const [recurrenceByItem, setRecurrenceByItem] = useState<Record<string, RecurrenceOption>>({});
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
+  const hasInitializedSavedPayment = useRef(false);
   const [customerEmail, setCustomerEmail] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const {
@@ -63,45 +64,56 @@ export default function Carrinho() {
   const { activeCondo } = useCondo();
   const { terms, resolvePaymentPolicy } = useBusinessTerms();
   const paymentPolicy = resolvePaymentPolicy(activeCondo?.business_type || null);
-  const allowedPaymentMethods = (
-    [
-      paymentPolicy.methods.credit ? "cartao" : null,
-      ENABLE_PIX && paymentPolicy.methods.pix ? "pix" : null,
-      paymentPolicy.methods.boleto ? "boleto" : null,
-    ] as Array<"pix" | "cartao" | "boleto" | null>
-  ).filter(Boolean) as Array<"pix" | "cartao" | "boleto">;
+  const allowedPaymentMethods = useMemo(
+    () =>
+      (
+        [
+          paymentPolicy.methods.credit ? "cartao" : null,
+          ENABLE_PIX && paymentPolicy.methods.pix ? "pix" : null,
+          paymentPolicy.methods.boleto ? "boleto" : null,
+        ] as Array<"pix" | "cartao" | "boleto" | null>
+      ).filter(Boolean) as Array<"pix" | "cartao" | "boleto">,
+    [ENABLE_PIX, paymentPolicy.methods.credit, paymentPolicy.methods.pix, paymentPolicy.methods.boleto]
+  );
   const availableBoletoDays = paymentPolicy.boleto.allowedDays;
   const availablePixDays = paymentPolicy.pix.allowedDays;
-  const availableSavedMethods = savedPaymentMethods.filter(
-    (method) =>
-      allowedPaymentMethods.includes(method.type === "credit" ? "cartao" : method.type) &&
-      (ENABLE_PIX || method.type !== "pix")
+  const availableSavedMethods = useMemo(
+    () =>
+      savedPaymentMethods.filter(
+        (method) =>
+          allowedPaymentMethods.includes(method.type === "credit" ? "cartao" : method.type) &&
+          (ENABLE_PIX || method.type !== "pix")
+      ),
+    [savedPaymentMethods, allowedPaymentMethods, ENABLE_PIX]
   );
-  const paymentOptions = [
-    ...(ENABLE_PIX && allowedPaymentMethods.includes("pix")
-      ? [
-          {
-            id: "pix" as const,
-            title: "Pix",
-            subtitle: `Vencimento em ${pixExpiresAfterDays} dias`,
-            icon: QrCode,
-          },
-        ]
-      : []),
-    ...(allowedPaymentMethods.includes("cartao")
-      ? [{ id: "cartao" as const, title: "Cartão", subtitle: "Crédito ou débito", icon: CreditCard }]
-      : []),
-    ...(allowedPaymentMethods.includes("boleto")
-      ? [
-          {
-            id: "boleto" as const,
-            title: "Boleto",
-            subtitle: `Vencimento em ${boletoExpiresAfterDays} dias`,
-            icon: Receipt,
-          },
-        ]
-      : []),
-  ];
+  const paymentOptions = useMemo(
+    () => [
+      ...(ENABLE_PIX && allowedPaymentMethods.includes("pix")
+        ? [
+            {
+              id: "pix" as const,
+              title: "Pix",
+              subtitle: `Vencimento em ${pixExpiresAfterDays} dias`,
+              icon: QrCode,
+            },
+          ]
+        : []),
+      ...(allowedPaymentMethods.includes("cartao")
+        ? [{ id: "cartao" as const, title: "Cartão", subtitle: "Crédito ou débito", icon: CreditCard }]
+        : []),
+      ...(allowedPaymentMethods.includes("boleto")
+        ? [
+            {
+              id: "boleto" as const,
+              title: "Boleto",
+              subtitle: `Vencimento em ${boletoExpiresAfterDays} dias`,
+              icon: Receipt,
+            },
+          ]
+        : []),
+    ],
+    [ENABLE_PIX, allowedPaymentMethods, pixExpiresAfterDays, boletoExpiresAfterDays]
+  );
 
   const formattedTotal = formatMoney(totalPrice);
   const boletoEmails = activeCondo?.billingEmails?.length
@@ -149,19 +161,32 @@ export default function Carrinho() {
   }, [items]);
 
   useEffect(() => {
+    if (hasInitializedSavedPayment.current) return;
     if (!savedPaymentMethods.length) return;
     const defaultMethod =
       availableSavedMethods.find((method) => method.is_default) || availableSavedMethods[0];
-    if (!defaultMethod) return;
+    if (!defaultMethod) {
+      hasInitializedSavedPayment.current = true;
+      return;
+    }
     const mapped = defaultMethod.type === "credit" ? "cartao" : defaultMethod.type;
-    setSelectedPayment(mapped);
+    if (allowedPaymentMethods.includes(mapped)) {
+      setSelectedPayment(mapped);
+    }
     if (defaultMethod.type === "boleto") {
       const days = defaultMethod.details?.boleto_expires_after_days;
       if (typeof days === "number" && availableBoletoDays.includes(days)) {
         setBoletoExpiresAfterDays(days);
       }
     }
-  }, [savedPaymentMethods, availableSavedMethods, availableBoletoDays]);
+    if (defaultMethod.type === "pix") {
+      const days = defaultMethod.details?.pix_expires_after_days;
+      if (typeof days === "number" && availablePixDays.includes(days)) {
+        setPixExpiresAfterDays(days);
+      }
+    }
+    hasInitializedSavedPayment.current = true;
+  }, [savedPaymentMethods, availableSavedMethods, allowedPaymentMethods, availableBoletoDays, availablePixDays]);
 
   useEffect(() => {
     if (!allowedPaymentMethods.includes(selectedPayment)) {

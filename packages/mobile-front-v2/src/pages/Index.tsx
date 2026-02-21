@@ -441,6 +441,40 @@ export default function Index() {
             )}
           </View>
         ) : null}
+        <View style={styles.metricsRow}>
+          <View style={styles.metricCard}>
+            <View style={styles.metricHeader}>
+              <View style={styles.metricIconWrap}>
+                <Package color="#8C98A8" size={16} />
+              </View>
+              <Text style={styles.metricLabel}>Pedidos</Text>
+            </View>
+            <Text style={styles.metricValue}>12</Text>
+            <Text style={styles.metricHint}>Este mês</Text>
+          </View>
+
+          <View style={styles.metricCard}>
+            <View style={styles.metricHeader}>
+              <View style={styles.metricIconWrapAccent}>
+                <TrendingUp color="#5DA2E6" size={16} />
+              </View>
+              <Text style={styles.metricLabel}>Economia</Text>
+            </View>
+            <Text style={styles.metricValue}>R$ 430</Text>
+            <Text style={styles.metricHint}>Cashback disponível</Text>
+          </View>
+        </View>
+
+        <View style={styles.pointsCard}>
+          <View style={styles.pointsIconWrap}>
+            <Star color="#F8C25C" size={18} />
+          </View>
+          <View style={styles.pointsContent}>
+            <Text style={styles.pointsLabel}>{`${terms.pointsLabel} ${terms.articleSingular} ${terms.labelLower}`}</Text>
+            <Text style={styles.pointsValue}>{activeCondo?.pointsBalance ?? 0}</Text>
+          </View>
+        </View>
+
         {manufacturers.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -481,39 +515,6 @@ export default function Index() {
             </ScrollView>
           </View>
         )}
-        <View style={styles.metricsRow}>
-          <View style={styles.metricCard}>
-            <View style={styles.metricHeader}>
-              <View style={styles.metricIconWrap}>
-                <Package color="#8C98A8" size={16} />
-              </View>
-              <Text style={styles.metricLabel}>Pedidos</Text>
-            </View>
-            <Text style={styles.metricValue}>12</Text>
-            <Text style={styles.metricHint}>Este mês</Text>
-          </View>
-
-          <View style={styles.metricCard}>
-            <View style={styles.metricHeader}>
-              <View style={styles.metricIconWrapAccent}>
-                <TrendingUp color="#5DA2E6" size={16} />
-              </View>
-              <Text style={styles.metricLabel}>Economia</Text>
-            </View>
-            <Text style={styles.metricValue}>R$ 430</Text>
-            <Text style={styles.metricHint}>Cashback disponível</Text>
-          </View>
-        </View>
-
-        <View style={styles.pointsCard}>
-          <View style={styles.pointsIconWrap}>
-            <Star color="#F8C25C" size={18} />
-          </View>
-          <View style={styles.pointsContent}>
-            <Text style={styles.pointsLabel}>{`${terms.pointsLabel} ${terms.articleSingular} ${terms.labelLower}`}</Text>
-            <Text style={styles.pointsValue}>{activeCondo?.pointsBalance ?? 0}</Text>
-          </View>
-        </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
