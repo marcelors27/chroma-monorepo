@@ -6,12 +6,19 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ShoppingCart, Trash2, Plus, Minus } from "lucide-react";
+import { ShoppingCart, Trash2 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { formatMoney } from "@/lib/medusa";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const CartDrawer = () => {
   const { items, totalItems, totalPrice, removeItem, updateQuantity, clearCart, isCartLoading } = useCart();
@@ -63,54 +70,56 @@ const CartDrawer = () => {
           ) : (
             <>
               <div className="flex-1 overflow-y-auto py-4 space-y-4">
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex gap-4 border-2 border-border p-3 bg-background"
-                  >
-                    <div className="w-20 h-20 border-2 border-border overflow-hidden flex-shrink-0">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-accent font-medium">{item.category}</p>
-                      <h4 className="font-bold text-sm truncate">{item.name}</h4>
-                      <p className="text-primary font-bold">
-                        {formatMoney(item.price)}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7 border-2"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="font-bold w-6 text-center">{item.quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7 border-2"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 ml-auto text-destructive hover:text-destructive"
-                          onClick={() => removeItem(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                {items.map((item) => {
+                  const maxQty = Math.max(10, item.quantity);
+                  const quantityOptions = Array.from({ length: maxQty }, (_, index) => index + 1);
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex gap-4 border-2 border-border p-3 bg-background"
+                    >
+                      <div className="w-20 h-20 border-2 border-border overflow-hidden flex-shrink-0">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-accent font-medium">{item.category}</p>
+                        <h4 className="font-bold text-sm truncate">{item.name}</h4>
+                        <p className="text-primary font-bold">
+                          {formatMoney(item.price)}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Select
+                            value={String(item.quantity)}
+                            onValueChange={(value) => updateQuantity(item.id, Number(value))}
+                          >
+                            <SelectTrigger className="h-8 w-24 border-2 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {quantityOptions.map((qty) => (
+                                <SelectItem key={qty} value={String(qty)}>
+                                  {qty}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 ml-auto text-destructive hover:text-destructive"
+                            onClick={() => removeItem(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="border-t-2 border-border pt-4 space-y-4">
