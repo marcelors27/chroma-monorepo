@@ -106,6 +106,35 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const isCompletedCartError = (err: any) => {
+    const message = String(err?.message || "");
+    return /already completed/i.test(message) || /cart .*completed/i.test(message);
+  };
+
+  const handleCompletedCart = async () => {
+    if (DEBUG) console.debug("[cart] completed:reset");
+    await resetCartState(false);
+    toast({
+      title: "Carrinho finalizado",
+      description: "Criamos um novo carrinho para você.",
+    });
+  };
+
+  const rebuildCartWithItems = async (nextItems: CartItem[]) => {
+    const newCart = await createCart();
+    if (!newCart?.id) return;
+    for (const item of nextItems) {
+      try {
+        await addLineItem(newCart.id, item.variantId, item.quantity);
+      } catch (err: any) {
+        if (DEBUG) console.debug("[cart] rebuild:addLineItem:error", err?.message || err);
+      }
+    }
+    const refreshed = await retrieveCart(newCart.id);
+    setCartId(newCart.id);
+    setItems(mapCartToItems(refreshed));
+  };
+
   const addItem = async (product: AddItemInput) => {
     if (checkoutLocked) {
       toast({
@@ -133,6 +162,42 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         description: `${product.name} foi adicionado ao carrinho.`,
       });
     } catch (err: any) {
+      const message = err?.message || "";
+      if (isCompletedCartError(err)) {
+        await handleCompletedCart();
+        return;
+      }
+      if (message.includes("payment sessions")) {
+        const nextItems = (() => {
+          const existing = items.find((item) => item.variantId === product.variantId);
+          if (existing) {
+            return items.map((item) =>
+              item.variantId === product.variantId
+                ? { ...item, quantity: item.quantity + (product.quantity || 1) }
+                : item
+            );
+          }
+          return [
+            ...items,
+            {
+              id: "",
+              productId: product.productId,
+              variantId: product.variantId,
+              name: product.name,
+              price: product.price,
+              category: product.category || "",
+              image: product.image || "",
+              quantity: product.quantity || 1,
+            },
+          ];
+        })();
+        await rebuildCartWithItems(nextItems);
+        toast({
+          title: "Produto adicionado",
+          description: `${product.name} foi adicionado ao carrinho.`,
+        });
+        return;
+      }
       if (DEBUG) console.debug("[cart] addItem:error", err?.message || err);
       toast({
         title: "Não foi possível adicionar",
@@ -157,6 +222,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       const updatedCart = await deleteLineItem(cartId, id);
       setItems(mapCartToItems(updatedCart));
     } catch (err: any) {
+      const message = err?.message || "";
+      if (isCompletedCartError(err)) {
+        await handleCompletedCart();
+        return;
+      }
+      if (message.includes("payment sessions")) {
+        const nextItems = items.filter((item) => item.id !== id);
+        await rebuildCartWithItems(nextItems);
+        return;
+      }
       if (DEBUG) console.debug("[cart] removeItem:error", err?.message || err);
       toast({
         title: "Erro ao remover",
@@ -182,6 +257,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       const updatedCart = await updateLineItem(cartId, id, quantity);
       setItems(mapCartToItems(updatedCart));
     } catch (err: any) {
+      const message = err?.message || "";
+      if (isCompletedCartError(err)) {
+        await handleCompletedCart();
+        return;
+      }
+      if (message.includes("payment sessions")) {
+        const nextItems =
+          quantity <= 0
+            ? items.filter((item) => item.id !== id)
+            : items.map((item) => (item.id === id ? { ...item, quantity } : item));
+        await rebuildCartWithItems(nextItems);
+        return;
+      }
       if (DEBUG) console.debug("[cart] updateQuantity:error", err?.message || err);
       toast({
         title: "Não foi possível atualizar",
