@@ -70,6 +70,8 @@ const getOptionLabel = (options: { value: string; label: string }[], value?: str
   return options.find((opt) => opt.value === value)?.label || value
 }
 
+const PENDING_ORDER_STATUSES = new Set(["pending", "processing"])
+
 export default function OrdersSection({
   orders,
   medusaUrl,
@@ -104,7 +106,7 @@ export default function OrdersSection({
   const openOrders = orders.filter((o) => o.status !== "completed").length
 
   const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
+    const filtered = orders.filter((order) => {
       if (filters.status && order.status !== filters.status) return false
       if (filters.fulfillment && order.fulfillment_status !== filters.fulfillment) return false
       if (filters.payment && order.payment_status !== filters.payment) return false
@@ -117,6 +119,12 @@ export default function OrdersSection({
       }
       return true
     })
+
+    if (filters.status && PENDING_ORDER_STATUSES.has(filters.status)) {
+      return filtered.slice().reverse()
+    }
+
+    return filtered
   }, [filters, orders])
 
   const getDraftValue = (field: keyof Order) => {
