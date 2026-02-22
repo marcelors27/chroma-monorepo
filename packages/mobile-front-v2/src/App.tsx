@@ -224,7 +224,7 @@ function MainTabs() {
           show: { animation: "fade", config: { duration: 180 } },
           hide: { animation: "fade", config: { duration: 180 } },
         },
-        tabBarActiveTintColor: "hsl(220 10% 60%)",
+        tabBarActiveTintColor: "#5DA2E6",
         tabBarInactiveTintColor: "hsl(215 15% 55%)",
       }}
     >
