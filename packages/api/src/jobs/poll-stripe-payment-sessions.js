@@ -4,7 +4,7 @@ const {
   Modules,
   remoteQueryObjectFromString,
 } = require("@medusajs/framework/utils")
-const { processPaymentWorkflow } = require("@medusajs/core-flows")
+const { processPaymentWorkflow, updateCustomersWorkflow } = require("@medusajs/core-flows")
 
 const PENDING_STATUSES = [
   PaymentSessionStatus.PENDING,
@@ -38,6 +38,41 @@ const isCardPaymentSession = (session, providerStatus) => {
   return false
 }
 
+const removePendingPaymentFromCustomer = async (container, customer, paymentCollectionId) => {
+  if (!customer) return
+  const metadata = customer?.metadata || {}
+  const current = Array.isArray(metadata?.pending_payments) ? metadata.pending_payments : []
+  if (!current.length) return
+  const next = current.filter((item) => item?.payment_collection_id !== paymentCollectionId)
+  if (next.length === current.length) return
+  await updateCustomersWorkflow(container).run({
+    input: {
+      selector: { id: customer.id },
+      update: { metadata: { ...metadata, pending_payments: next } },
+    },
+  })
+}
+
+const cleanupPendingPayments = async (container, paymentCollectionId) => {
+  if (!paymentCollectionId) return
+  const remoteQuery = container.resolve(ContainerRegistrationKeys.REMOTE_QUERY)
+  const customers = await remoteQuery(
+    remoteQueryObjectFromString({
+      entryPoint: "customer",
+      variables: { limit: 500 },
+      fields: ["id", "metadata"],
+    })
+  )
+  for (const customer of customers || []) {
+    const entries = Array.isArray(customer?.metadata?.pending_payments)
+      ? customer.metadata.pending_payments
+      : []
+    if (entries.some((entry) => entry?.payment_collection_id === paymentCollectionId)) {
+      await removePendingPaymentFromCustomer(container, customer, paymentCollectionId)
+    }
+  }
+}
+
 const pollStripePaymentSessions = async function pollStripePaymentSessions(container) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER) || console
   const paymentModule = container.resolve(Modules.PAYMENT)
@@ -56,7 +91,7 @@ const pollStripePaymentSessions = async function pollStripePaymentSessions(conta
     sessions = await paymentSessionService.list(
       { status: PENDING_STATUSES },
       {
-        select: ["id", "provider_id", "status", "data", "amount", "currency_code"],
+        select: ["id", "provider_id", "status", "data", "amount", "currency_code", "payment_collection_id"],
         take: 200,
       }
     )
@@ -73,7 +108,7 @@ const pollStripePaymentSessions = async function pollStripePaymentSessions(conta
         },
         limit: 200,
       },
-      fields: ["id", "provider_id", "status", "data", "amount", "currency_code"],
+      fields: ["id", "provider_id", "status", "data", "amount", "currency_code", "payment_collection_id"],
     })
     sessions = await remoteQuery(query)
   } else {
@@ -130,6 +165,12 @@ const pollStripePaymentSessions = async function pollStripePaymentSessions(conta
           status: nextStatus,
           data: nextData,
         })
+      }
+      if (action === PaymentActions.SUCCESSFUL) {
+        await cleanupPendingPayments(
+          container,
+          session.payment_collection_id || session?.data?.payment_collection_id || nextData?.payment_collection_id
+        )
       }
     } catch (err) {
       logger.warn(

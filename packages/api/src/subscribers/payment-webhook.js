@@ -1,8 +1,9 @@
-const { processPaymentWorkflowId } = require("@medusajs/core-flows")
+const { processPaymentWorkflowId, updateCustomersWorkflow } = require("@medusajs/core-flows")
 const {
   ContainerRegistrationKeys,
   Modules,
   PaymentActions,
+  remoteQueryObjectFromString,
 } = require("@medusajs/framework/utils")
 
 const WEBHOOK_EVENT = "custom.payment_webhook_received"
@@ -16,6 +17,59 @@ const isCardWebhookPayload = (payload) => {
     return types.includes("card")
   }
   return types === "card"
+}
+
+const removePendingPaymentFromCustomer = async (container, customer, paymentCollectionId) => {
+  if (!customer) return
+  const metadata = customer?.metadata || {}
+  const current = Array.isArray(metadata?.pending_payments) ? metadata.pending_payments : []
+  if (!current.length) return
+  const next = current.filter((item) => item?.payment_collection_id !== paymentCollectionId)
+  if (next.length === current.length) return
+  await updateCustomersWorkflow(container).run({
+    input: {
+      selector: { id: customer.id },
+      update: { metadata: { ...metadata, pending_payments: next } },
+    },
+  })
+}
+
+const cleanupPendingPayments = async (container, paymentCollectionId) => {
+  if (!paymentCollectionId) return
+  const remoteQuery = container.resolve(ContainerRegistrationKeys.REMOTE_QUERY)
+  const customers = await remoteQuery(
+    remoteQueryObjectFromString({
+      entryPoint: "customer",
+      variables: { limit: 500 },
+      fields: ["id", "metadata"],
+    })
+  )
+  for (const customer of customers || []) {
+    const entries = Array.isArray(customer?.metadata?.pending_payments)
+      ? customer.metadata.pending_payments
+      : []
+    if (entries.some((entry) => entry?.payment_collection_id === paymentCollectionId)) {
+      await removePendingPaymentFromCustomer(container, customer, paymentCollectionId)
+    }
+  }
+}
+
+const resolvePaymentCollectionId = async (container, sessionId) => {
+  if (!sessionId) return null
+  try {
+    const remoteQuery = container.resolve(ContainerRegistrationKeys.REMOTE_QUERY)
+    const sessions = await remoteQuery(
+      remoteQueryObjectFromString({
+        entryPoint: "payment_session",
+        variables: { filters: { id: sessionId }, limit: 1 },
+        fields: ["id", "payment_collection_id", "data"],
+      })
+    )
+    const session = sessions?.[0]
+    return session?.payment_collection_id || session?.data?.payment_collection_id || null
+  } catch {
+    return null
+  }
 }
 
 async function paymentWebhookHandler({ event, container }) {
@@ -50,6 +104,16 @@ async function paymentWebhookHandler({ event, container }) {
 
   const wfEngine = container.resolve(Modules.WORKFLOW_ENGINE)
   await wfEngine.run(processPaymentWorkflowId, { input: processedEvent })
+
+  if (processedEvent?.action === PaymentActions.SUCCESSFUL) {
+    const paymentCollectionId = await resolvePaymentCollectionId(
+      container,
+      processedEvent?.data?.session_id
+    )
+    if (paymentCollectionId) {
+      await cleanupPendingPayments(container, paymentCollectionId)
+    }
+  }
 }
 
 exports.default = paymentWebhookHandler
