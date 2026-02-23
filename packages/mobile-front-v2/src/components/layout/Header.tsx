@@ -32,6 +32,8 @@ export function Header({
   const navigation = useNavigation();
   const { condos, activeCondo, setActiveCondo, isAllCondos, setAllCondos } = useCondo();
   const { terms } = useBusinessTerms();
+  const canGoBack = navigation.canGoBack?.() ?? false;
+  const shouldShowBackButton = showBackButton || canGoBack;
 
   const displayName = isAllCondos
     ? `${terms.label} não selecionado`
@@ -40,7 +42,7 @@ export function Header({
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        {showBackButton && (
+        {shouldShowBackButton && (
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
             <ArrowLeft color="#FFFFFF" size={20} />
           </Pressable>
