@@ -25,9 +25,9 @@ const CartDrawer = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  const handleCheckout = () => {
+  const handleCart = () => {
     setOpen(false);
-    navigate("/checkout");
+    navigate("/cart");
   };
 
   return (
@@ -129,8 +129,8 @@ const CartDrawer = () => {
                     {formatMoney(totalPrice)}
                   </span>
                 </div>
-                <Button className="w-full" size="lg" onClick={handleCheckout}>
-                  Finalizar Pedido
+                <Button className="w-full" size="lg" onClick={handleCart}>
+                  Ver carrinho
                 </Button>
                 <Button
                   variant="outline"
