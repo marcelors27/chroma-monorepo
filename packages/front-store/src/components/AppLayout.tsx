@@ -203,6 +203,7 @@ const AppLayout = () => {
               <NavItem icon={<ShoppingCart />} label="Produtos" href="/dashboard" active={isActive("/dashboard")} />
               <NavItem icon={<Package />} label="Meus Pedidos" href="/orders" active={isActive("/orders")} />
               <NavItem icon={<Repeat />} label="Recorrentes" href="/recurrences" active={isActive("/recurrences")} />
+              <NavItem icon={<Star />} label={`Gastar ${terms.pointsLabelLower}`} href="/points" active={isActive("/points")} />
               <NavItem icon={<Hexagon />} label={terms.labelPlural} href="/condos" active={isActive("/condos")} />
               <NavItem icon={<Settings />} label="Configurações" href="/settings" active={isActive("/settings")} />
             </ul>
@@ -303,6 +304,13 @@ const AppLayout = () => {
                           label="Recorrentes" 
                           href="/recurrences" 
                           active={isActive("/recurrences")}
+                          onClick={() => setMobileMenuOpen(false)}
+                        />
+                        <NavItem 
+                          icon={<Star />} 
+                          label={`Gastar ${terms.pointsLabelLower}`} 
+                          href="/points" 
+                          active={isActive("/points")}
                           onClick={() => setMobileMenuOpen(false)}
                         />
                         <NavItem 
