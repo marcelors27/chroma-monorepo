@@ -133,6 +133,25 @@ const Home = () => {
       .slice(0, 3);
   }, [data, terms.labelPluralLower]);
 
+  const featuredProducts = useMemo(() => {
+    const items = data?.products || [];
+    return items.slice(0, 6).map((product: MedusaProduct) => {
+      const variant = getVariant(product);
+      const pricing = getVariantPricing(variant);
+      return {
+        id: product.id,
+        title: product.title,
+        description: product.description || `Confira este item do catálogo ${terms.articleSingular} ${terms.labelLower}.`,
+        originalPrice: pricing.basePrice ?? undefined,
+        price: pricing.finalPrice,
+        discount: pricing.discountPercent,
+        onSale: pricing.onSale,
+        image: getProductImage(product),
+        category: getProductCategory(product),
+      };
+    });
+  }, [data, terms.articleSingular, terms.labelLower]);
+
   const handleAddToCart = (promo: (typeof promotions)[0]) => {
     if (!promo?.variantId) {
       toast({
@@ -804,6 +823,108 @@ const Home = () => {
           </div>
         </section>
       )}
+
+      {/* Products Section */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-bold">Produtos em destaque</h2>
+          </div>
+          <Link to="/dashboard">
+            <Button variant="ghost" className="gap-1">
+              Ver catálogo
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {isLoading &&
+            Array.from({ length: 6 }).map((_, idx) => (
+              <Card key={`product-skeleton-${idx}`} className="border-2 animate-pulse">
+                <div className="aspect-video bg-muted" />
+                <CardContent className="p-4 space-y-2">
+                  <div className="h-4 bg-muted rounded w-2/3" />
+                  <div className="h-3 bg-muted rounded w-full" />
+                  <div className="h-3 bg-muted rounded w-1/2" />
+                </CardContent>
+              </Card>
+            ))}
+
+          {!isLoading && featuredProducts.length === 0 && (
+            <Card className="border-2">
+              <CardContent className="p-6 text-center text-muted-foreground">
+                Nenhum produto encontrado no momento.
+              </CardContent>
+            </Card>
+          )}
+
+          {!isLoading &&
+            featuredProducts.map((product) => {
+              const showDiscount =
+                product.originalPrice && product.originalPrice > product.price && product.discount;
+              return (
+                <Card
+                  key={product.id}
+                  className="overflow-hidden border-2 hover:border-primary transition-colors group cursor-pointer"
+                  onClick={() => navigate(`/product/${product.id}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate(`/product/${product.id}`);
+                    }
+                  }}
+                >
+                  <div className="relative aspect-video bg-secondary">
+                    {product.image ? (
+                      <img
+                        src={product.image}
+                        alt={product.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
+                        Sem imagem
+                      </div>
+                    )}
+                    {product.onSale && (
+                      <Badge className="absolute top-2 right-2 bg-destructive text-destructive-foreground">
+                        {showDiscount ? (
+                          <>
+                            <Percent className="h-3 w-3 mr-1" />
+                            {product.discount}% OFF
+                          </>
+                        ) : (
+                          "PROMO"
+                        )}
+                      </Badge>
+                    )}
+                  </div>
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground">{product.category}</p>
+                    <h3 className="font-semibold text-lg line-clamp-1">{product.title}</h3>
+                    <p className="text-muted-foreground text-sm mt-1 line-clamp-2">
+                      {product.description}
+                    </p>
+                    <div className="mt-3 flex items-baseline gap-2">
+                      {showDiscount && (
+                        <span className="text-muted-foreground line-through text-sm">
+                          {formatMoney(product.originalPrice)}
+                        </span>
+                      )}
+                      <span className="text-lg font-bold text-primary">
+                        {formatMoney(product.price)}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+        </div>
+      </section>
       </div>
     </div>
   );
