@@ -211,7 +211,9 @@ const Orders = () => {
   const { terms, activeBusinessType, activeBusinessTypeKey } = useBusinessTerms();
   const [selectedOrder, setSelectedOrder] = useState<MedusaOrder | null>(null);
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
+  const [pendingPaymentsLoaded, setPendingPaymentsLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<"pending" | "progress" | "history">("pending");
+  const [autoTab, setAutoTab] = useState(true);
   const [testPaymentId, setTestPaymentId] = useState<string | null>(null);
   const [recurrenceOrder, setRecurrenceOrder] = useState<MedusaOrder | null>(null);
   const [recurrenceName, setRecurrenceName] = useState("");
@@ -483,13 +485,19 @@ const Orders = () => {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      await syncStripePayments();
-      const local = getPendingPayments();
-      const remote = await fetchPendingPaymentsFromBackend();
-      const merged = mergePendingPayments(local, remote);
-      if (active) {
-        setPendingPayments(merged);
-        queryClient.invalidateQueries({ queryKey: ["orders"] });
+      try {
+        await syncStripePayments();
+        const local = getPendingPayments();
+        const remote = await fetchPendingPaymentsFromBackend();
+        const merged = mergePendingPayments(local, remote);
+        if (active) {
+          setPendingPayments(merged);
+          queryClient.invalidateQueries({ queryKey: ["orders"] });
+        }
+      } finally {
+        if (active) {
+          setPendingPaymentsLoaded(true);
+        }
       }
     };
     load();
@@ -497,6 +505,35 @@ const Orders = () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!autoTab) return;
+    if (!pendingPaymentsLoaded || isLoading || isError) return;
+    if (pendingPayments.length > 0) {
+      if (activeTab !== "pending") {
+        setActiveTab("pending");
+      }
+      return;
+    }
+    if (inProgressOrders.length > 0) {
+      if (activeTab !== "progress") {
+        setActiveTab("progress");
+      }
+      return;
+    }
+    if (historyOrders.length > 0 && activeTab !== "history") {
+      setActiveTab("history");
+    }
+  }, [
+    activeTab,
+    autoTab,
+    historyOrders.length,
+    inProgressOrders.length,
+    isError,
+    isLoading,
+    pendingPayments.length,
+    pendingPaymentsLoaded,
+  ]);
 
   return (
     <div
@@ -545,7 +582,10 @@ const Orders = () => {
               <Button
                 variant={activeTab === "pending" ? "default" : "outline"}
                 className="w-full justify-center gap-2 border-2"
-                onClick={() => setActiveTab("pending")}
+                onClick={() => {
+                  setActiveTab("pending");
+                  setAutoTab(false);
+                }}
               >
                 <Clock className="h-4 w-4" />
                 Pendentes
@@ -554,7 +594,10 @@ const Orders = () => {
               <Button
                 variant={activeTab === "progress" ? "default" : "outline"}
                 className="w-full justify-center gap-2 border-2"
-                onClick={() => setActiveTab("progress")}
+                onClick={() => {
+                  setActiveTab("progress");
+                  setAutoTab(false);
+                }}
               >
                 <Truck className="h-4 w-4" />
                 Em andamento
@@ -563,7 +606,10 @@ const Orders = () => {
               <Button
                 variant={activeTab === "history" ? "default" : "outline"}
                 className="w-full justify-center gap-2 border-2"
-                onClick={() => setActiveTab("history")}
+                onClick={() => {
+                  setActiveTab("history");
+                  setAutoTab(false);
+                }}
               >
                 <ClipboardList className="h-4 w-4" />
                 Histórico
