@@ -47,6 +47,7 @@ import {
 const MEDUSA_URL = import.meta.env.VITE_MEDUSA_URL || "http://localhost:9000"
 const DEFAULT_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || "admin@chroma.local"
 const DEFAULT_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "supersecret"
+const TOKEN_STORAGE_KEY = "chroma_admin_token"
 
 type Toast = { id: string; title: string; description?: string; variant?: "success" | "error" }
 
@@ -55,7 +56,10 @@ type DashboardTopProduct = { title: string; quantity: number; revenue: number }
 export default function App() {
   const [email, setEmail] = useState(DEFAULT_EMAIL)
   const [password, setPassword] = useState(DEFAULT_PASSWORD)
-  const [token, setToken] = useState<string | null>(null)
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null
+    return localStorage.getItem(TOKEN_STORAGE_KEY)
+  })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [products, setProducts] = useState<Product[]>([])
@@ -432,6 +436,27 @@ export default function App() {
     }
   }
 
+  const handleLogout = () => {
+    setToken(null)
+    setError("Sessão finalizada. Entre novamente.")
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (token) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, token)
+    } else {
+      localStorage.removeItem(TOKEN_STORAGE_KEY)
+    }
+  }, [token])
+
+  useEffect(() => {
+    if (!token) return
+    if (location.pathname === "/" || location.pathname === "") {
+      navigate("/dashboard", { replace: true })
+    }
+  }, [token, location.pathname, navigate])
+
   useEffect(() => {
     if (!token) return
 
@@ -484,6 +509,30 @@ export default function App() {
           ),
           fetch(`${MEDUSA_URL}/admin/shipping-profiles?limit=200`, { headers }),
         ])
+
+        const responses = [
+          productsRes,
+          ordersRes,
+          companiesRes,
+          newsRes,
+          marketingRes,
+          allCompaniesRes,
+          priceListsRes,
+          storeUsersRes,
+          businessTypesRes,
+          manufacturersRes,
+          salesChannelsRes,
+          regionsRes,
+          stockLocationsRes,
+          shippingOptionsRes,
+          shippingProfilesRes,
+        ]
+
+        if (responses.some((res) => res.status === 401)) {
+          setToken(null)
+          setError("Sessão expirada. Entre novamente.")
+          return
+        }
 
         if (productsRes.ok) {
           const json = await productsRes.json()
@@ -811,6 +860,9 @@ export default function App() {
                   </div>
                 ))}
               </nav>
+              <button className="btn btn-secondary" type="button" onClick={handleLogout}>
+                Sair
+              </button>
             </aside>
 
             <main className="content">
