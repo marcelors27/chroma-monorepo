@@ -371,6 +371,31 @@ const Orders = () => {
     return pending?.details?.company_name || terms.label;
   };
 
+  const resolveFriendlyOrderId = (order?: MedusaOrder | null) => {
+    if (!order) return "";
+    if (order.display_id) return `#${order.display_id}`;
+    if (order.id) return `#${order.id.slice(0, 6)}`;
+    return "";
+  };
+
+  const resolvePendingOrderId = (pending: PendingPayment) => {
+    const match = orders.find(
+      (order) =>
+        order.payment_collection_id &&
+        pending.payment_collection_id &&
+        order.payment_collection_id === pending.payment_collection_id
+    );
+    const friendly = resolveFriendlyOrderId(match);
+    if (friendly) return friendly;
+    if (pending.payment_collection_id) {
+      return `#${pending.payment_collection_id.slice(0, 6)}`;
+    }
+    if (pending.cart_id) {
+      return `#${pending.cart_id.slice(0, 6)}`;
+    }
+    return "—";
+  };
+
   const handleTestBoleto = async (pending: PendingPayment) => {
     if (!pending?.payment_collection_id || testPaymentId) return;
     if (!IS_DEV) return;
@@ -583,7 +608,7 @@ const Orders = () => {
                               {pending.created_at
                                 ? formatDate(pending.created_at)
                                 : "Data indisponível"}{" "}
-                              • ID cobrança {pending.payment_collection_id}
+                              • Pedido {resolvePendingOrderId(pending)} • Cobrança {pending.payment_collection_id}
                             </p>
                             <p className="text-muted-foreground text-sm">
                               {terms.label}: {resolvePendingCondo(pending)}

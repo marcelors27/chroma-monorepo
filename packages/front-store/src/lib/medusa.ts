@@ -158,6 +158,7 @@ export type PendingPayment = {
 export type MedusaOrder = {
   id: string
   display_id?: string
+  payment_collection_id?: string
   created_at?: string
   status?: string
   fulfillment_status?: string
@@ -629,7 +630,7 @@ export const updateRecurrence = async (
   id: string,
   payload: Partial<Omit<Recurrence, "id">>
 ) => {
-  return apiFetch<{ recurrence: Recurrence }>(`/store/recurrences/${id}`, {
+  return apiFetch<{ recurrence: Recurrence }>(`/store/recurrences/${id}` , {
     method: "PATCH",
     body: JSON.stringify(payload),
   })
@@ -1201,7 +1202,7 @@ const retrieveOrder = async (orderId: string) => {
   const params = new URLSearchParams()
   params.set(
     "fields",
-    "+items,+items.id,+items.quantity,+items.title,+items.product_id,+items.variant_id,+items.thumbnail,+items.unit_price,+metadata"
+    "+items,+items.id,+items.quantity,+items.title,+items.product_id,+items.variant_id,+items.thumbnail,+items.unit_price,+metadata,+payment_collection_id"
   )
   return apiFetch<{ order: MedusaOrder }>(`/store/orders/${orderId}?${params.toString()}`, {
     method: "GET",
@@ -1212,7 +1213,7 @@ export const listOrders = async () => {
   const params = new URLSearchParams()
   params.set(
     "fields",
-    "+items,+items.id,+items.quantity,+items.title,+items.product_id,+items.variant_id,+items.thumbnail,+items.unit_price,+metadata"
+    "+items,+items.id,+items.quantity,+items.title,+items.product_id,+items.variant_id,+items.thumbnail,+items.unit_price,+metadata,+payment_collection_id"
   )
   const suffix = params.toString()
   const data = await apiFetch<{ orders: MedusaOrder[] }>(`/store/orders?${suffix}`, {
