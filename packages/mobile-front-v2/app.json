@@ -19,7 +19,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.chroma.mobilestore",
-      "buildNumber": "50",
+      "buildNumber": "51",
       "appleTeamId": "BMZ7XQ54J3",
       "usesAppleSignIn": true,
       "infoPlist": {
