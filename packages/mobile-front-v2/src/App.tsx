@@ -17,6 +17,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
 import Produtos from "./pages/Produtos";
+import ProdutosCategorias from "./pages/ProdutosCategorias";
 import ProductDetails from "./pages/ProductDetails";
 import Condominios from "./pages/Condominios";
 import CondominioDetalhes from "./pages/CondominioDetalhes";
@@ -296,8 +297,9 @@ function ProductsStackNavigator() {
   return (
     <ProductsStack.Navigator
       screenOptions={{ headerShown: false, animation: "fade", contentStyle: { backgroundColor: "#0B0F14" } }}
-      initialRouteName="ProdutosIndex"
+      initialRouteName="ProdutosCategorias"
     >
+      <ProductsStack.Screen name="ProdutosCategorias" component={ProdutosCategorias} />
       <ProductsStack.Screen name="ProdutosIndex" component={Produtos} />
       <ProductsStack.Screen name="ProductDetails" component={ProductDetails} />
     </ProductsStack.Navigator>
