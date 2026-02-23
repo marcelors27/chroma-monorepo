@@ -468,7 +468,7 @@ const ProductDetails = () => {
                 Adicionar ao carrinho
               </Button>
               <Button variant="outline" className="flex-1 h-12 text-lg" asChild>
-                <Link to="/checkout" data-testid="product-checkout">
+                <Link to="/cart" data-testid="product-checkout">
                   Finalizar compra
                 </Link>
               </Button>

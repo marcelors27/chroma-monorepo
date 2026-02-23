@@ -16,6 +16,7 @@ import Condos from "./pages/Condos";
 import Orders from "./pages/Orders";
 import Settings from "./pages/Settings";
 import Checkout from "./pages/Checkout";
+import Cart from "./pages/Cart";
 import ProductDetails from "./pages/ProductDetails";
 import AccessPending from "./pages/AccessPending";
 import Recurrences from "./pages/Recurrences";
@@ -50,6 +51,7 @@ const App = () => (
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/recurrences" element={<Recurrences />} />
                 <Route path="/points" element={<Points />} />
+                <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
