@@ -19,6 +19,7 @@ import Checkout from "./pages/Checkout";
 import ProductDetails from "./pages/ProductDetails";
 import AccessPending from "./pages/AccessPending";
 import Recurrences from "./pages/Recurrences";
+import Points from "./pages/Points";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/AppLayout";
 
@@ -48,6 +49,7 @@ const App = () => (
                 <Route path="/condos" element={<Condos />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/recurrences" element={<Recurrences />} />
+                <Route path="/points" element={<Points />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
