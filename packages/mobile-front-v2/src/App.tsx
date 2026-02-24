@@ -35,6 +35,7 @@ import Notificacoes from "./pages/Notificacoes";
 import Seguranca from "./pages/Seguranca";
 import Ajuda from "./pages/Ajuda";
 import AccessPending from "./pages/AccessPending";
+import Pontos from "./pages/Pontos";
 import { useCondo } from "@/contexts/CondoContext";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StripeProvider } from "@stripe/stripe-react-native";
@@ -344,6 +345,7 @@ function RootNavigator() {
           <Stack.Screen name="Notificacoes" component={Notificacoes} />
           <Stack.Screen name="Seguranca" component={Seguranca} />
           <Stack.Screen name="Ajuda" component={Ajuda} />
+          <Stack.Screen name="Pontos" component={Pontos} />
         </>
       )}
     </Stack.Navigator>
