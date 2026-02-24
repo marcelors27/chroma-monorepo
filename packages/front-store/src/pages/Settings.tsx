@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +10,8 @@ import {
   Lock,
   Save,
   Eye,
-  EyeOff
+  EyeOff,
+  Star
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
@@ -209,6 +211,25 @@ const Settings = () => {
           <p className="text-muted-foreground">
             Gerencie seus dados pessoais e segurança
           </p>
+        </div>
+
+        <div className="mb-6">
+          <p className="text-sm text-muted-foreground mb-3">Acesso rápido</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Link to="/points">
+              <Card className="border-2 hover:border-primary transition-colors cursor-pointer h-full">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-400/15 text-amber-300">
+                    <Star className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Gastar {terms.pointsLabelLower}</p>
+                    <p className="text-xs text-muted-foreground">Veja opções para usar seus pontos</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
         </div>
 
         <Tabs defaultValue="perfil" className="w-full">

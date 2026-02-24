@@ -11,7 +11,8 @@ import {
   ArrowRight, 
   Percent, 
   Clock,
-  ShoppingCart
+  ShoppingCart,
+  Star
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
@@ -761,6 +762,14 @@ const Home = () => {
             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
               <Clock className="h-8 w-8 text-primary mb-2" />
               <span className="font-medium">Meus Pedidos</span>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/points">
+          <Card className="border-2 hover:border-primary transition-colors cursor-pointer h-full">
+            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+              <Star className="h-8 w-8 text-primary mb-2" />
+              <span className="font-medium">Gastar {terms.pointsLabelLower}</span>
             </CardContent>
           </Card>
         </Link>
