@@ -6,9 +6,9 @@ import { CartProvider, useCart } from "@/contexts/CartContext";
 import { BusinessTypeProvider } from "@/contexts/BusinessTypeContext";
 import { NavigationContainer, useFocusEffect } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { BottomTabBarProps, createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { Home, Package, ClipboardList, ShoppingCart, User } from "lucide-react-native";
 import { TamaguiProvider } from "tamagui";
 import tamaguiConfig from "../tamagui.config";
@@ -145,7 +145,7 @@ function ContaScreen() {
   );
 }
 
-function CartTabIcon({ color, focused }: { color: string; focused: boolean }) {
+function CartTabIcon({ color }: { color: string }) {
   const { itemsCount, lastAddId, lastAddQty } = useCart();
   const scale = useRef(new Animated.Value(1)).current;
   const plusOpacity = useRef(new Animated.Value(0)).current;
@@ -171,7 +171,6 @@ function CartTabIcon({ color, focused }: { color: string; focused: boolean }) {
 
   return (
     <View style={styles.tabIconWrapper}>
-      <View style={[styles.tabIndicator, focused && styles.tabIndicatorActive]} />
       <View style={styles.cartIconWrapper}>
         <Animated.View style={{ transform: [{ scale }] }}>
           <ShoppingCart color={color} size={20} />
@@ -195,36 +194,96 @@ function CartTabIcon({ color, focused }: { color: string; focused: boolean }) {
   );
 }
 
+function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const indicatorTranslate = useRef(new Animated.Value(0)).current;
+  const [tabWidth, setTabWidth] = React.useState(0);
+  const indicatorWidth = 28;
+
+  useEffect(() => {
+    if (!tabWidth) return;
+    const toValue = state.index * tabWidth + (tabWidth - indicatorWidth) / 2;
+    Animated.spring(indicatorTranslate, {
+      toValue,
+      useNativeDriver: true,
+      damping: 18,
+      stiffness: 200,
+      mass: 0.9,
+    }).start();
+  }, [indicatorTranslate, state.index, tabWidth]);
+
+  return (
+    <View
+      style={styles.customTabBar}
+      onLayout={(event) => {
+        const width = event.nativeEvent.layout.width;
+        const next = width / state.routes.length;
+        if (Number.isFinite(next) && next > 0) setTabWidth(next);
+      }}
+    >
+      {!!tabWidth && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.customTabIndicator,
+            { width: indicatorWidth, transform: [{ translateX: indicatorTranslate }] },
+          ]}
+        />
+      )}
+      <View style={styles.customTabItemsRow}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const label =
+            typeof options.tabBarLabel === "string"
+              ? options.tabBarLabel
+              : typeof options.title === "string"
+                ? options.title
+                : route.name;
+          const focused = state.index === index;
+          const color = focused ? "#5DA2E6" : "hsl(215 15% 55%)";
+          const onPress = () => {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!focused && !event.defaultPrevented) {
+              navigation.navigate(route.name as never, route.params as never);
+            }
+          };
+
+          const icon =
+            typeof options.tabBarIcon === "function"
+              ? options.tabBarIcon({ focused, color, size: 20 })
+              : null;
+
+          return (
+            <Pressable
+              key={route.key}
+              accessibilityRole="button"
+              accessibilityState={focused ? { selected: true } : {}}
+              onPress={onPress}
+              style={styles.customTabItem}
+            >
+              {icon}
+              <Text style={[styles.customTabLabel, focused && styles.customTabLabelActive]}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function MainTabs() {
   return (
     <Tab.Navigator
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         sceneContainerStyle: {
           backgroundColor: "#0B0F14",
-        },
-        tabBarStyle: {
-          backgroundColor: "rgba(18, 22, 28, 0.9)",
-          borderTopWidth: 0,
-          borderTopColor: "transparent",
-          elevation: 0,
-          shadowOpacity: 0,
-          shadowColor: "transparent",
-          shadowRadius: 0,
-          shadowOffset: { width: 0, height: 0 },
-          height: 70,
-        },
-        tabBarItemStyle: {
-          paddingTop: 8,
-          paddingBottom: 6,
-        },
-        tabBarIconStyle: {
-          marginBottom: 10,
-        },
-        tabBarBackground: () => <View style={styles.tabBarBackground} />,
-        tabBarVisibilityAnimationConfig: {
-          show: { animation: "fade", config: { duration: 180 } },
-          hide: { animation: "fade", config: { duration: 180 } },
         },
         tabBarActiveTintColor: "#5DA2E6",
         tabBarInactiveTintColor: "hsl(215 15% 55%)",
@@ -235,9 +294,8 @@ function MainTabs() {
         component={IndexScreen}
         options={{
           title: "Início",
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrapper}>
-              <View style={[styles.tabIndicator, focused && styles.tabIndicatorActive]} />
               <Home color={color} size={20} />
             </View>
           ),
@@ -247,10 +305,9 @@ function MainTabs() {
         name="Produtos"
         component={ProdutosScreen}
         options={{
-          title: "Produtos",
-          tabBarIcon: ({ color, focused }) => (
+          title: "Categorias",
+          tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrapper}>
-              <View style={[styles.tabIndicator, focused && styles.tabIndicatorActive]} />
               <Package color={color} size={20} />
             </View>
           ),
@@ -261,9 +318,8 @@ function MainTabs() {
         component={PedidosScreen}
         options={{
           title: "Pedidos",
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrapper}>
-              <View style={[styles.tabIndicator, focused && styles.tabIndicatorActive]} />
               <ClipboardList color={color} size={20} />
             </View>
           ),
@@ -274,7 +330,7 @@ function MainTabs() {
         component={CarrinhoScreen}
         options={{
           title: "Carrinho",
-          tabBarIcon: ({ color, focused }) => <CartTabIcon color={color} focused={focused} />,
+          tabBarIcon: ({ color }) => <CartTabIcon color={color} />,
         }}
       />
       <Tab.Screen
@@ -282,9 +338,8 @@ function MainTabs() {
         component={ContaScreen}
         options={{
           title: "Conta",
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrapper}>
-              <View style={[styles.tabIndicator, focused && styles.tabIndicatorActive]} />
               <User color={color} size={20} />
             </View>
           ),
@@ -460,6 +515,45 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  customTabBar: {
+    position: "relative",
+    height: 72,
+    backgroundColor: "rgba(18, 22, 28, 0.9)",
+    borderTopWidth: 0,
+    borderTopColor: "transparent",
+    elevation: 0,
+    shadowOpacity: 0,
+    shadowColor: "transparent",
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    paddingTop: 8,
+    paddingBottom: 6,
+  },
+  customTabItemsRow: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  customTabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+  },
+  customTabLabel: {
+    color: "hsl(215 15% 55%)",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  customTabLabelActive: {
+    color: "#5DA2E6",
+  },
+  customTabIndicator: {
+    position: "absolute",
+    top: 4,
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: "#5DA2E6",
+  },
   cartIconWrapper: {
     alignItems: "center",
     justifyContent: "center",
@@ -494,20 +588,5 @@ const styles = StyleSheet.create({
     color: "#0B0F14",
     fontSize: 10,
     fontWeight: "700",
-  },
-  tabIndicator: {
-    width: 18,
-    height: 3,
-    borderRadius: 999,
-    backgroundColor: "transparent",
-    marginBottom: 6,
-  },
-  tabIndicatorActive: {
-    backgroundColor: "#5DA2E6",
-  },
-  tabBarBackground: {
-    flex: 1,
-    alignItems: "center",
-    backgroundColor: "transparent",
   },
 });

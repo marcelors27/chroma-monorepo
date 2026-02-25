@@ -56,6 +56,12 @@ type UiProduct = {
   raw: MedusaProduct;
 };
 
+type HeroOption = {
+  value: string;
+  label: string;
+  image?: string;
+};
+
 const PROMO_KEYWORDS = ["promo", "promoc", "sale", "oferta", "desconto"];
 
 const isPromotionValue = (value: unknown) => {
@@ -188,6 +194,54 @@ const Dashboard = () => {
     products.forEach((p) => uniques.add(p.category || "Geral"));
     return ["Todos", ...Array.from(uniques)];
   }, [products]);
+
+  const categoryHeroOptions = useMemo<HeroOption[]>(() => {
+    const imageByCategory = new Map<string, string>();
+    products.forEach((product) => {
+      const category = product.category || "Geral";
+      if (imageByCategory.has(category)) return;
+      if (product.image) imageByCategory.set(category, product.image);
+    });
+    return categories
+      .filter((category) => category !== "Todos")
+      .map((category) => ({
+      value: category,
+      label: category,
+      image: imageByCategory.get(category),
+      }));
+  }, [categories, products]);
+
+  const manufacturerHeroOptions = useMemo<HeroOption[]>(() => {
+    const imageByManufacturer = new Map<string, string>();
+    products.forEach((product) => {
+      if (!product.manufacturerSlug || imageByManufacturer.has(product.manufacturerSlug)) return;
+      if (product.image) imageByManufacturer.set(product.manufacturerSlug, product.image);
+    });
+
+    const fromApi = ((manufacturersData?.manufacturers || []) as MedusaManufacturer[])
+      .filter((item) => item?.slug)
+      .map((item) => ({
+        value: String(item.slug),
+        label: String(item.name || item.slug),
+        image: item.image_url || imageByManufacturer.get(String(item.slug)),
+      }));
+
+    const merged = new Map<string, HeroOption>();
+    fromApi.forEach((item) => merged.set(item.value, item));
+    manufacturerOptions
+      .filter((option) => option.value !== "Todos")
+      .forEach((option) => {
+        if (!merged.has(option.value)) {
+          merged.set(option.value, {
+            value: option.value,
+            label: option.label,
+            image: imageByManufacturer.get(option.value),
+          });
+        }
+      });
+
+    return Array.from(merged.values()).filter((item) => item.value !== "Todos");
+  }, [manufacturerOptions, manufacturersData, products]);
 
   const filteredAndSortedProducts = useMemo(() => {
     const filtered = products.filter((product) => {
@@ -333,6 +387,86 @@ const Dashboard = () => {
         </div>
 
         {/* Filters */}
+        <div className="border-2 border-border bg-card p-4 mb-6 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold mb-2">Categorias</h3>
+            <div className="flex flex-wrap gap-3">
+              {categoryHeroOptions.map((option) => {
+                const isActive = selectedCategory === option.value;
+                return (
+                  <button
+                    key={`hero-category-${option.value}`}
+                    type="button"
+                    onClick={() => setSelectedCategory(option.value)}
+                    className={`relative w-[calc(50%-0.375rem)] h-24 rounded-xl border overflow-hidden text-left px-3 py-2 flex items-end ${
+                      isActive ? "border-primary ring-2 ring-primary/30" : "border-border"
+                    }`}
+                  >
+                    {option.image ? (
+                      <img src={option.image} alt={option.label} className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 bg-muted" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" />
+                    <span className="relative text-sm font-semibold text-white">{option.label}</span>
+                  </button>
+                );
+              })}
+              <button
+                key="hero-category-all"
+                type="button"
+                onClick={() => setSelectedCategory("Todos")}
+                className={`relative w-[calc(50%-0.375rem)] h-24 rounded-xl border overflow-hidden text-left px-3 py-2 flex items-end ${
+                  selectedCategory === "Todos" ? "border-primary ring-2 ring-primary/30" : "border-border"
+                }`}
+              >
+                <div className="absolute inset-0 bg-muted" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" />
+                <span className="relative text-sm font-semibold text-white">Todos</span>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold mb-2">Fabricantes</h3>
+            <div className="flex flex-wrap gap-3">
+              {manufacturerHeroOptions.map((option) => {
+                const isActive = selectedManufacturer === option.value;
+                return (
+                  <button
+                    key={`hero-manufacturer-${option.value}`}
+                    type="button"
+                    onClick={() => setSelectedManufacturer(option.value)}
+                    className={`relative w-[calc(50%-0.375rem)] h-24 rounded-xl border overflow-hidden text-left px-3 py-2 flex items-end ${
+                      isActive ? "border-primary ring-2 ring-primary/30" : "border-border"
+                    }`}
+                  >
+                    {option.image ? (
+                      <img src={option.image} alt={option.label} className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 bg-muted" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" />
+                    <span className="relative text-sm font-semibold text-white">{option.label}</span>
+                  </button>
+                );
+              })}
+              <button
+                key="hero-manufacturer-all"
+                type="button"
+                onClick={() => setSelectedManufacturer("Todos")}
+                className={`relative w-[calc(50%-0.375rem)] h-24 rounded-xl border overflow-hidden text-left px-3 py-2 flex items-end ${
+                  selectedManufacturer === "Todos" ? "border-primary ring-2 ring-primary/30" : "border-border"
+                }`}
+              >
+                <div className="absolute inset-0 bg-muted" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" />
+                <span className="relative text-sm font-semibold text-white">Todos</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="border-2 border-border bg-card p-4 mb-6">
           {/* Search and Toggle */}
           <div className="flex flex-col sm:flex-row gap-3 mb-4">

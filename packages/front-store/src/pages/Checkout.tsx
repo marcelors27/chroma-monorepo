@@ -30,6 +30,7 @@ import {
   PendingPaymentDetails,
   SavedPaymentMethod,
   formatMoney,
+  getTokenValue,
   listShippingOptions,
   removePendingPayment,
   removePendingPaymentFromBackend,
@@ -216,43 +217,104 @@ const Checkout = () => {
   };
 
   useEffect(() => {
-    if (orderStatus !== "pending") return;
-    if (!pendingCartId) return;
+    if (orderStatus !== "pending" || !pendingCartId) return;
 
     let cancelled = false;
-    const poll = async () => {
+    let ws: WebSocket | null = null;
+    let retry: number | null = null;
+    let attempts = 0;
+    const WS_URL = import.meta.env.VITE_PAYMENTS_WS_URL || import.meta.env.VITE_ORDERS_WS_URL || "";
+
+    const clearRetry = () => {
+      if (retry) {
+        window.clearTimeout(retry);
+        retry = null;
+      }
+    };
+
+    const finalizePendingIfPaid = async () => {
       try {
         const cart = await retrieveCart(pendingCartId);
-        if (isPaymentSucceeded(cart)) {
-          const newOrderId = await completeCart(pendingCartId);
-          if (!cancelled && newOrderId) {
-            setOrderId(newOrderId);
-            setOrderStatus("completed");
-            removePendingPayment({ cart_id: pendingCartId });
-            await removePendingPaymentFromBackend({ cart_id: pendingCartId });
-            await clearCart();
-            const activeCondo = getActiveCondo();
-            if (activeCondo?.id) {
-              try {
-                await earnCompanyPoints(activeCondo.id, newOrderId);
-              } catch {
-                // Ignore points failures in polling flow
-              }
+        if (!isPaymentSucceeded(cart)) return;
+        const newOrderId = await completeCart(pendingCartId);
+        if (!cancelled && newOrderId) {
+          setOrderId(newOrderId);
+          setOrderStatus("completed");
+          removePendingPayment({ cart_id: pendingCartId });
+          await removePendingPaymentFromBackend({ cart_id: pendingCartId });
+          await clearCart();
+          const activeCondo = getActiveCondo();
+          if (activeCondo?.id) {
+            try {
+              await earnCompanyPoints(activeCondo.id, newOrderId);
+            } catch {
+              // Ignore points failures in realtime flow
             }
           }
         }
       } catch {
-        // Keep pending state; next poll will retry.
+        // keep pending state; next ws event will retry
       }
     };
 
-    poll();
-    const interval = setInterval(poll, 10000);
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      if (retry) return;
+      const delay = Math.min(30000, 1000 * 2 ** attempts);
+      retry = window.setTimeout(() => {
+        retry = null;
+        connect();
+      }, delay);
+    };
+
+    const connect = async () => {
+      if (cancelled) return;
+      clearRetry();
+      try {
+        if (!WS_URL.trim()) return;
+        const token = await getTokenValue().catch(() => null);
+        const hasQuery = WS_URL.includes("?");
+        const url = token ? `${WS_URL}${hasQuery ? "&" : "?"}token=${encodeURIComponent(token)}` : WS_URL;
+        ws = new WebSocket(url);
+        ws.onopen = () => {
+          attempts = 0;
+          finalizePendingIfPaid().catch(() => undefined);
+        };
+        ws.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(String(event.data || "{}"));
+            const type = String(payload?.type || payload?.event || "").toLowerCase();
+            const eventCartId =
+              payload?.cart_id || payload?.data?.cart_id || payload?.order?.cart_id || null;
+            if (eventCartId && String(eventCartId) !== String(pendingCartId)) return;
+            if (type.includes("payment") || type.includes("order") || type.includes("cart")) {
+              finalizePendingIfPaid().catch(() => undefined);
+            }
+          } catch {
+            // ignore malformed ws payload
+          }
+        };
+        ws.onclose = () => {
+          attempts += 1;
+          scheduleReconnect();
+        };
+        ws.onerror = () => {
+          ws?.close();
+        };
+      } catch {
+        attempts += 1;
+        scheduleReconnect();
+      }
+    };
+
+    connect();
+
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearRetry();
+      if (ws) ws.close();
     };
-  }, [orderStatus, clearCart]);
+  }, [orderStatus, pendingCartId, clearCart]);
 
   const formatUnixDate = (value?: number) => {
     if (!value) return "";

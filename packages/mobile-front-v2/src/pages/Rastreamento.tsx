@@ -5,7 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { toast } from "@/lib/toast";
-import { listOrders, type MedusaOrder } from "@/lib/medusa";
+import { getTokenValue, listOrders, type MedusaOrder } from "@/lib/medusa";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 
@@ -131,7 +131,6 @@ export default function Rastreamento() {
     queryKey: ["orders"],
     queryFn: listOrders,
     refetchOnMount: "always",
-    refetchInterval: 30000,
   });
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
@@ -179,6 +178,94 @@ export default function Rastreamento() {
     ];
   }, [order]);
   const pulseOpacity = useRef(new Animated.Value(0.4)).current;
+  const wsRef = useRef<WebSocket | null>(null);
+  const wsRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wsAttemptsRef = useRef(0);
+  const WS_URL = process.env.EXPO_PUBLIC_ORDERS_WS_URL || "";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const clearRetry = () => {
+      if (wsRetryRef.current) {
+        clearTimeout(wsRetryRef.current);
+        wsRetryRef.current = null;
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      if (wsRetryRef.current) return;
+      const delay = Math.min(30000, 1000 * 2 ** wsAttemptsRef.current);
+      wsRetryRef.current = setTimeout(() => {
+        wsRetryRef.current = null;
+        connect();
+      }, delay);
+    };
+
+    const connect = async () => {
+      if (cancelled) return;
+      clearRetry();
+      try {
+        if (!WS_URL.trim()) return;
+        const token = await getTokenValue().catch(() => null);
+        const hasQuery = WS_URL.includes("?");
+        const url = token
+          ? `${WS_URL}${hasQuery ? "&" : "?"}token=${encodeURIComponent(token)}`
+          : WS_URL;
+        const ws = new WebSocket(url);
+        wsRef.current = ws;
+        ws.onopen = () => {
+          wsAttemptsRef.current = 0;
+        };
+        ws.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(String(event.data || "{}"));
+            const type = String(payload?.type || payload?.event || "").toLowerCase();
+            const incomingOrderId =
+              payload?.order_id ||
+              payload?.data?.order_id ||
+              payload?.order?.id ||
+              payload?.order?.display_id ||
+              null;
+            if (incomingOrderId && String(incomingOrderId) !== String(id).replace("#", "")) {
+              return;
+            }
+            if (type.includes("order") || type.includes("payment") || type.includes("cart")) {
+              refetch().catch(() => undefined);
+            }
+          } catch {
+            // ignore malformed ws payload
+          }
+        };
+        ws.onclose = () => {
+          wsAttemptsRef.current += 1;
+          scheduleReconnect();
+        };
+        ws.onerror = () => {
+          ws.close();
+        };
+      } catch {
+        wsAttemptsRef.current += 1;
+        scheduleReconnect();
+      }
+    };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      clearRetry();
+      if (wsRef.current) {
+        try {
+          wsRef.current.close();
+        } catch {
+          // ignore
+        }
+      }
+      wsRef.current = null;
+    };
+  }, [WS_URL, id, refetch]);
 
   useEffect(() => {
     const animation = Animated.loop(

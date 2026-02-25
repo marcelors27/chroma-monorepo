@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, Linking } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Clock, ClipboardList, ChevronRight, Truck, Check, X } from "lucide-react-native";
@@ -14,6 +14,7 @@ import { useCondo } from "@/contexts/CondoContext";
 import {
   fetchPendingPaymentsFromBackend,
   formatMoney,
+  getTokenValue,
   getPendingPayments,
   listOrders,
   syncStripePayments,
@@ -82,23 +83,109 @@ export default function Pedidos() {
     queryKey: ["orders"],
     queryFn: listOrders,
     refetchOnMount: "always",
-    refetchInterval: 30000,
   });
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
   const pullThreshold = 80;
 
+  const refreshOrdersData = useCallback(async () => {
+    await syncStripePayments();
+    await refetch();
+    const local = await getPendingPayments();
+    const remote = await fetchPendingPaymentsFromBackend();
+    setPendingPayments(mergePendingPayments(local, remote));
+  }, [refetch]);
+
   useEffect(() => {
-    const loadPending = async () => {
-      await syncStripePayments();
-      await refetch();
-      const local = await getPendingPayments();
-      const remote = await fetchPendingPaymentsFromBackend();
-      setPendingPayments(mergePendingPayments(local, remote));
+    refreshOrdersData().catch(() => undefined);
+  }, [refreshOrdersData]);
+
+  const wsRef = useRef<WebSocket | null>(null);
+  const wsRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wsAttemptsRef = useRef(0);
+  const WS_URL = process.env.EXPO_PUBLIC_ORDERS_WS_URL || "";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const clearRetry = () => {
+      if (wsRetryRef.current) {
+        clearTimeout(wsRetryRef.current);
+        wsRetryRef.current = null;
+      }
     };
-    loadPending();
-  }, []);
+
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      if (wsRetryRef.current) return;
+      const delay = Math.min(30000, 1000 * 2 ** wsAttemptsRef.current);
+      wsRetryRef.current = setTimeout(() => {
+        wsRetryRef.current = null;
+        connect();
+      }, delay);
+    };
+
+    const connect = async () => {
+      if (cancelled) return;
+      clearRetry();
+      try {
+        if (!WS_URL.trim()) return;
+        const token = await getTokenValue().catch(() => null);
+        const hasQuery = WS_URL.includes("?");
+        const url = token
+          ? `${WS_URL}${hasQuery ? "&" : "?"}token=${encodeURIComponent(token)}`
+          : WS_URL;
+        const ws = new WebSocket(url);
+        wsRef.current = ws;
+        ws.onopen = () => {
+          wsAttemptsRef.current = 0;
+        };
+        ws.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(String(event.data || "{}"));
+            const type = String(payload?.type || payload?.event || "").toLowerCase();
+            const companyId =
+              payload?.company_id ||
+              payload?.data?.company_id ||
+              payload?.order?.shipping_address?.metadata?.company_id ||
+              null;
+            if (companyId && activeCondo?.id && companyId !== activeCondo.id) return;
+            if (type.includes("order") || type.includes("payment") || type.includes("cart")) {
+              refreshOrdersData().catch(() => undefined);
+            }
+          } catch {
+            // ignore malformed ws payload
+          }
+        };
+        ws.onclose = () => {
+          wsAttemptsRef.current += 1;
+          scheduleReconnect();
+        };
+        ws.onerror = () => {
+          ws.close();
+        };
+      } catch {
+        wsAttemptsRef.current += 1;
+        scheduleReconnect();
+      }
+    };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      clearRetry();
+      if (wsRef.current) {
+        try {
+          wsRef.current.close();
+        } catch {
+          // ignore
+        }
+      }
+      wsRef.current = null;
+    };
+  }, [WS_URL, activeCondo?.id, refreshOrdersData]);
 
   const pendingByCollection = useMemo(() => {
     const map = new Map<string, PendingPayment>();
@@ -244,11 +331,7 @@ export default function Pedidos() {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await syncStripePayments();
-      await refetch();
-      const local = await getPendingPayments();
-      const remote = await fetchPendingPaymentsFromBackend();
-      setPendingPayments(mergePendingPayments(local, remote));
+      await refreshOrdersData();
     } finally {
       setRefreshing(false);
       setPullDistance(0);

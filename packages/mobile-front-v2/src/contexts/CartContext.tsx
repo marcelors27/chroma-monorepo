@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useStripe } from "@stripe/stripe-react-native";
 import {
   addShippingMethod,
@@ -18,6 +18,7 @@ import {
   getPendingPayments,
   confirmStripePaymentServerSide,
   createPaymentSessions,
+  getTokenValue,
   setCartShippingAddress,
   setPaymentSession,
   setPendingPayment,
@@ -31,6 +32,7 @@ import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 const DEBUG = process.env.EXPO_PUBLIC_DEBUG_FRONT === "true";
 const ENABLE_PIX = process.env.EXPO_PUBLIC_ENABLE_PIX === "true";
 const PIX_PROVIDER = process.env.EXPO_PUBLIC_PIX_PROVIDER || "stripe";
+const CART_WS_URL = process.env.EXPO_PUBLIC_CART_WS_URL || "";
 
 export interface CartItem {
   productId: string;
@@ -90,12 +92,121 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [lastAddId, setLastAddId] = useState(0);
   const [lastAddQty, setLastAddQty] = useState(1);
+  const cartWsRef = useRef<WebSocket | null>(null);
+  const cartWsReconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cartWsAttemptsRef = useRef(0);
+  const activeCartIdRef = useRef<string | null>(null);
+  const isUnmountedRef = useRef(false);
   const { initPaymentSheet, presentPaymentSheet, retrievePaymentIntent, confirmPayment } = useStripe();
   const { activeCondo } = useCondo();
   const { terms } = useBusinessTerms();
 
   useEffect(() => {
     refreshCart();
+  }, []);
+
+  const clearCartSocket = (close = true) => {
+    if (cartWsReconnectRef.current) {
+      clearTimeout(cartWsReconnectRef.current);
+      cartWsReconnectRef.current = null;
+    }
+    if (close && cartWsRef.current) {
+      try {
+        cartWsRef.current.close();
+      } catch {
+        // ignore close errors
+      }
+    }
+    cartWsRef.current = null;
+  };
+
+  const resolveCartWsUrl = (targetCartId: string, token?: string | null) => {
+    const fromEnv = CART_WS_URL.trim();
+    if (!fromEnv) return null;
+    const base = fromEnv;
+    const hasQuery = base.includes("?");
+    const params = [`cart_id=${encodeURIComponent(targetCartId)}`];
+    if (token) {
+      params.push(`token=${encodeURIComponent(token)}`);
+    }
+    return `${base}${hasQuery ? "&" : "?"}${params.join("&")}`;
+  };
+
+  const scheduleCartSocketReconnect = (targetCartId: string) => {
+    if (isUnmountedRef.current) return;
+    if (activeCartIdRef.current !== targetCartId) return;
+    if (cartWsReconnectRef.current) return;
+    const delay = Math.min(30000, 1000 * 2 ** cartWsAttemptsRef.current);
+    cartWsReconnectRef.current = setTimeout(() => {
+      cartWsReconnectRef.current = null;
+      connectCartSocket(targetCartId);
+    }, delay);
+  };
+
+  const connectCartSocket = async (targetCartId: string) => {
+    if (!targetCartId) return;
+    if (isUnmountedRef.current) return;
+    if (activeCartIdRef.current !== targetCartId) return;
+
+    clearCartSocket(false);
+
+    const token = await getTokenValue().catch(() => null);
+    const socketUrl = resolveCartWsUrl(targetCartId, token);
+    if (!socketUrl) return;
+
+    try {
+      const socket = new WebSocket(socketUrl);
+      cartWsRef.current = socket;
+
+      socket.onopen = () => {
+        cartWsAttemptsRef.current = 0;
+        if (DEBUG) console.debug("[cart-ws] connected", { cartId: targetCartId });
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(String(event.data || "{}"));
+          const eventCartId = payload?.cart_id || payload?.cart?.id || null;
+          if (eventCartId && eventCartId !== targetCartId) return;
+          const type = String(payload?.type || payload?.event || "").toLowerCase();
+          if (type.includes("cart")) {
+            refreshCart().catch(() => undefined);
+          }
+        } catch {
+          // ignore malformed socket payloads
+        }
+      };
+
+      socket.onerror = () => {
+        if (DEBUG) console.debug("[cart-ws] error", { cartId: targetCartId });
+      };
+
+      socket.onclose = () => {
+        if (DEBUG) console.debug("[cart-ws] closed", { cartId: targetCartId });
+        if (activeCartIdRef.current !== targetCartId) return;
+        cartWsAttemptsRef.current += 1;
+        scheduleCartSocketReconnect(targetCartId);
+      };
+    } catch {
+      cartWsAttemptsRef.current += 1;
+      scheduleCartSocketReconnect(targetCartId);
+    }
+  };
+
+  useEffect(() => {
+    activeCartIdRef.current = cartId;
+    clearCartSocket();
+    cartWsAttemptsRef.current = 0;
+    if (cartId && CART_WS_URL.trim()) {
+      connectCartSocket(cartId);
+    }
+  }, [cartId, CART_WS_URL]);
+
+  useEffect(() => {
+    return () => {
+      isUnmountedRef.current = true;
+      clearCartSocket();
+    };
   }, []);
 
   const refreshCart = async () => {
@@ -123,6 +234,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     toast.info("Seu carrinho foi finalizado. Criamos um novo para você.");
   };
 
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const rollbackOptimisticAdd = (variantId: string, quantity: number) => {
+    setItems((current) => {
+      const target = current.find((item) => item.variantId === variantId);
+      if (!target) return current;
+      const nextQty = target.quantity - quantity;
+      if (nextQty > 0) {
+        return current.map((item) =>
+          item.variantId === variantId ? { ...item, quantity: nextQty } : item
+        );
+      }
+      return current.filter((item) => item.variantId !== variantId);
+    });
+  };
+
   const addItem = async (product: AddItemInput) => {
     if (checkoutLocked) {
       toast({
@@ -132,67 +259,106 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (DEBUG) console.debug("[cart] addItem", product);
-    setIsAddingItem(true);
-    try {
-      const cart = await ensureCart();
-      if (!cart?.id) throw new Error("Carrinho não encontrado");
-      setCartId(cart.id);
+    const quantity = product.quantity || 1;
+    const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-      const existing = items.find((item) => item.variantId === product.variantId);
-      const nextQty = (existing?.quantity || 0) + (product.quantity || 1);
-
-      const updatedCart = existing
-        ? await updateLineItem(cart.id, existing.id, nextQty)
-        : await addLineItem(cart.id, product.variantId, product.quantity || 1, {
-            display_name: product.name,
-            category: product.category,
-          });
-
-      setItems(mapCartToItems(updatedCart));
-      setLastAddQty(product.quantity || 1);
-      setLastAddId((prev) => prev + 1);
-    } catch (err: any) {
-      const message = err?.message || "";
-      if (isCompletedCartError(err)) {
-        await handleCompletedCart();
-        return;
+    // Optimistic update: item appears immediately while backend sync happens in background.
+    setItems((current) => {
+      const existing = current.find((item) => item.variantId === product.variantId);
+      if (existing) {
+        return current.map((item) =>
+          item.variantId === product.variantId
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
       }
-      if (message.includes("payment sessions")) {
-        const nextItems = (() => {
-          const existing = items.find((item) => item.variantId === product.variantId);
-          if (existing) {
-            return items.map((item) =>
-              item.variantId === product.variantId
-                ? { ...item, quantity: item.quantity + (product.quantity || 1) }
-                : item
-            );
+      return [
+        ...current,
+        {
+          id: optimisticId,
+          productId: product.productId,
+          variantId: product.variantId,
+          name: product.name,
+          price: product.price,
+          category: product.category || "",
+          image: product.image || "",
+          quantity,
+        },
+      ];
+    });
+    setLastAddQty(quantity);
+    setLastAddId((prev) => prev + 1);
+
+    const sync = async () => {
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        try {
+          const cart = await ensureCart();
+          if (!cart?.id) throw new Error("Carrinho não encontrado");
+          setCartId(cart.id);
+
+          const latest = await retrieveCart(cart.id);
+          const normalizedItems = mapCartToItems(latest);
+          const existing = normalizedItems.find((item) => item.variantId === product.variantId);
+          const nextQty = (existing?.quantity || 0) + quantity;
+
+          const updatedCart = existing?.id
+            ? await updateLineItem(cart.id, existing.id, nextQty)
+            : await addLineItem(cart.id, product.variantId, quantity, {
+                display_name: product.name,
+                category: product.category,
+              });
+
+          setItems(mapCartToItems(updatedCart));
+          return;
+        } catch (err: any) {
+          const message = err?.message || "";
+          if (isCompletedCartError(err)) {
+            await handleCompletedCart();
+            return;
           }
-          return [
-            ...items,
-            {
-              id: "",
-              productId: product.productId,
-              variantId: product.variantId,
-              name: product.name,
-              price: product.price,
-              category: product.category || "",
-              image: product.image || "",
-              quantity: product.quantity || 1,
-            },
-          ];
-        })();
-        await rebuildCartWithItems(nextItems);
-        return;
+          if (message.includes("payment sessions")) {
+            const nextItems = (() => {
+              const existing = normalizedItems.find((item) => item.variantId === product.variantId);
+              if (existing) {
+                return normalizedItems.map((item) =>
+                  item.variantId === product.variantId
+                    ? { ...item, quantity: item.quantity + quantity }
+                    : item
+                );
+              }
+              return [
+                ...normalizedItems,
+                {
+                  id: "",
+                  productId: product.productId,
+                  variantId: product.variantId,
+                  name: product.name,
+                  price: product.price,
+                  category: product.category || "",
+                  image: product.image || "",
+                  quantity,
+                },
+              ];
+            })();
+            await rebuildCartWithItems(nextItems);
+            return;
+          }
+          if (attempt < 2) {
+            await wait(400);
+            continue;
+          }
+          rollbackOptimisticAdd(product.variantId, quantity);
+          if (DEBUG) console.debug("[cart] addItem:error", err?.message || err);
+          toast({
+            title: "Não foi possível adicionar",
+            description: err?.message || "Verifique se há estoque disponível.",
+            variant: "destructive",
+          });
+        }
       }
-      if (DEBUG) console.debug("[cart] addItem:error", err?.message || err);
-      toast({
-        title: "Não foi possível adicionar",
-        description: err?.message || "Verifique se há estoque disponível.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAddingItem(false);
-    }
+    };
+
+    sync().catch(() => undefined);
   };
 
   const removeItem = async (id: string) => {
@@ -502,6 +668,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (DEBUG)
       console.debug("[cart] completeBackendCheckout:start", { cartId, address, paymentMethod, shippingOptionId });
     if (!cartId) throw new Error("Carrinho não encontrado");
+    const optimisticSnapshot = {
+      cartId,
+      items: items.map((item) => ({ ...item })),
+    };
+    // Optimistic checkout: clear local cart immediately to avoid blocking UX.
+    setCheckoutLocked(true);
+    setItems([]);
     try {
       const { providerId, data } = resolvePaymentProvider(paymentMethod, options);
       let cartSnapshot = await retrieveCart(cartId);
@@ -726,7 +899,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return { status: "pending", orderId, pendingDetails: manualDetails, pendingPayment: pending };
       }
 
-      setCheckoutLocked(true);
       const orderId = await completeCart(cartSnapshot.id);
       if (DEBUG) console.debug("[cart] completeBackendCheckout:success", { orderId });
       await refreshCart();
@@ -738,6 +910,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         await handleCompletedCart();
         return { status: "completed", orderId: null };
       }
+      setCartId(optimisticSnapshot.cartId);
+      setItems(optimisticSnapshot.items);
       if (DEBUG) console.debug("[cart] completeBackendCheckout:error", err?.message || err);
       const rawMessage = err?.message || "";
       const normalizedMessage =

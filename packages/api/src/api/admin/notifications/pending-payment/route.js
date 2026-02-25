@@ -3,6 +3,7 @@ const { updateCustomersWorkflow } = require("@medusajs/core-flows")
 const { sendEmail } = require("../../../../services/send-email")
 const { buildPendingPaymentEmail } = require("../../../../services/pending-payment-email")
 const { sendBoletoAdminEmail, sendPixAdminEmail } = require("../../../../services/email-template-sender")
+const { publishNotificationEvent } = require("../../../../services/realtime-ws")
 
 const safeLog = (logger, payload) => {
   try {
@@ -261,6 +262,21 @@ const POST = async (req, res) => {
     companyId,
     paymentCollectionId,
     recipients: uniqueRecipients,
+  })
+
+  publishNotificationEvent({
+    customerId: customer?.id || customerId || null,
+    companyId,
+    type: "notification.created",
+    notification: {
+      id: paymentCollectionId,
+      status: method === "boleto" ? "pending_boleto" : "pending_pix",
+      title: method === "boleto" ? "Boleto gerado" : "PIX gerado",
+      message: `Pagamento pendente para ${companyName}.`,
+      payment_collection_id: paymentCollectionId,
+      company_id: companyId,
+      method,
+    },
   })
 
   return res.status(200).json({ sent: true, recipients: uniqueRecipients })

@@ -1,7 +1,7 @@
 import { Dimensions, Linking, Pressable, ScrollView, StyleSheet, Text, View, Image, NativeSyntheticEvent, NativeScrollEvent } from "react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
-import { ArrowRight, MessageCircle, Newspaper, Package, Star, TrendingUp } from "lucide-react-native";
+import { ArrowRight, ChevronRight, MessageCircle, Newspaper, Package, Star, TrendingUp } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -82,6 +82,36 @@ const hasPromotionFlag = (product?: MedusaProduct) => {
   return metadataSignal || tagsSignal || pricesSignal || calculatedSignal;
 };
 
+type HomeProductItem = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  originalPrice?: number;
+  isOnPromotion: boolean;
+  image: string;
+  category: string;
+  variantId: string;
+  variantTitle: string;
+};
+
+const mapHomeProduct = (product: MedusaProduct): HomeProductItem => {
+  const variant = getVariant(product);
+  const pricing = getVariantPricing(variant);
+  return {
+    id: product.id,
+    name: product.title,
+    description: product.description || "Descrição não informada.",
+    price: pricing.finalPrice,
+    originalPrice: pricing.onSale ? pricing.basePrice ?? undefined : undefined,
+    isOnPromotion: pricing.onSale || hasPromotionFlag(product),
+    image: getProductImage(product) || "",
+    category: getProductCategory(product),
+    variantId: variant?.id || "",
+    variantTitle: variant?.title || "",
+  };
+};
+
 export default function Index() {
   const navigation = useNavigation();
   const { activeCondo } = useCondo();
@@ -127,46 +157,18 @@ export default function Index() {
     [data?.products, activeCondo?.business_type]
   );
 
-  const featuredProducts = segmentProducts
-    .map((product: MedusaProduct) => {
-      const variant = getVariant(product);
-      const pricing = getVariantPricing(variant);
-      return {
-        id: product.id,
-        name: product.title,
-        description: product.description || "Descrição não informada.",
-        price: pricing.finalPrice,
-        originalPrice: pricing.onSale ? pricing.basePrice ?? undefined : undefined,
-        isOnPromotion: pricing.onSale || hasPromotionFlag(product),
-        image: getProductImage(product) || "",
-        category: getProductCategory(product),
-        variantId: variant?.id || "",
-        variantTitle: variant?.title || "",
-      };
-    })
-    .slice(0, 2);
+  const segmentItems = useMemo(() => segmentProducts.map(mapHomeProduct), [segmentProducts]);
+  const featuredProducts = useMemo(() => segmentItems.slice(0, 2), [segmentItems]);
+  const promotionHighlights = useMemo(
+    () => segmentItems.filter((product) => product.isOnPromotion).slice(0, 2),
+    [segmentItems]
+  );
+  const allHomeProducts = useMemo(
+    () => ((data?.products || []) as MedusaProduct[]).map(mapHomeProduct),
+    [data?.products]
+  );
 
-  const promotionHighlights = segmentProducts
-    .map((product: MedusaProduct) => {
-      const variant = getVariant(product);
-      const pricing = getVariantPricing(variant);
-      return {
-        id: product.id,
-        name: product.title,
-        description: product.description || "Descrição não informada.",
-        price: pricing.finalPrice,
-        originalPrice: pricing.onSale ? pricing.basePrice ?? undefined : undefined,
-        isOnPromotion: pricing.onSale || hasPromotionFlag(product),
-        image: getProductImage(product) || "",
-        category: getProductCategory(product),
-        variantId: variant?.id || "",
-        variantTitle: variant?.title || "",
-      };
-    })
-    .filter((product) => product.isOnPromotion)
-    .slice(0, 2);
-
-  const handleAddToCart = async (product: (typeof featuredProducts)[number]) => {
+  const handleAddToCart = async (product: HomeProductItem) => {
     if (!activeCondo) {
       toast.error(`Selecione ${terms.articleSingular} ${terms.labelLower} antes de adicionar itens ao carrinho.`);
       return;
@@ -213,11 +215,7 @@ export default function Index() {
   const newsItems = useMemo(
     () =>
       ((newsData?.news || []) as MedusaNews[]).filter((news) =>
-        matchesBusinessType(
-          activeCondo?.business_type || null,
-          (news.metadata || null) as Record<string, unknown> | null,
-          news.category
-        )
+        matchesBusinessType(activeCondo?.business_type || null, (news.metadata || null) as Record<string, unknown> | null)
       ),
     [newsData?.news, activeCondo?.business_type]
   );
@@ -484,15 +482,17 @@ export default function Index() {
           </View>
         </View>
 
-        <View style={styles.pointsCard}>
+        <Pressable style={styles.pointsCard} onPress={() => navigation.navigate("Pontos" as never)}>
           <View style={styles.pointsIconWrap}>
             <Star color="#F8C25C" size={18} />
           </View>
           <View style={styles.pointsContent}>
             <Text style={styles.pointsLabel}>{`${terms.pointsLabel} ${terms.articleSingular} ${terms.labelLower}`}</Text>
             <Text style={styles.pointsValue}>{activeCondo?.pointsBalance ?? 0}</Text>
+            <Text style={styles.pointsHint}>{`Gastar ${terms.pointsLabelLower}`}</Text>
           </View>
-        </View>
+          <ChevronRight color="#8C98A8" size={18} />
+        </Pressable>
 
         {manufacturers.length > 0 && (
           <View style={styles.section}>
@@ -666,6 +666,43 @@ export default function Index() {
                   />
                 ))}
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Lista de produtos</Text>
+          </View>
+
+          {isLoadingProducts ? (
+            <View style={styles.productGrid}>
+              {Array.from({ length: 4 }).map((_, index) => (
+                <View key={`all-products-skeleton-${index}`} style={[styles.productSkeletonCard, { width: productCardWidth }]}>
+                  <Skeleton style={styles.productSkeletonImage} />
+                  <Skeleton style={styles.productSkeletonLine} />
+                  <Skeleton style={styles.productSkeletonLineShort} />
+                </View>
+              ))}
+            </View>
+          ) : allHomeProducts.length > 0 ? (
+            <View style={styles.productGrid}>
+              {allHomeProducts.map((product) => (
+                <ProductCard
+                  key={`all-${product.id}`}
+                  {...product}
+                  style={{ width: productCardWidth }}
+                  onPress={() =>
+                    navigation.navigate(
+                      "Produtos" as never,
+                      { screen: "ProductDetails", params: { id: product.id } } as never
+                    )
+                  }
+                  onAddToCart={() => handleAddToCart(product)}
+                />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptySectionText}>Nenhum produto disponível no momento.</Text>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -905,6 +942,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 4,
   },
+  pointsHint: {
+    color: "#8C98A8",
+    fontSize: 12,
+    marginTop: 4,
+  },
   section: {
     marginTop: 24,
   },
@@ -982,6 +1024,11 @@ const styles = StyleSheet.create({
   },
   productRow: {
     flexDirection: "row",
+    gap: 12,
+  },
+  productGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
   },
   emptySectionText: {

@@ -1,13 +1,25 @@
 import { useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { Header } from "@/components/layout/Header";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { getProductCategory, listManufacturers, listProducts, MedusaManufacturer, MedusaProduct } from "@/lib/medusa";
+import {
+  getProductCategory,
+  getProductImage,
+  listManufacturers,
+  listProducts,
+  MedusaManufacturer,
+  MedusaProduct,
+} from "@/lib/medusa";
 
 const MAX_MANUFACTURERS = 40;
+
+type CategoryHero = {
+  label: string;
+  image?: string;
+};
 
 export default function ProdutosCategorias() {
   const navigation = useNavigation();
@@ -21,25 +33,71 @@ export default function ProdutosCategorias() {
   });
 
   const categories = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, CategoryHero>();
     (productsData?.products || []).forEach((product: MedusaProduct) => {
       const category = getProductCategory(product);
-      if (category && !map.has(category)) {
-        map.set(category, category);
-      }
+      if (!category || map.has(category)) return;
+      map.set(category, {
+        label: category,
+        image: getProductImage(product) || undefined,
+      });
     });
-    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [productsData]);
 
-  const manufacturers = (manufacturersData?.manufacturers || []) as MedusaManufacturer[];
+  const manufacturers = useMemo(() => {
+    const firstImageByManufacturer = new Map<string, string>();
+    ((productsData?.products || []) as MedusaProduct[]).forEach((product) => {
+      const slug = String((product.metadata as any)?.manufacturer_slug || "");
+      if (!slug || firstImageByManufacturer.has(slug)) return;
+      const image = getProductImage(product);
+      if (image) firstImageByManufacturer.set(slug, image);
+    });
+
+    return ((manufacturersData?.manufacturers || []) as MedusaManufacturer[]).map((manufacturer) => ({
+      ...manufacturer,
+      hero_image: manufacturer.image_url || firstImageByManufacturer.get(String(manufacturer.slug)) || null,
+    }));
+  }, [manufacturersData, productsData]);
 
   const handleNavigate = (params?: { category?: string; manufacturer?: string }) => {
+    if (!params?.category && !params?.manufacturer) {
+      navigation.navigate(
+        "ProdutosIndex" as never,
+        { category: undefined, manufacturer: undefined, manufacturerSlug: undefined } as never
+      );
+      return;
+    }
     navigation.navigate("ProdutosIndex" as never, params as never);
   };
 
+  const HeroCard = ({
+    title,
+    image,
+    onPress,
+  }: {
+    title: string;
+    image?: string | null;
+    onPress: () => void;
+  }) => (
+    <Pressable style={styles.heroCard} onPress={onPress}>
+      {image ? (
+        <Image source={{ uri: image }} style={styles.heroImage} resizeMode="cover" />
+      ) : (
+        <View style={styles.heroImageFallback}>
+          <Text style={styles.heroFallbackText}>Sem imagem</Text>
+        </View>
+      )}
+      <View style={styles.heroOverlay} />
+      <Text style={styles.heroTitle} numberOfLines={2}>
+        {title}
+      </Text>
+    </Pressable>
+  );
+
   return (
     <AuthenticatedLayout>
-      <Header title="Produtos" showCondoSelector />
+      <Header title="Categorias" showCondoSelector />
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.subtitle}>Escolha uma categoria ou fabricante para começar.</Text>
 
@@ -52,42 +110,34 @@ export default function ProdutosCategorias() {
         {!productsLoading && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Categorias</Text>
-            <View style={styles.chipGroup}>
-              <Pressable style={styles.chip} onPress={() => handleNavigate()}>
-                <Text style={styles.chipText}>Todos</Text>
-              </Pressable>
+            <View style={styles.heroRow}>
               {categories.map((category) => (
-                <Pressable
-                  key={category}
-                  style={styles.chip}
-                  onPress={() => handleNavigate({ category })}
-                >
-                  <Text style={styles.chipText}>{category}</Text>
-                </Pressable>
+                <HeroCard
+                  key={category.label}
+                  title={category.label}
+                  image={category.image}
+                  onPress={() => handleNavigate({ category: category.label })}
+                />
               ))}
+              <HeroCard title="Todos" onPress={() => handleNavigate()} />
             </View>
-            {categories.length === 0 && (
-              <Text style={styles.emptyText}>Nenhuma categoria encontrada.</Text>
-            )}
+            {categories.length === 0 && <Text style={styles.emptyText}>Nenhuma categoria encontrada.</Text>}
           </View>
         )}
 
         {!manufacturersLoading && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Fabricantes</Text>
-            <View style={styles.chipGroup}>
-              <Pressable style={styles.chip} onPress={() => handleNavigate()}>
-                <Text style={styles.chipText}>Todos</Text>
-              </Pressable>
+            <View style={styles.heroRow}>
               {manufacturers.map((manufacturer) => (
-                <Pressable
+                <HeroCard
                   key={manufacturer.id}
-                  style={styles.chip}
+                  title={manufacturer.name}
+                  image={(manufacturer as any).hero_image}
                   onPress={() => handleNavigate({ manufacturer: manufacturer.slug })}
-                >
-                  <Text style={styles.chipText}>{manufacturer.name}</Text>
-                </Pressable>
+                />
               ))}
+              <HeroCard title="Todos" onPress={() => handleNavigate()} />
             </View>
             {manufacturers.length === 0 && (
               <Text style={styles.emptyText}>Nenhum fabricante disponível.</Text>
@@ -127,23 +177,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
-  chipGroup: {
+  heroRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    justifyContent: "space-between",
+    gap: 12,
   },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(24, 28, 36, 0.92)",
+  heroCard: {
+    width: "48%",
+    height: 96,
+    borderRadius: 16,
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(72, 80, 94, 0.6)",
+    borderColor: "rgba(86, 98, 116, 0.5)",
+    backgroundColor: "rgba(24, 28, 36, 0.92)",
+    justifyContent: "flex-end",
+    padding: 10,
   },
-  chipText: {
-    color: "#E6E8EA",
-    fontSize: 12,
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+  },
+  heroImageFallback: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(38, 47, 62, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroFallbackText: {
+    color: "#8C98A8",
+    fontSize: 11,
     fontWeight: "600",
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(8, 13, 22, 0.45)",
+  },
+  heroTitle: {
+    color: "#E6E8EA",
+    fontSize: 13,
+    fontWeight: "700",
   },
   emptyText: {
     color: "#8C98A8",

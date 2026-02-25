@@ -11,6 +11,11 @@ const {
   parsePaymentPolicyFromTerms,
   resolveBusinessTypeFromValue,
 } = require("../services/business-type-payment-policy")
+const {
+  publishCartEvent,
+  publishOrderEvent,
+  startRealtimeWsServer,
+} = require("../services/realtime-ws")
 
 const ALLOW_HEADERS =
   "Content-Type, Authorization, X-Publishable-Api-Key, X-Medusa-Sales-Channel-Id, X-Company-Id, X-Company, Accept"
@@ -25,6 +30,7 @@ const applyCors = (req, res) => {
 
 const storeCompaniesCors = (req, res, next) => {
   const logger = req.scope?.resolve ? req.scope.resolve("logger") : console
+  startRealtimeWsServer(logger)
   safeLog(logger, {
     msg: "storeCompaniesCors:called",
     method: req.method,
@@ -661,6 +667,89 @@ const storeLoginDisabledGuard = () => {
   }
 }
 
+const resolveCustomerIdFromRequest = (req) => {
+  const actorType = req.auth_context?.actor_type
+  const actorId = req.auth_context?.actor_id
+  if (actorType === "customer" && actorId) return actorId
+  if (req.body?.customer_id) return req.body.customer_id
+  if (req.body?.customerId) return req.body.customerId
+  return null
+}
+
+const resolveCompanyIdFromRequest = (req) => {
+  return (
+    req.body?.company_id ||
+    req.body?.companyId ||
+    req.body?.details?.company_id ||
+    req.body?.details?.companyId ||
+    req.query?.company_id ||
+    req.query?.companyId ||
+    req.headers?.["x-company-id"] ||
+    req.headers?.["x-company"] ||
+    null
+  )
+}
+
+const resolveCartIdFromRequest = (req) => {
+  const path = String(req.path || req.originalUrl || "")
+  const fromPath = path.match(/\/store\/carts\/([^/?]+)/)?.[1]
+  return (
+    fromPath ||
+    req.params?.id ||
+    req.body?.cart_id ||
+    req.body?.cartId ||
+    req.query?.cart_id ||
+    req.query?.cartId ||
+    null
+  )
+}
+
+const realtimePublishMiddleware = () => {
+  const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"])
+  return (req, res, next) => {
+    const method = String(req.method || "").toUpperCase()
+    if (!MUTATING_METHODS.has(method)) return next()
+
+    const path = String(req.path || req.originalUrl || "")
+    const isStoreMutation = path.startsWith("/store/")
+    const isPushMutation = path.startsWith("/admin/push-notifications")
+    if (!isStoreMutation && !isPushMutation) return next()
+
+    res.on("finish", () => {
+      if (res.statusCode < 200 || res.statusCode >= 400) return
+
+      const customerId = resolveCustomerIdFromRequest(req)
+      const companyId = resolveCompanyIdFromRequest(req)
+      const cartId = resolveCartIdFromRequest(req)
+
+      if (cartId && path.startsWith("/store/carts")) {
+        publishCartEvent({
+          cartId,
+          type: "cart.updated",
+          data: { method, path },
+        })
+      }
+
+      const orderLikeMutation =
+        path.startsWith("/store/orders") ||
+        path.startsWith("/store/carts") ||
+        path.startsWith("/store/payment-collections")
+
+      if (orderLikeMutation) {
+        publishOrderEvent({
+          customerId,
+          companyId,
+          cartId,
+          type: path.includes("payment") ? "payment.updated" : "order.updated",
+          data: { method, path },
+        })
+      }
+    })
+
+    next()
+  }
+}
+
 const middlewares = defineMiddlewares([
   {
     method: ["POST", "PUT", "PATCH"],
@@ -820,6 +909,11 @@ const middlewares = defineMiddlewares([
     method: ["ALL"],
     matcher: ["/admin/email-templates", "/admin/email-templates/*"],
     middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
+  },
+  {
+    method: ["POST", "PUT", "PATCH", "DELETE"],
+    matcher: ["/store/*", "/admin/push-notifications", "/admin/push-notifications/*"],
+    middlewares: [realtimePublishMiddleware()],
   },
   {
     method: ["ALL"],

@@ -1,6 +1,7 @@
 const { ContainerRegistrationKeys } = require("@medusajs/framework/utils")
 const { mapPushNotificationRow } = require("../../../../utils/push-notifications")
 const { sendFcm, sendApns, sendWebPush, sendExpo } = require("../../../../utils/push-sender")
+const { publishNotificationEvent } = require("../../../../services/realtime-ws")
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 const MAX_ERROR_LENGTH = 2000
@@ -117,6 +118,9 @@ const POST = async (req, res) => {
       message: notification.message,
       data: { notification_id: notification.id },
     }
+    const targetCustomerIds = Array.from(
+      new Set(tokens.map((item) => item.customer_id).filter(Boolean))
+    )
 
     let sent = 0
     let failed = 0
@@ -221,6 +225,35 @@ const POST = async (req, res) => {
         last_error: lastError,
         updated_at: now,
       })
+
+    if (status === "sent" || status === "partial") {
+      if (targetCustomerIds.length) {
+        for (const customerId of targetCustomerIds) {
+          publishNotificationEvent({
+            customerId,
+            type: "notification.push",
+            notification: {
+              id: notification.id,
+              status: "news",
+              title: notification.title,
+              message: notification.message,
+            },
+            data: { status },
+          })
+        }
+      } else {
+        publishNotificationEvent({
+          type: "notification.push",
+          notification: {
+            id: notification.id,
+            status: "news",
+            title: notification.title,
+            message: notification.message,
+          },
+          data: { status },
+        })
+      }
+    }
 
     processedIds.push(notification.id)
   }

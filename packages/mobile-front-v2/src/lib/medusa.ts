@@ -30,7 +30,7 @@ export const setAccessPendingHandler = (handler: (() => void) | null) => {
   accessPendingHandler = handler;
 };
 
-type FetchInit = RequestInit & { auth?: boolean };
+type FetchInit = RequestInit & { auth?: boolean; showGlobalLoading?: boolean };
 
 export type MedusaPrice = {
   amount: number;
@@ -518,9 +518,11 @@ const handleAccessPending = () => {
 };
 
 const apiFetch = async <T>(path: string, init?: FetchInit): Promise<T> => {
-  const endLoading = beginGlobalLoading();
+  const method = (init?.method || "GET").toUpperCase();
+  const shouldShowGlobalLoading = init?.showGlobalLoading ?? method !== "GET";
+  const endLoading = shouldShowGlobalLoading ? beginGlobalLoading() : () => {};
   if (LOG_REQUESTS) {
-    console.debug("[medusa] request", { path, method: init?.method || "GET", body: init?.body });
+    console.debug("[medusa] request", { path, method, body: init?.body });
   }
   try {
     const res = await fetch(`${MEDUSA_URL}${path}`, {

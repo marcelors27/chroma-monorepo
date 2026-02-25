@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Search } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
-import { useRoute } from "@react-navigation/native";
 import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { ProductCard } from "@/components/ui/ProductCard";
@@ -14,6 +13,7 @@ import { toast } from "@/lib/toast";
 import { useCondo } from "@/contexts/CondoContext";
 import { useCart } from "@/contexts/CartContext";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   getProductCategory,
   getProductImage,
@@ -82,24 +82,34 @@ const hasPromotionFlag = (product?: MedusaProduct) => {
 };
 
 export default function Produtos() {
-  const route = useRoute<any>();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedManufacturer, setSelectedManufacturer] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [didInitializeFilters, setDidInitializeFilters] = useState(false);
   const [filters, setFilters] = useState<ProductFilters>({
     priceRange: [0, MAX_PRICE_FALLBACK],
     onlyDiscounted: false,
     sortBy: "relevance",
     inStock: false,
   });
-  const { activeCondo } = useCondo();
+  const { activeCondo, isLoading: isCondoLoading } = useCondo();
   const { addItem, isAddingItem } = useCart();
   const { terms } = useBusinessTerms();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { width } = useWindowDimensions();
-  const { data, isLoading } = useQuery({ queryKey: ["products"], queryFn: listProducts });
+  const canLoadProducts = isAuthenticated && !isAuthLoading && !isCondoLoading;
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
+    queryKey: ["products", activeCondo?.id || "all"],
+    queryFn: listProducts,
+    enabled: canLoadProducts,
+    refetchOnMount: "always",
+    staleTime: 0,
+    retry: 2,
+  });
   const { data: manufacturersData } = useQuery({
     queryKey: ["manufacturers"],
     queryFn: () => listManufacturers({ limit: 300 }),
+    enabled: canLoadProducts,
   });
   const cardGap = 12;
   const horizontalPadding = 28;
@@ -153,6 +163,15 @@ export default function Produtos() {
     filters.sortBy !== "relevance",
   ].filter(Boolean).length;
 
+  const showInitialLoading = !canLoadProducts || isLoading || (isFetching && !data?.products?.length);
+
+  useEffect(() => {
+    if (didInitializeFilters) return;
+    if (showInitialLoading) return;
+    setFilters(defaultFilters);
+    setDidInitializeFilters(true);
+  }, [defaultFilters, didInitializeFilters, showInitialLoading]);
+
   useEffect(() => {
     setFilters((prev) => {
       const [min, currentMax] = prev.priceRange;
@@ -189,10 +208,20 @@ export default function Produtos() {
   }, [products, manufacturersData]);
 
   useEffect(() => {
-    const slug = route?.params?.manufacturerSlug;
-    if (!slug) return;
-    setSelectedManufacturer(String(slug));
-  }, [route?.params?.manufacturerSlug]);
+    setSelectedCategory((current) => {
+      if (current === "all") return current;
+      const exists = categories.some((item) => item.id === current);
+      return exists ? current : "all";
+    });
+  }, [categories]);
+
+  useEffect(() => {
+    setSelectedManufacturer((current) => {
+      if (current === "all") return current;
+      const exists = manufacturers.some((item) => item.id === current);
+      return exists ? current : "all";
+    });
+  }, [manufacturers]);
 
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
@@ -294,6 +323,7 @@ export default function Produtos() {
             <Pressable
               onPress={() => {
                 setFilters(defaultFilters);
+                setSelectedCategory("all");
                 setSelectedManufacturer("all");
               }}
             >
@@ -347,7 +377,7 @@ export default function Produtos() {
           ))}
         </ScrollView>
 
-        {isLoading ? (
+        {showInitialLoading ? (
           <View style={styles.productsGrid}>
             {Array.from({ length: 6 }).map((_, index) => (
               <View key={`product-skeleton-${index}`} style={[styles.skeletonCard, { width: cardWidth }]}>
@@ -370,10 +400,16 @@ export default function Produtos() {
           </View>
         )}
 
-        {!isLoading && filteredProducts.length === 0 && (
+        {!showInitialLoading && filteredProducts.length === 0 && !isError && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>Nenhum produto encontrado.</Text>
           </View>
+        )}
+
+        {!showInitialLoading && isError && (
+          <Pressable style={styles.emptyState} onPress={() => refetch()}>
+            <Text style={styles.emptyText}>Falha ao carregar produtos. Toque para tentar novamente.</Text>
+          </Pressable>
         )}
       </ScrollView>
     </AuthenticatedLayout>

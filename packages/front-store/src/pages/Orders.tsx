@@ -24,6 +24,7 @@ import { resolveBusinessBackground } from "@/lib/business-background";
 import {
   createRecurrence,
   fetchPendingPaymentsFromBackend,
+  getTokenValue,
   getPendingPayments,
   getActiveCondo,
   listOrders,
@@ -231,7 +232,6 @@ const Orders = () => {
     queryKey: ["orders"],
     queryFn: listOrders,
     refetchOnMount: "always",
-    refetchInterval: 30000,
     refetchOnWindowFocus: true,
   });
   const orders = data?.orders || [];
@@ -482,27 +482,93 @@ const Orders = () => {
       })()
     : [];
 
+  const refreshOrdersData = async () => {
+    await syncStripePayments();
+    const local = getPendingPayments();
+    const remote = await fetchPendingPaymentsFromBackend();
+    const merged = mergePendingPayments(local, remote);
+    setPendingPayments(merged);
+    await queryClient.invalidateQueries({ queryKey: ["orders"] });
+  };
+
   useEffect(() => {
     let active = true;
-    const load = async () => {
-      try {
-        await syncStripePayments();
-        const local = getPendingPayments();
-        const remote = await fetchPendingPaymentsFromBackend();
-        const merged = mergePendingPayments(local, remote);
-        if (active) {
-          setPendingPayments(merged);
-          queryClient.invalidateQueries({ queryKey: ["orders"] });
-        }
-      } finally {
-        if (active) {
-          setPendingPaymentsLoaded(true);
-        }
-      }
-    };
-    load();
+    refreshOrdersData()
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setPendingPaymentsLoaded(true);
+      });
     return () => {
       active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let ws: WebSocket | null = null;
+    let retry: number | null = null;
+    let attempts = 0;
+    const WS_URL = import.meta.env.VITE_ORDERS_WS_URL || "";
+
+    const clearRetry = () => {
+      if (retry) {
+        window.clearTimeout(retry);
+        retry = null;
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      if (retry) return;
+      const delay = Math.min(30000, 1000 * 2 ** attempts);
+      retry = window.setTimeout(() => {
+        retry = null;
+        connect();
+      }, delay);
+    };
+
+    const connect = async () => {
+      if (cancelled) return;
+      clearRetry();
+      try {
+        if (!WS_URL.trim()) return;
+        const token = await getTokenValue().catch(() => null);
+        const hasQuery = WS_URL.includes("?");
+        const url = token ? `${WS_URL}${hasQuery ? "&" : "?"}token=${encodeURIComponent(token)}` : WS_URL;
+        ws = new WebSocket(url);
+        ws.onopen = () => {
+          attempts = 0;
+        };
+        ws.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(String(event.data || "{}"));
+            const type = String(payload?.type || payload?.event || "").toLowerCase();
+            if (type.includes("order") || type.includes("payment") || type.includes("cart")) {
+              refreshOrdersData().catch(() => undefined);
+            }
+          } catch {
+            // ignore malformed ws payload
+          }
+        };
+        ws.onclose = () => {
+          attempts += 1;
+          scheduleReconnect();
+        };
+        ws.onerror = () => {
+          ws?.close();
+        };
+      } catch {
+        attempts += 1;
+        scheduleReconnect();
+      }
+    };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      clearRetry();
+      if (ws) ws.close();
     };
   }, []);
 

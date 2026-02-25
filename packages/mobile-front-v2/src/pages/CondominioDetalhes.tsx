@@ -85,6 +85,7 @@ export default function CondominioDetalhes() {
   const { terms, businessTypes } = useBusinessTerms();
   const navigation = useNavigation();
   const route = useRoute();
+  const canGoBack = navigation.canGoBack?.() ?? false;
   const queryClient = useQueryClient();
   const id = (route.params as { id?: string } | undefined)?.id;
   const isNew = !id;
@@ -301,12 +302,12 @@ export default function CondominioDetalhes() {
     <AuthenticatedLayout>
       <Header
         title={formData.name || `Novo ${terms.labelLower}`}
-        showBackButton
+        showBackButton={canGoBack}
         showCondoSelector={!isFirstAccess}
       />
 
       <ScrollView style={styles.scrollContent}>
-        {isNew && (
+        {isNew && canGoBack && (
           <Pressable onPress={() => navigation.goBack()} style={styles.backInline}>
             <ArrowLeft color="#E6E8EA" size={16} />
             <Text style={styles.backInlineText}>Voltar</Text>

@@ -23,11 +23,7 @@ export default function Noticias() {
   const allNews = useMemo(
     () =>
       ((data?.news || []) as MedusaNews[]).filter((news) =>
-        matchesBusinessType(
-          activeCondo?.business_type || null,
-          (news.metadata || null) as Record<string, unknown> | null,
-          news.category
-        )
+        matchesBusinessType(activeCondo?.business_type || null, (news.metadata || null) as Record<string, unknown> | null)
       ),
     [data?.news, activeCondo?.business_type]
   );

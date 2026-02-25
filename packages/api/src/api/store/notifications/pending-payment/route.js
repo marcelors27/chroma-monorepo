@@ -8,6 +8,7 @@ const { sendEmail } = require("../../../../services/send-email")
 const { buildPendingPaymentEmail } = require("../../../../services/pending-payment-email")
 const { sendBoletoAdminEmail, sendPixAdminEmail } = require("../../../../services/email-template-sender")
 const { updateCustomersWorkflow } = require("@medusajs/core-flows")
+const { publishNotificationEvent } = require("../../../../services/realtime-ws")
 
 const safeLog = (logger, payload) => {
   try {
@@ -145,13 +146,13 @@ const POST = async (req, res) => {
   const body = req.body || {}
   const method = body.payment_method || body.method
   const paymentCollectionId = body.payment_collection_id || body.paymentCollectionId
+  const details = body.details || {}
   const companyId =
     body.company_id ||
     body.companyId ||
     details?.company_id ||
     details?.companyId ||
     null
-  const details = body.details || {}
 
   if (!method || !paymentCollectionId || !companyId) {
     return res.status(400).json({ message: "Dados incompletos para envio do pagamento." })
@@ -375,6 +376,21 @@ const POST = async (req, res) => {
     companyId,
     paymentCollectionId,
     recipients: uniqueRecipients,
+  })
+
+  publishNotificationEvent({
+    customerId,
+    companyId,
+    type: "notification.created",
+    notification: {
+      id: paymentCollectionId,
+      status: method === "boleto" ? "pending_boleto" : "pending_pix",
+      title: method === "boleto" ? "Boleto gerado" : "PIX gerado",
+      message: `Pagamento pendente para ${companyName}.`,
+      payment_collection_id: paymentCollectionId,
+      company_id: companyId,
+      method,
+    },
   })
 
   return res.status(200).json({ sent: true, recipients: uniqueRecipients })

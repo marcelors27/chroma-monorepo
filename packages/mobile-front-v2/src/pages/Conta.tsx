@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Shield,
   FileText,
+  Star,
 } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
@@ -29,6 +30,7 @@ const menuItems = [
     title: "",
     items: [
       { icon: Package, label: "Meus Pedidos", screen: "Pedidos" },
+      { icon: Star, label: "Gastar pontos", screen: "Pontos" },
       { icon: CreditCard, label: "Formas de Pagamento", screen: "Pagamentos" },
       { icon: FileText, label: "Notas Fiscais", screen: "NotasFiscais" },
     ],
@@ -67,7 +69,7 @@ const getInitials = (name?: string) => {
 export default function Conta() {
   const navigation = useNavigation();
   const { logout, user } = useAuth();
-  const { condos, activeCondo } = useCondo();
+  const { condos } = useCondo();
   const { terms } = useBusinessTerms();
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["orders"],
@@ -78,14 +80,8 @@ export default function Conta() {
   const [pullDistance, setPullDistance] = useState(0);
   const pullThreshold = 80;
   const ordersCount = useMemo(() => {
-    const source = data?.orders || [];
-    if (!activeCondo?.id) return source.length;
-    return source.filter((order) => {
-      const metadata = (order?.shipping_address?.metadata || {}) as Record<string, any>;
-      const companyId = metadata.company_id || metadata.condo_id || null;
-      return companyId === activeCondo.id;
-    }).length;
-  }, [data?.orders, activeCondo?.id]);
+    return (data?.orders || []).length;
+  }, [data?.orders]);
 
   const handleRefresh = async () => {
     if (refreshing) return;
@@ -167,7 +163,7 @@ export default function Conta() {
             </View>
             <View style={styles.metric}>
               <Text style={styles.metricValueMuted}>R$ 430</Text>
-              <Text style={styles.metricLabel}>Economia</Text>
+              <Text style={styles.metricLabel}>Cashback disponível</Text>
             </View>
           </View>
         </View>
@@ -188,7 +184,11 @@ export default function Conta() {
                       <Icon color="hsl(220 10% 55%)" size={18} />
                     </View>
                     <Text style={styles.sectionLabel}>
-                      {item.screen === "Condominios" ? `Meus ${terms.labelPlural}` : item.label}
+                      {item.screen === "Condominios"
+                        ? `Meus ${terms.labelPlural}`
+                        : item.screen === "Pontos"
+                          ? `Gastar ${terms.pointsLabelLower}`
+                          : item.label}
                     </Text>
                     <ChevronRight color="hsl(215 15% 55%)" size={18} />
                   </Pressable>

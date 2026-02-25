@@ -12,6 +12,7 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export default function NoticiaDetalhes() {
   const navigation = useNavigation();
+  const canGoBack = navigation.canGoBack?.() ?? false;
   const route = useRoute();
   const { share } = useShare();
   const id = (route.params as { id?: string } | undefined)?.id ?? "";
@@ -77,9 +78,11 @@ export default function NoticiaDetalhes() {
             <View style={[styles.heroImage, styles.heroPlaceholder]} />
           )}
           <View style={styles.backButtonWrap}>
-            <Pressable onPress={() => navigation.goBack()} style={styles.iconButton}>
-              <ArrowLeft color="white" size={18} />
-            </Pressable>
+            {canGoBack && (
+              <Pressable onPress={() => navigation.goBack()} style={styles.iconButton}>
+                <ArrowLeft color="white" size={18} />
+              </Pressable>
+            )}
           </View>
           <View style={styles.actionsRow}>
             <Pressable onPress={handleShare} style={styles.iconButton}>

@@ -59,6 +59,7 @@ const getVimeoId = (url: string) => {
 
 export default function ProductDetails() {
   const navigation = useNavigation();
+  const canGoBack = navigation.canGoBack?.() ?? false;
   const route = useRoute();
   const { share } = useShare();
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -254,9 +255,13 @@ export default function ProductDetails() {
       )}
       <ScrollView style={styles.scrollContent}>
         <View style={styles.mediaHeader}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <ArrowLeft color="#E6E8EA" size={20} />
-          </Pressable>
+          {canGoBack ? (
+            <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+              <ArrowLeft color="#E6E8EA" size={20} />
+            </Pressable>
+          ) : (
+            <View style={styles.backButtonPlaceholder} />
+          )}
           <Pressable onPress={handleShare} style={styles.iconButton}>
             <Share2 color="#E6E8EA" size={20} />
           </Pressable>
@@ -552,6 +557,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(12, 14, 18, 0.6)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  backButtonPlaceholder: {
+    width: 38,
+    height: 38,
   },
   iconButton: {
     width: 38,

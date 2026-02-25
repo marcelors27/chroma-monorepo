@@ -27,6 +27,7 @@ export default function Auth() {
   const navigation = useNavigation();
   const route = useRoute();
   const { login, loginWithSocial, signup, authError } = useAuth();
+  const canGoBack = navigation.canGoBack?.() ?? false;
 
   const [isLogin, setIsLogin] = useState((route.params as { mode?: string } | undefined)?.mode === "login");
   const [showPassword, setShowPassword] = useState(false);
@@ -136,10 +137,12 @@ export default function Auth() {
     <ImageBackground source={{ uri: AUTH_BG }} style={styles.screen} resizeMode="cover">
       <View style={styles.overlay} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backRow} onPress={() => navigation.navigate("Landing" as never)}>
-          <ArrowLeft color="#8C98A8" size={18} />
-          <Text style={styles.backText}>Voltar</Text>
-        </Pressable>
+        {canGoBack && (
+          <Pressable style={styles.backRow} onPress={() => navigation.goBack()}>
+            <ArrowLeft color="#8C98A8" size={18} />
+            <Text style={styles.backText}>Voltar</Text>
+          </Pressable>
+        )}
 
         <View style={styles.header}>
           <Image source={logo} style={styles.brandLogo} />

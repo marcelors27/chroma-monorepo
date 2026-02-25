@@ -23,6 +23,7 @@ const AUTH_BG = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=120
 export default function ResetPassword() {
   const navigation = useNavigation();
   const route = useRoute();
+  const canGoBack = navigation.canGoBack?.() ?? false;
   const initialEmail = (route.params as { email?: string } | undefined)?.email || "";
   const [email, setEmail] = useState(initialEmail);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,10 +53,12 @@ export default function ResetPassword() {
     <ImageBackground source={{ uri: AUTH_BG }} style={styles.screen} resizeMode="cover">
       <View style={styles.overlay} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backRow} onPress={() => navigation.goBack()}>
-          <ArrowLeft color="#8C98A8" size={18} />
-          <Text style={styles.backText}>Voltar</Text>
-        </Pressable>
+        {canGoBack && (
+          <Pressable style={styles.backRow} onPress={() => navigation.goBack()}>
+            <ArrowLeft color="#8C98A8" size={18} />
+            <Text style={styles.backText}>Voltar</Text>
+          </Pressable>
+        )}
 
         <View style={styles.header}>
           <Image source={logo} style={styles.brandLogo} />

@@ -249,14 +249,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const finalizeLogin = async () => {
-    const approved = await hasApprovedCompany();
-    if (!approved) {
-      await clearSession();
-      setUser(null);
-      await AsyncStorage.removeItem(USER_STORAGE_KEY);
-      setAuthError(`Seu acesso está em avaliação. Aguarde a aprovação ${terms.articleSingular} ${terms.labelLower}.`);
-      return false;
-    }
     const { customer } = await getCustomerMe();
     if (!customer) {
       setAuthError("Não foi possível finalizar o login.");
@@ -265,6 +257,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const mapped = mapCustomerToUser(customer);
     setUser(mapped);
     await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(mapped));
+    const approved = await hasApprovedCompany();
+    if (!approved) {
+      setAuthError(`Seu acesso está em avaliação. Aguarde a aprovação ${terms.articleSingular} ${terms.labelLower}.`);
+      return true;
+    }
     setAuthError(null);
     return true;
   };

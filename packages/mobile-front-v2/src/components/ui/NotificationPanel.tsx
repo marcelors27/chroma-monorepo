@@ -1,10 +1,9 @@
-import { useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Bell, Check, CheckCheck, Newspaper, Package, Trash2, Truck } from "lucide-react-native";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNotifications, AppNotification } from "@/contexts/NotificationContext";
-import { Sheet, SheetContent, SheetHeader, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 const statusIcons = {
@@ -73,23 +72,43 @@ export function NotificationPanel() {
     markAllAsRead,
     clearNotifications,
   } = useNotifications();
+  const [open, setOpen] = useState(false);
+  const drawerAnim = useRef(new Animated.Value(0)).current;
 
   const unreadLabel = useMemo(() => (unreadCount > 9 ? "9+" : unreadCount.toString()), [unreadCount]);
 
+  useEffect(() => {
+    Animated.timing(drawerAnim, {
+      toValue: open ? 1 : 0,
+      duration: 240,
+      useNativeDriver: true,
+    }).start();
+  }, [open, drawerAnim]);
+
+  const closeDrawer = () => setOpen(false);
+
+  const translateX = drawerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [380, 0],
+  });
+
   return (
-    <Sheet>
-      <SheetTrigger>
+    <>
+      <Pressable onPress={() => setOpen(true)}>
         <View style={styles.trigger}>
           <Bell color="#FFFFFF" size={18} />
-          {unreadCount > 0 && (
+          {unreadCount > 0 ? (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadLabel}</Text>
             </View>
-          )}
+          ) : null}
         </View>
-      </SheetTrigger>
-      <SheetContent side="right" style={styles.sheetContent}>
-        <SheetHeader style={styles.sheetHeader}>
+      </Pressable>
+      <Modal transparent visible={open} statusBarTranslucent onRequestClose={closeDrawer}>
+        <View style={styles.overlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={closeDrawer} />
+          <Animated.View style={[styles.sheetContent, { transform: [{ translateX }] }]}>
+            <View style={styles.sheetHeader}>
           <View style={styles.sheetHeaderRow}>
             <Text style={styles.sheetTitle}>Notificações</Text>
             <View style={styles.sheetHeaderActions}>
@@ -105,42 +124,47 @@ export function NotificationPanel() {
               )}
             </View>
           </View>
-        </SheetHeader>
-
-        {!hasPermission && (
-          <View style={styles.permissionBanner}>
-            <Text style={styles.permissionText}>
-              Ative as notificações para receber atualizações em tempo real.
-            </Text>
-            <Button size="sm" onPress={requestPermission} width="100%">
-              <Text style={styles.permissionButtonText}>Ativar notificações</Text>
-            </Button>
-          </View>
-        )}
-
-        <ScrollView style={styles.notificationsScroll}>
-          {notifications.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <Bell color="hsl(215 15% 55%)" size={28} />
-              </View>
-              <Text style={styles.emptyTitle}>Nenhuma notificação ainda</Text>
-              <Text style={styles.emptySubtitle}>
-                Você sera notificado sobre novidades e atualizacoes dos pedidos
-              </Text>
             </View>
-          ) : (
-            notifications.map((notification) => (
-              <NotificationItem
-                key={notification.id}
-                notification={notification}
-                onRead={() => markAsRead(notification.id)}
-              />
-            ))
-          )}
-        </ScrollView>
-      </SheetContent>
-    </Sheet>
+
+            {!hasPermission && (
+              <View style={styles.permissionBanner}>
+                <Text style={styles.permissionText}>
+                  Ative as notificações para receber atualizações em tempo real.
+                </Text>
+                <Button size="sm" onPress={requestPermission} width="100%">
+                  <Text style={styles.permissionButtonText}>Ativar notificações</Text>
+                </Button>
+              </View>
+            )}
+
+            <ScrollView
+              style={styles.notificationsScroll}
+              contentContainerStyle={notifications.length === 0 ? styles.notificationsScrollEmpty : undefined}
+            >
+              {notifications.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyIcon}>
+                    <Bell color="hsl(215 15% 55%)" size={28} />
+                  </View>
+                  <Text style={styles.emptyTitle}>Nenhuma notificação ainda</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Você sera notificado sobre novidades e atualizacoes dos pedidos
+                  </Text>
+                </View>
+              ) : (
+                notifications.map((notification) => (
+                  <NotificationItem
+                    key={notification.id}
+                    notification={notification}
+                    onRead={() => markAsRead(notification.id)}
+                  />
+                ))
+              )}
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -150,8 +174,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: "rgba(34, 38, 46, 0.9)",
   },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "flex-start",
+    alignItems: "flex-end",
+  },
   sheetContent: {
     padding: 0,
+    height: "100%",
+    width: "100%",
+    maxWidth: 360,
+    alignSelf: "flex-end",
+    borderTopLeftRadius: 24,
+    borderBottomLeftRadius: 24,
+    backgroundColor: "#0B0F14",
   },
   sheetHeader: {
     padding: 16,
@@ -194,7 +231,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   notificationsScroll: {
-    maxHeight: 520,
+    flex: 1,
+  },
+  notificationsScrollEmpty: {
+    flexGrow: 1,
   },
   emptyState: {
     alignItems: "center",

@@ -1,5 +1,5 @@
 import { ChevronDown, Building2, Check, ArrowLeft } from "lucide-react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { NotificationPanel } from "@/components/ui/NotificationPanel";
 import { useCondo } from "@/contexts/CondoContext";
@@ -20,7 +20,43 @@ interface HeaderProps {
   showNotification?: boolean;
   showCondoSelector?: boolean;
   showBackButton?: boolean;
+  showBreadcrumb?: boolean;
+  breadcrumbItems?: string[];
 }
+
+const FRIENDLY_ROUTE_NAMES: Record<string, string> = {
+  Landing: "Boas-vindas",
+  Auth: "Entrar ou cadastrar",
+  ResetPassword: "Recuperar senha",
+  MainTabs: "Início",
+  Index: "Início",
+  ProdutosCategorias: "Categorias",
+  ProdutosIndex: "Produtos",
+  ProductDetails: "Detalhes do produto",
+  Pedidos: "Meus pedidos",
+  Carrinho: "Carrinho",
+  Conta: "Minha conta",
+  Condominios: "Meus estabelecimentos",
+  CondominioDetalhes: "Detalhes do estabelecimento",
+  AccessPending: "Acesso em avaliação",
+  Recorrencias: "Recorrências",
+  Rastreamento: "Rastreamento",
+  Noticias: "Notícias",
+  NoticiaDetalhes: "Detalhes da notícia",
+  Pagamentos: "Pagamentos",
+  NotasFiscais: "Notas fiscais",
+  DadosPessoais: "Dados pessoais",
+  Notificacoes: "Notificações",
+  Seguranca: "Segurança",
+  Ajuda: "Central de ajuda",
+  Pontos: "Pontos",
+};
+
+const toFriendlyRouteName = (name: string) =>
+  name
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim();
 
 export function Header({
   title,
@@ -28,12 +64,54 @@ export function Header({
   showNotification = true,
   showCondoSelector = false,
   showBackButton = false,
+  showBreadcrumb = true,
+  breadcrumbItems,
 }: HeaderProps) {
   const navigation = useNavigation();
+  const route = useRoute();
   const { condos, activeCondo, setActiveCondo, isAllCondos, setAllCondos } = useCondo();
   const { terms } = useBusinessTerms();
   const canGoBack = navigation.canGoBack?.() ?? false;
-  const shouldShowBackButton = showBackButton || canGoBack;
+  const shouldShowBackButton = showBackButton && canGoBack;
+  const routeName = route.name;
+
+  const resolvedTitle = title || "Chroma Store";
+  const currentRouteLabel = FRIENDLY_ROUTE_NAMES[routeName] || toFriendlyRouteName(routeName);
+  const myAccountLabel = FRIENDLY_ROUTE_NAMES.Conta;
+  const ordersLabel = FRIENDLY_ROUTE_NAMES.Pedidos;
+  const newsLabel = FRIENDLY_ROUTE_NAMES.Noticias;
+  const condosLabel = FRIENDLY_ROUTE_NAMES.Condominios;
+  const productsLabel = FRIENDLY_ROUTE_NAMES.ProdutosCategorias;
+  const defaultBreadcrumbByRoute: Record<string, string[]> = {
+    Landing: [FRIENDLY_ROUTE_NAMES.Landing],
+    Auth: [FRIENDLY_ROUTE_NAMES.Auth],
+    ResetPassword: [FRIENDLY_ROUTE_NAMES.ResetPassword],
+    MainTabs: [FRIENDLY_ROUTE_NAMES.MainTabs],
+    Index: [FRIENDLY_ROUTE_NAMES.Index],
+    ProdutosCategorias: [productsLabel],
+    ProdutosIndex: [productsLabel, FRIENDLY_ROUTE_NAMES.ProdutosIndex],
+    ProductDetails: [productsLabel, resolvedTitle || FRIENDLY_ROUTE_NAMES.ProductDetails],
+    Pedidos: [ordersLabel],
+    Carrinho: [FRIENDLY_ROUTE_NAMES.Carrinho],
+    Conta: [myAccountLabel],
+    Condominios: [condosLabel],
+    CondominioDetalhes: [condosLabel, resolvedTitle || FRIENDLY_ROUTE_NAMES.CondominioDetalhes],
+    AccessPending: [condosLabel, FRIENDLY_ROUTE_NAMES.AccessPending],
+    Recorrencias: [FRIENDLY_ROUTE_NAMES.Recorrencias],
+    Rastreamento: [ordersLabel, FRIENDLY_ROUTE_NAMES.Rastreamento],
+    Noticias: [newsLabel],
+    NoticiaDetalhes: [newsLabel, FRIENDLY_ROUTE_NAMES.NoticiaDetalhes],
+    Pagamentos: [myAccountLabel, FRIENDLY_ROUTE_NAMES.Pagamentos],
+    NotasFiscais: [myAccountLabel, FRIENDLY_ROUTE_NAMES.NotasFiscais],
+    DadosPessoais: [myAccountLabel, FRIENDLY_ROUTE_NAMES.DadosPessoais],
+    Notificacoes: [myAccountLabel, FRIENDLY_ROUTE_NAMES.Notificacoes],
+    Seguranca: [myAccountLabel, FRIENDLY_ROUTE_NAMES.Seguranca],
+    Ajuda: [myAccountLabel, FRIENDLY_ROUTE_NAMES.Ajuda],
+    Pontos: [myAccountLabel, `Gastar ${terms.pointsLabelLower}`],
+  };
+  const breadcrumbs =
+    (breadcrumbItems && breadcrumbItems.length ? breadcrumbItems : defaultBreadcrumbByRoute[routeName]) ||
+    (subtitle ? [subtitle, resolvedTitle] : title ? [currentRouteLabel, resolvedTitle] : [currentRouteLabel]);
 
   const displayName = isAllCondos
     ? `${terms.label} não selecionado`
@@ -48,6 +126,9 @@ export function Header({
           </Pressable>
         )}
         <View style={styles.titleBlock}>
+          {showBreadcrumb && breadcrumbs.length > 0 && (
+            <Text style={styles.breadcrumbText}>{breadcrumbs.join(" / ")}</Text>
+          )}
           {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
           {title ? (
             <Text style={styles.title}>{title}</Text>
@@ -141,6 +222,11 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     flex: 1,
+  },
+  breadcrumbText: {
+    color: "#6C7888",
+    fontSize: 12,
+    marginBottom: 4,
   },
   subtitle: {
     color: "#8C98A8",
