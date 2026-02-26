@@ -1,15 +1,30 @@
 const http = require("http")
 const jwt = require("jsonwebtoken")
+const { randomUUID } = require("crypto")
 const { WebSocketServer, WebSocket } = require("ws")
 
-const WS_PORT = Number(process.env.REALTIME_WS_PORT || process.env.WS_PORT || 9001)
+let createRedisClient = null
+try {
+  ;({ createClient: createRedisClient } = require("redis"))
+} catch {
+  // optional dependency for realtime fanout across processes
+}
+
+const WS_PORT = Number(process.env.REALTIME_WS_PORT || process.env.WS_PORT || process.env.PORT || 9001)
 const WS_HOST = process.env.REALTIME_WS_HOST || "0.0.0.0"
+const REDIS_URL = process.env.REDIS_URL || ""
+const REALTIME_EVENTS_CHANNEL = process.env.REALTIME_EVENTS_CHANNEL || "chroma:realtime:events"
+const EMBEDDED_WS_ENABLED =
+  process.env.REALTIME_EMBEDDED_WS === "true" ||
+  (process.env.NODE_ENV !== "production" && process.env.REALTIME_EMBEDDED_WS !== "false")
 
 const CHANNEL_PATHS = {
   carts: "/store/custom/carts/ws",
   orders: "/store/custom/orders/ws",
   notifications: "/store/custom/notifications/ws",
 }
+
+const EVENT_CHANNELS = new Set(["carts", "orders", "notifications"])
 
 const state = {
   started: false,
@@ -21,6 +36,15 @@ const state = {
   notificationSockets: new Set(),
   socketMeta: new Map(),
   logger: console,
+  instanceId: process.env.REALTIME_INSTANCE_ID || randomUUID(),
+  redisPublisher: null,
+  redisSubscriber: null,
+  redisPublisherPromise: null,
+  redisSubscriberPromise: null,
+  redisSubscribed: false,
+  warnedNoFanout: false,
+  warnedRedisDependency: false,
+  warnedEmbeddedDisabled: false,
 }
 
 const safeLog = (logger, level, payload) => {
@@ -30,6 +54,19 @@ const safeLog = (logger, level, payload) => {
   } catch {
     fn.call(logger, payload)
   }
+}
+
+const canUseRedisFanout = () => {
+  if (!REDIS_URL) return false
+  if (createRedisClient) return true
+  if (!state.warnedRedisDependency) {
+    safeLog(state.logger, "warn", {
+      msg: "realtime-ws:redis_client_missing",
+      hint: "Install dependency 'redis' in @chroma/api to enable cross-process websocket fanout.",
+    })
+    state.warnedRedisDependency = true
+  }
+  return false
 }
 
 const normalizeTokenPayload = (token) => {
@@ -141,9 +178,192 @@ const publishToSockets = (sockets, payload, filters = null) => {
   return sent
 }
 
+const publishCartEventLocal = ({ cartId, type = "cart.updated", data = null, ts = null }) => {
+  if (!state.started || !cartId) return 0
+  const sockets = state.cartSockets.get(cartId)
+  if (!sockets?.size) return 0
+  const payload = {
+    type,
+    cart_id: cartId,
+    data: data || undefined,
+    ts: ts || new Date().toISOString(),
+  }
+  return publishToSockets(sockets, payload)
+}
+
+const publishOrderEventLocal = ({
+  customerId = null,
+  companyId = null,
+  orderId = null,
+  cartId = null,
+  type = "order.updated",
+  data = null,
+  ts = null,
+}) => {
+  if (!state.started || !state.orderSockets.size) return 0
+  const payload = {
+    type,
+    order_id: orderId || undefined,
+    cart_id: cartId || undefined,
+    company_id: companyId || undefined,
+    customer_id: customerId || undefined,
+    data: data || undefined,
+    ts: ts || new Date().toISOString(),
+  }
+  return publishToSockets(state.orderSockets, payload, { customerId })
+}
+
+const publishNotificationEventLocal = ({
+  customerId = null,
+  companyId = null,
+  type = "notification.created",
+  notification = null,
+  data = null,
+  ts = null,
+}) => {
+  if (!state.started || !state.notificationSockets.size) return 0
+  const payload = {
+    type,
+    company_id: companyId || undefined,
+    customer_id: customerId || undefined,
+    notification: notification || undefined,
+    data: data || undefined,
+    ts: ts || new Date().toISOString(),
+  }
+  return publishToSockets(state.notificationSockets, payload, { customerId })
+}
+
+const ensureRedisPublisher = async () => {
+  if (!canUseRedisFanout()) return null
+  if (state.redisPublisher) return state.redisPublisher
+  if (state.redisPublisherPromise) return state.redisPublisherPromise
+
+  state.redisPublisherPromise = (async () => {
+    const client = createRedisClient({ url: REDIS_URL })
+    client.on("error", (error) => {
+      safeLog(state.logger, "warn", {
+        msg: "realtime-ws:redis_publisher_error",
+        error: error?.message || "unknown_error",
+      })
+    })
+    await client.connect()
+    state.redisPublisher = client
+    safeLog(state.logger, "info", {
+      msg: "realtime-ws:redis_publisher_connected",
+      channel: REALTIME_EVENTS_CHANNEL,
+    })
+    return client
+  })()
+
+  return state.redisPublisherPromise
+}
+
+const dispatchRedisEnvelope = (envelope) => {
+  if (!envelope || typeof envelope !== "object") return
+  if (envelope.source && envelope.source === state.instanceId) return
+  const channel = String(envelope.channel || "")
+  if (!EVENT_CHANNELS.has(channel)) return
+  const payload = envelope.payload && typeof envelope.payload === "object" ? envelope.payload : {}
+
+  if (channel === "carts") {
+    publishCartEventLocal(payload)
+    return
+  }
+  if (channel === "orders") {
+    publishOrderEventLocal(payload)
+    return
+  }
+  if (channel === "notifications") {
+    publishNotificationEventLocal(payload)
+  }
+}
+
+const ensureRedisSubscriber = async () => {
+  if (!canUseRedisFanout()) return null
+  if (state.redisSubscriber) return state.redisSubscriber
+  if (state.redisSubscriberPromise) return state.redisSubscriberPromise
+
+  state.redisSubscriberPromise = (async () => {
+    const client = createRedisClient({ url: REDIS_URL })
+    client.on("error", (error) => {
+      safeLog(state.logger, "warn", {
+        msg: "realtime-ws:redis_subscriber_error",
+        error: error?.message || "unknown_error",
+      })
+    })
+    await client.connect()
+    await client.subscribe(REALTIME_EVENTS_CHANNEL, (message) => {
+      try {
+        const envelope = JSON.parse(String(message || "{}"))
+        dispatchRedisEnvelope(envelope)
+      } catch (error) {
+        safeLog(state.logger, "warn", {
+          msg: "realtime-ws:redis_message_parse_failed",
+          error: error?.message || "invalid_json",
+        })
+      }
+    })
+    state.redisSubscriber = client
+    state.redisSubscribed = true
+    safeLog(state.logger, "info", {
+      msg: "realtime-ws:redis_subscriber_ready",
+      channel: REALTIME_EVENTS_CHANNEL,
+    })
+    return client
+  })()
+
+  return state.redisSubscriberPromise
+}
+
+const publishRedisEnvelope = async (channel, payload) => {
+  if (!EVENT_CHANNELS.has(channel)) return false
+  const client = await ensureRedisPublisher()
+  if (!client) return false
+
+  const envelope = {
+    source: state.instanceId,
+    channel,
+    payload,
+    ts: new Date().toISOString(),
+  }
+  await client.publish(REALTIME_EVENTS_CHANNEL, JSON.stringify(envelope))
+  return true
+}
+
+const fanoutEvent = (channel, payload, localPublisher) => {
+  const localSent = localPublisher(payload)
+  publishRedisEnvelope(channel, payload).catch((error) => {
+    safeLog(state.logger, "warn", {
+      msg: "realtime-ws:publish_failed",
+      channel,
+      error: error?.message || "unknown_error",
+    })
+  })
+
+  if (!localSent && !REDIS_URL && !state.warnedNoFanout) {
+    safeLog(state.logger, "warn", {
+      msg: "realtime-ws:no_fanout_backend",
+      hint: "Configure REDIS_URL for cross-process realtime events.",
+    })
+    state.warnedNoFanout = true
+  }
+
+  return localSent
+}
+
 const startRealtimeWsServer = (logger = console) => {
-  if (state.started) return
   state.logger = logger || console
+  if (!EMBEDDED_WS_ENABLED) {
+    if (!state.warnedEmbeddedDisabled) {
+      safeLog(state.logger, "info", {
+        msg: "realtime-ws:embedded_disabled",
+        hint: "Set REALTIME_EMBEDDED_WS=true when running a dedicated realtime service.",
+      })
+      state.warnedEmbeddedDisabled = true
+    }
+    return false
+  }
+  if (state.started) return true
 
   const server = http.createServer((_req, res) => {
     res.statusCode = 426
@@ -219,20 +439,25 @@ const startRealtimeWsServer = (logger = console) => {
   state.server = server
   state.wss = wss
   state.started = true
+
+  ensureRedisSubscriber().catch((error) => {
+    safeLog(state.logger, "warn", {
+      msg: "realtime-ws:redis_subscriber_start_failed",
+      error: error?.message || "unknown_error",
+    })
+  })
+
+  return true
 }
 
 const publishCartEvent = ({ cartId, type = "cart.updated", data = null }) => {
-  if (!state.started) startRealtimeWsServer(state.logger)
-  if (!cartId) return 0
-  const sockets = state.cartSockets.get(cartId)
-  if (!sockets?.size) return 0
   const payload = {
+    cartId,
     type,
-    cart_id: cartId,
     data: data || undefined,
     ts: new Date().toISOString(),
   }
-  return publishToSockets(sockets, payload)
+  return fanoutEvent("carts", payload, publishCartEventLocal)
 }
 
 const publishOrderEvent = ({
@@ -243,18 +468,16 @@ const publishOrderEvent = ({
   type = "order.updated",
   data = null,
 }) => {
-  if (!state.started) startRealtimeWsServer(state.logger)
-  if (!state.orderSockets.size) return 0
   const payload = {
+    customerId: customerId || undefined,
+    companyId: companyId || undefined,
+    orderId: orderId || undefined,
+    cartId: cartId || undefined,
     type,
-    order_id: orderId || undefined,
-    cart_id: cartId || undefined,
-    company_id: companyId || undefined,
-    customer_id: customerId || undefined,
     data: data || undefined,
     ts: new Date().toISOString(),
   }
-  return publishToSockets(state.orderSockets, payload, { customerId })
+  return fanoutEvent("orders", payload, publishOrderEventLocal)
 }
 
 const publishNotificationEvent = ({
@@ -264,17 +487,15 @@ const publishNotificationEvent = ({
   notification = null,
   data = null,
 }) => {
-  if (!state.started) startRealtimeWsServer(state.logger)
-  if (!state.notificationSockets.size) return 0
   const payload = {
+    customerId: customerId || undefined,
+    companyId: companyId || undefined,
     type,
-    company_id: companyId || undefined,
-    customer_id: customerId || undefined,
     notification: notification || undefined,
     data: data || undefined,
     ts: new Date().toISOString(),
   }
-  return publishToSockets(state.notificationSockets, payload, { customerId })
+  return fanoutEvent("notifications", payload, publishNotificationEventLocal)
 }
 
 module.exports = {

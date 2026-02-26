@@ -19,7 +19,10 @@
         "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51ShAH44FnSFW832PQrdZddIAz4fMdRyFMuXYCjKRjK2CqA0M4aZkkKJlvEhrFyYT1J7Yr7xaOTHBFcLpUu2WlA3600BmQUrc4l",
         "EXPO_PUBLIC_MEDUSA_REGION_ID": "reg_01KFGXJNTX18XQ47Y4F17GQQ7P",
         "EXPO_PUBLIC_MEDUSA_CURRENCY_CODE": "brl",
-        "EXPO_PUBLIC_ENABLE_PIX": "true"
+        "EXPO_PUBLIC_ENABLE_PIX": "true",
+        "EXPO_PUBLIC_ORDERS_WS_URL": "wss://chromaapi-realtime-production.up.railway.app/store/custom/orders/ws",
+        "EXPO_PUBLIC_CART_WS_URL": "wss://chromaapi-realtime-production.up.railway.app/store/custom/carts/ws",
+        "EXPO_PUBLIC_NOTIFICATION_WS_URL": "wss://chromaapi-realtime-production.up.railway.app/store/custom/notifications/ws"
       }
     },
     "production": {
@@ -36,7 +39,10 @@
         "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51ShAH44FnSFW832PQrdZddIAz4fMdRyFMuXYCjKRjK2CqA0M4aZkkKJlvEhrFyYT1J7Yr7xaOTHBFcLpUu2WlA3600BmQUrc4l",
         "EXPO_PUBLIC_MEDUSA_REGION_ID": "reg_01KFGXJNTX18XQ47Y4F17GQQ7P",
         "EXPO_PUBLIC_MEDUSA_CURRENCY_CODE": "brl",
-        "EXPO_PUBLIC_ENABLE_PIX": "true"
+        "EXPO_PUBLIC_ENABLE_PIX": "true",
+        "EXPO_PUBLIC_ORDERS_WS_URL": "wss://chromaapi-realtime-production.up.railway.app/store/custom/orders/ws",
+        "EXPO_PUBLIC_CART_WS_URL": "wss://chromaapi-realtime-production.up.railway.app/store/custom/carts/ws",
+        "EXPO_PUBLIC_NOTIFICATION_WS_URL": "wss://chromaapi-realtime-production.up.railway.app/store/custom/notifications/ws"
       }
     },
     "staging": {
@@ -54,7 +60,10 @@
         "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51ShAH44FnSFW832PQrdZddIAz4fMdRyFMuXYCjKRjK2CqA0M4aZkkKJlvEhrFyYT1J7Yr7xaOTHBFcLpUu2WlA3600BmQUrc4l",
         "EXPO_PUBLIC_MEDUSA_REGION_ID": "reg_01KFGXJNTX18XQ47Y4F17GQQ7P",
         "EXPO_PUBLIC_MEDUSA_CURRENCY_CODE": "brl",
-        "EXPO_PUBLIC_ENABLE_PIX": "true"
+        "EXPO_PUBLIC_ENABLE_PIX": "true",
+        "EXPO_PUBLIC_ORDERS_WS_URL": "wss://chromaapi-realtime-production.up.railway.app/store/custom/orders/ws",
+        "EXPO_PUBLIC_CART_WS_URL": "wss://chromaapi-realtime-production.up.railway.app/store/custom/carts/ws",
+        "EXPO_PUBLIC_NOTIFICATION_WS_URL": "wss://chromaapi-realtime-production.up.railway.app/store/custom/notifications/ws"
       }
     }
   },
