@@ -1,4 +1,6 @@
-const pollStripePaymentSessions = require("../../../../../jobs/poll-stripe-payment-sessions")
+const pollStripePaymentSessionsJob = require("../../../../../jobs/poll-stripe-payment-sessions")
+const pollStripePaymentSessions =
+  pollStripePaymentSessionsJob?.default || pollStripePaymentSessionsJob
 
 const POST = async (req, res) => {
   try {
