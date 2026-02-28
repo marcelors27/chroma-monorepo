@@ -209,6 +209,7 @@ export type SectionId =
   | "promocoes"
   | "canais"
   | "usuarios"
+  | "parceiros"
 
 export type SalesChannel = {
   id: string

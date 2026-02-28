@@ -22,6 +22,7 @@ import PushNotificationsSection from "./modules/PushNotificationsSection"
 import StockSection from "./modules/StockSection"
 import UsersSection from "./modules/UsersSection"
 import BusinessTypesSection from "./modules/BusinessTypesSection"
+import PartnersSection from "./modules/PartnersSection"
 import ToastContainer from "./modules/ToastContainer"
 import adminAuthBg from "./assets/admin-auth-bg.jpg"
 import adminDashboardBg from "./assets/admin-dashboard-bg.jpg"
@@ -321,6 +322,7 @@ export default function App() {
         path: "/estabelecimentos-pendentes",
         count: pendingCompanies.length,
       },
+      { id: "parceiros", label: "Parceiros", path: "/parceiros", count: companies.length },
       { id: "produtos", label: "Produtos", path: "/produtos", count: products.length },
       { id: "fabricantes", label: "Fabricantes", path: "/fabricantes", count: manufacturers.length },
       { id: "entregas", label: "Formas de entrega", path: "/entregas", count: deliveryMethodsCount },
@@ -351,6 +353,7 @@ export default function App() {
       storeUsers.length,
       businessTypes.length,
       manufacturers.length,
+      companies.length,
     ]
   )
 
@@ -386,7 +389,16 @@ export default function App() {
       },
       {
         label: "Configurações",
-        items: ["estabelecimentos-pendentes", "canais", "usuarios", "tipos-negocio", "fabricantes", "emails", "email-logs"]
+        items: [
+          "estabelecimentos-pendentes",
+          "parceiros",
+          "canais",
+          "usuarios",
+          "tipos-negocio",
+          "fabricantes",
+          "emails",
+          "email-logs",
+        ]
           .map((id) => sectionById.get(id))
           .filter(Boolean),
       },
@@ -935,6 +947,27 @@ export default function App() {
                 <Route
                   path="/condominios-pendentes/:companyId"
                   element={<PendingCompaniesLegacyRoute />}
+                />
+                <Route
+                  path="/parceiros"
+                  element={
+                    <PartnersSection
+                      companies={companies}
+                      storeUsers={storeUsers}
+                      businessTypes={businessTypes}
+                    />
+                  }
+                />
+                <Route
+                  path="/parceiros/:companyId"
+                  element={
+                    <PartnersSection
+                      companies={companies}
+                      storeUsers={storeUsers}
+                      businessTypes={businessTypes}
+                      mode="detail"
+                    />
+                  }
                 />
                 <Route
                   path="/noticias"
