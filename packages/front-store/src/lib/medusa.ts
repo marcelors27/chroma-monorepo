@@ -214,6 +214,19 @@ export type MedusaMarketingBanner = {
   updated_at?: string | null
 }
 
+export type UserNotification = {
+  id: string
+  title: string
+  message: string
+  status?: string
+  order_id?: string
+  company_id?: string
+  payment_collection_id?: string
+  created_at?: string
+  read?: boolean
+  metadata?: Record<string, any>
+}
+
 export type MedusaManufacturer = {
   id: string
   name: string
@@ -1038,6 +1051,19 @@ export const registerPushToken = async (payload: {
   return apiFetch("/store/push-tokens", {
     method: "POST",
     body: JSON.stringify(payload),
+  })
+}
+
+export const listNotifications = async () => {
+  return apiFetch<{ notifications: UserNotification[] }>("/store/notifications", {
+    method: "GET",
+  })
+}
+
+export const markNotificationsAsRead = async (readIds: string[]) => {
+  return apiFetch<{ notifications: UserNotification[] }>("/store/notifications", {
+    method: "POST",
+    body: JSON.stringify({ read_ids: readIds }),
   })
 }
 

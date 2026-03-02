@@ -1,9 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { toast } from "@/lib/toast";
-import { getTokenValue, listNews } from "@/lib/medusa";
+import { getTokenValue, listNews, listNotifications, markNotificationsAsRead } from "@/lib/medusa";
 
-type NotificationStatus = "confirmed" | "preparing" | "shipping" | "delivered" | "news";
+type NotificationStatus =
+  | "confirmed"
+  | "preparing"
+  | "shipping"
+  | "delivered"
+  | "news"
+  | "order_updated"
+  | "delivery_updated"
+  | "pending_pix"
+  | "pending_boleto";
 
 export interface AppNotification {
   id: string;
@@ -28,6 +37,49 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 const NOTIFICATION_WS_URL = process.env.EXPO_PUBLIC_NOTIFICATION_WS_URL || "";
+const NOTIFICATION_STORAGE_KEY = "orderNotifications";
+const KNOWN_STATUS: NotificationStatus[] = [
+  "confirmed",
+  "preparing",
+  "shipping",
+  "delivered",
+  "news",
+  "order_updated",
+  "delivery_updated",
+  "pending_pix",
+  "pending_boleto",
+];
+
+const normalizeStatus = (value?: unknown): NotificationStatus => {
+  const raw = String(value || "").toLowerCase();
+  const aliases: Record<string, NotificationStatus> = {
+    shipped: "shipping",
+    fulfilled: "shipping",
+    delivery_updated: "delivery_updated",
+    order_updated: "order_updated",
+    pending_pix: "pending_pix",
+    pending_boleto: "pending_boleto",
+    pending: "order_updated",
+    processing: "preparing",
+    completed: "delivered",
+  };
+  if (KNOWN_STATUS.includes(raw as NotificationStatus)) {
+    return raw as NotificationStatus;
+  }
+  if (aliases[raw]) return aliases[raw];
+  return "news";
+};
+
+const buildNotificationKey = (notification: {
+  title: string;
+  message: string;
+  status: NotificationStatus;
+  orderId?: string;
+}) => {
+  return [notification.status, notification.orderId || "", notification.title, notification.message]
+    .join("|")
+    .toLowerCase();
+};
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -43,10 +95,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const loadNotifications = async () => {
-      const saved = await AsyncStorage.getItem("orderNotifications");
+      const saved = await AsyncStorage.getItem(NOTIFICATION_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        setNotifications(parsed.map((n: any) => ({ ...n, timestamp: new Date(n.timestamp) })));
+        const normalized = parsed.map((n: any) => ({ ...n, timestamp: new Date(n.timestamp) }));
+        setNotifications(normalized);
+        normalized.forEach((item: AppNotification) => {
+          seenKeysRef.current.add(buildNotificationKey(item));
+        });
       }
     };
 
@@ -62,7 +118,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem("orderNotifications", JSON.stringify(notifications));
+    AsyncStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(notifications));
   }, [notifications]);
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
@@ -74,25 +130,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
-  const normalizeStatus = (value?: unknown): NotificationStatus => {
-    const raw = String(value || "").toLowerCase();
-    if (["confirmed", "preparing", "shipping", "delivered", "news"].includes(raw)) {
-      return raw as NotificationStatus;
-    }
-    return "news";
-  };
-
-  const buildNotificationKey = (notification: {
-    title: string;
-    message: string;
-    status: NotificationStatus;
-    orderId?: string;
-  }) => {
-    return [notification.status, notification.orderId || "", notification.title, notification.message]
-      .join("|")
-      .toLowerCase();
-  };
-
   const addNotification = useCallback((notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
     if (!hasPermission) return;
     const dedupeKey = buildNotificationKey(notification);
@@ -103,10 +140,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       if (first) seenKeysRef.current.delete(first);
     }
 
+    const now = new Date();
     const newNotification: AppNotification = {
       ...notification,
-      id: `notif-${Date.now()}`,
-      timestamp: new Date(),
+      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: now,
       read: false,
     };
 
@@ -119,6 +157,43 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     });
 
   }, [hasPermission]);
+
+  const mergeRemoteHistory = useCallback((items: any[]) => {
+    if (!Array.isArray(items) || !items.length) return;
+    setNotifications((previous) => {
+      const map = new Map<string, AppNotification>();
+      previous.forEach((item) => map.set(item.id, item));
+      items.forEach((item) => {
+        if (!item?.id || !item?.title || !item?.message) return;
+        const merged: AppNotification = {
+          id: String(item.id),
+          orderId: item.order_id ? String(item.order_id) : undefined,
+          title: String(item.title),
+          message: String(item.message),
+          status: normalizeStatus(item.status),
+          timestamp: item.created_at ? new Date(item.created_at) : new Date(),
+          read: Boolean(item.read),
+        };
+        map.set(merged.id, merged);
+        seenKeysRef.current.add(buildNotificationKey(merged));
+      });
+      return Array.from(map.values()).sort(
+        (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
+      );
+    });
+  }, []);
+
+  useEffect(() => {
+    const loadRemoteNotifications = async () => {
+      try {
+        const response = await listNotifications();
+        mergeRemoteHistory(response?.notifications || []);
+      } catch {
+        // ignore remote history fetch errors
+      }
+    };
+    loadRemoteNotifications();
+  }, [mergeRemoteHistory]);
 
   const parseWsNotification = (payload: any): Omit<AppNotification, "id" | "timestamp" | "read"> | null => {
     const root = payload?.notification || payload?.data || payload;
@@ -179,7 +254,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const connectSocket = async () => {
     if (isUnmountedRef.current) return;
     clearSocket(false);
-    const token = await getTokenValue().catch(() => null);
+    let token: string | null = null;
+    try {
+      token = getTokenValue();
+    } catch {
+      token = null;
+    }
     const url = resolveWsUrl(token);
     if (!url) return;
 
@@ -263,11 +343,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setNotifications(prev =>
       prev.map(n => (n.id === id ? { ...n, read: true } : n))
     );
+    markNotificationsAsRead([id]).catch(() => undefined);
   }, []);
 
   const markAllAsRead = useCallback(() => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  }, []);
+    const ids = notifications.filter((item) => !item.read).map((item) => item.id);
+    if (ids.length) {
+      markNotificationsAsRead(ids).catch(() => undefined);
+    }
+  }, [notifications]);
 
   const clearNotifications = useCallback(() => {
     setNotifications([]);

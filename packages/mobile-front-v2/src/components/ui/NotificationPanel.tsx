@@ -11,6 +11,10 @@ const statusIcons = {
   preparing: Package,
   shipping: Truck,
   delivered: CheckCheck,
+  order_updated: Package,
+  delivery_updated: Truck,
+  pending_pix: Bell,
+  pending_boleto: Bell,
   news: Newspaper,
 };
 
@@ -19,6 +23,10 @@ const statusColors = {
   preparing: { color: "#F59E0B", backgroundColor: "rgba(245, 158, 11, 0.12)" },
   shipping: { color: "#A855F7", backgroundColor: "rgba(168, 85, 247, 0.12)" },
   delivered: { color: "#34D399", backgroundColor: "rgba(52, 211, 153, 0.12)" },
+  order_updated: { color: "#5DA2E6", backgroundColor: "rgba(93, 162, 230, 0.12)" },
+  delivery_updated: { color: "#34D399", backgroundColor: "rgba(52, 211, 153, 0.12)" },
+  pending_pix: { color: "#F59E0B", backgroundColor: "rgba(245, 158, 11, 0.12)" },
+  pending_boleto: { color: "#A855F7", backgroundColor: "rgba(168, 85, 247, 0.12)" },
   news: { color: "#5DA2E6", backgroundColor: "rgba(93, 162, 230, 0.12)" },
 };
 

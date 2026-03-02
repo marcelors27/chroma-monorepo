@@ -200,6 +200,8 @@ export type SectionId =
   | "test-payment-logs"
   | "pix-manual"
   | "pagamentos"
+  | "push"
+  | "estabelecimentos-pendentes"
   | "produtos"
   | "fabricantes"
   | "entregas"
@@ -210,6 +212,21 @@ export type SectionId =
   | "canais"
   | "usuarios"
   | "parceiros"
+  | "tipos-negocio"
+  | "acessos"
+
+export type AdminAccessProfile = "admin" | "partner" | "support"
+
+export type AdminSectionDefinition = {
+  id: SectionId
+  label: string
+  path: string
+  count: number
+}
+
+export type ProfilePermissions = Record<AdminAccessProfile, SectionId[]>
+
+export type UserProfileAssignments = Record<string, AdminAccessProfile>
 
 export type SalesChannel = {
   id: string

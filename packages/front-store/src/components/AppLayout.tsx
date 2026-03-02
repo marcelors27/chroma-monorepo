@@ -19,6 +19,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import CartDrawer from "@/components/CartDrawer";
+import NotificationDrawer from "@/components/NotificationDrawer";
 import { clearSession, getActiveCondo, listCompanies, setActiveCondo } from "@/lib/medusa";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import { registerWebPush } from "@/lib/push";
@@ -147,12 +148,15 @@ const AppLayout = () => {
         {showSidebar && (
           <aside className="hidden lg:flex w-72 border-r border-border/70 bg-background/80 backdrop-blur-xl flex-col flex-shrink-0">
           <div className="p-6 border-b border-border/70">
-            <Link to="/dashboard" className="flex items-center gap-2">
-              <img src={logo} alt="Chroma" className="h-8 w-8" />
-              <span className="text-xl font-bold text-primary">
-                Chroma <span className="text-white">Store</span>
-              </span>
-            </Link>
+            <div className="flex items-center justify-between gap-2">
+              <Link to="/dashboard" className="flex items-center gap-2">
+                <img src={logo} alt="Chroma" className="h-8 w-8" />
+                <span className="text-xl font-bold text-primary">
+                  Chroma <span className="text-white">Store</span>
+                </span>
+              </Link>
+              <NotificationDrawer />
+            </div>
           </div>
 
           {/* Condo Selector */}
@@ -233,6 +237,7 @@ const AppLayout = () => {
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                <NotificationDrawer />
                 <CartDrawer />
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>

@@ -1,4 +1,5 @@
-const { ContainerRegistrationKeys } = require("@medusajs/framework/utils")
+const { ContainerRegistrationKeys, remoteQueryObjectFromString } = require("@medusajs/framework/utils")
+const { updateCustomersWorkflow } = require("@medusajs/core-flows")
 const { mapPushNotificationRow } = require("../../../../utils/push-notifications")
 const { sendFcm, sendApns, sendWebPush, sendExpo } = require("../../../../utils/push-sender")
 const { publishNotificationEvent } = require("../../../../services/realtime-ws")
@@ -33,6 +34,46 @@ const buildFailureSummary = ({ sent, failed, fcmFailed, apnsFailed, webFailed, e
     `expo_failed=${expoFailed}`,
   ]
   return parts.join(", ")
+}
+
+const fetchCustomersByIds = async (scope, ids) => {
+  if (!ids?.length) return []
+  const remoteQuery = scope.resolve(ContainerRegistrationKeys.REMOTE_QUERY)
+  const query = remoteQueryObjectFromString({
+    entryPoint: "customer",
+    variables: { filters: { id: ids }, limit: Math.min(ids.length, 500) },
+    fields: ["id", "metadata"],
+  })
+  const customers = await remoteQuery(query)
+  return Array.isArray(customers) ? customers : []
+}
+
+const appendNotificationHistoryForCustomers = async (scope, customerIds, notification) => {
+  if (!customerIds?.length) return
+  const customers = await fetchCustomersByIds(scope, customerIds)
+  for (const customer of customers) {
+    const current = Array.isArray(customer?.metadata?.notifications_history)
+      ? customer.metadata.notifications_history
+      : []
+    const dedupeKey = `${notification.status}|${notification.id}|${notification.message}`
+    const deduped = current.filter((item) => item?.dedupe_key !== dedupeKey)
+    const next = [
+      {
+        ...notification,
+        read: false,
+        dedupe_key: dedupeKey,
+      },
+      ...deduped,
+    ].slice(0, 200)
+    await updateCustomersWorkflow(scope).run({
+      input: {
+        selector: { id: customer.id },
+        update: {
+          metadata: { ...(customer.metadata || {}), notifications_history: next },
+        },
+      },
+    })
+  }
 }
 
 const POST = async (req, res) => {
@@ -227,29 +268,27 @@ const POST = async (req, res) => {
       })
 
     if (status === "sent" || status === "partial") {
+      const notificationPayload = {
+        id: `${notification.id}:${Date.now()}`,
+        status: "news",
+        title: notification.title,
+        message: notification.message,
+        created_at: new Date().toISOString(),
+      }
       if (targetCustomerIds.length) {
+        await appendNotificationHistoryForCustomers(req.scope, targetCustomerIds, notificationPayload)
         for (const customerId of targetCustomerIds) {
           publishNotificationEvent({
             customerId,
             type: "notification.push",
-            notification: {
-              id: notification.id,
-              status: "news",
-              title: notification.title,
-              message: notification.message,
-            },
+            notification: notificationPayload,
             data: { status },
           })
         }
       } else {
         publishNotificationEvent({
           type: "notification.push",
-          notification: {
-            id: notification.id,
-            status: "news",
-            title: notification.title,
-            message: notification.message,
-          },
+          notification: notificationPayload,
           data: { status },
         })
       }

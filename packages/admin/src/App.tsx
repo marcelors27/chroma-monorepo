@@ -23,12 +23,15 @@ import StockSection from "./modules/StockSection"
 import UsersSection from "./modules/UsersSection"
 import BusinessTypesSection from "./modules/BusinessTypesSection"
 import PartnersSection from "./modules/PartnersSection"
+import AccessManagementSection from "./modules/AccessManagementSection"
 import ToastContainer from "./modules/ToastContainer"
 import adminAuthBg from "./assets/admin-auth-bg.jpg"
 import adminDashboardBg from "./assets/admin-dashboard-bg.jpg"
 import logo from "./assets/logo.png"
 import {
   AdminCompany,
+  AdminAccessProfile,
+  AdminSectionDefinition,
   MarketingBanner,
   News,
   Order,
@@ -41,6 +44,9 @@ import {
   ShippingOption,
   StoreUser,
   StockLocation,
+  SectionId,
+  ProfilePermissions,
+  UserProfileAssignments,
   BusinessType,
   Manufacturer,
 } from "./types"
@@ -49,10 +55,59 @@ const MEDUSA_URL = import.meta.env.VITE_MEDUSA_URL || "http://localhost:9000"
 const DEFAULT_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || "admin@chroma.local"
 const DEFAULT_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "supersecret"
 const TOKEN_STORAGE_KEY = "chroma_admin_token"
+const ACCESS_ASSIGNMENTS_STORAGE_KEY = "chroma_admin_profile_assignments"
+const ACCESS_PERMISSIONS_STORAGE_KEY = "chroma_admin_profile_permissions"
+const ADMIN_EMAIL_STORAGE_KEY = "chroma_admin_email"
+const HARDCODED_ADMIN_EMAILS = Array.from(
+  new Set(
+    [DEFAULT_EMAIL, ...(import.meta.env.VITE_HARDCODED_ADMIN_EMAILS || "").split(",")]
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean)
+  )
+)
 
 type Toast = { id: string; title: string; description?: string; variant?: "success" | "error" }
 
 type DashboardTopProduct = { title: string; quantity: number; revenue: number }
+
+const normalizeEmail = (value: string) => value.trim().toLowerCase()
+
+const parseAssignmentsFromStorage = (): UserProfileAssignments => {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = localStorage.getItem(ACCESS_ASSIGNMENTS_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== "object") return {}
+    const entries = Object.entries(parsed).filter(
+      ([key, value]) =>
+        typeof key === "string" && (value === "admin" || value === "partner" || value === "support")
+    ) as [string, AdminAccessProfile][]
+    return Object.fromEntries(entries)
+  } catch {
+    return {}
+  }
+}
+
+const parsePermissionsFromStorage = (): ProfilePermissions => {
+  const defaults: ProfilePermissions = { admin: [], partner: [], support: [] }
+  if (typeof window === "undefined") return defaults
+  try {
+    const raw = localStorage.getItem(ACCESS_PERMISSIONS_STORAGE_KEY)
+    if (!raw) return defaults
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== "object") return defaults
+    const toSectionIdList = (value: unknown): SectionId[] =>
+      Array.isArray(value) ? value.filter((entry): entry is SectionId => typeof entry === "string") : []
+    return {
+      admin: toSectionIdList((parsed as ProfilePermissions).admin),
+      partner: toSectionIdList((parsed as ProfilePermissions).partner),
+      support: toSectionIdList((parsed as ProfilePermissions).support),
+    }
+  } catch {
+    return defaults
+  }
+}
 
 export default function App() {
   const [email, setEmail] = useState(DEFAULT_EMAIL)
@@ -61,6 +116,16 @@ export default function App() {
     if (typeof window === "undefined") return null
     return localStorage.getItem(TOKEN_STORAGE_KEY)
   })
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>(() => {
+    if (typeof window === "undefined") return ""
+    return normalizeEmail(localStorage.getItem(ADMIN_EMAIL_STORAGE_KEY) || "")
+  })
+  const [profileAssignments, setProfileAssignments] = useState<UserProfileAssignments>(() =>
+    parseAssignmentsFromStorage()
+  )
+  const [permissionsByProfile, setPermissionsByProfile] = useState<ProfilePermissions>(() =>
+    parsePermissionsFromStorage()
+  )
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [products, setProducts] = useState<Product[]>([])
@@ -304,7 +369,7 @@ export default function App() {
     )
   }
 
-  const sections = useMemo(
+  const sections = useMemo<AdminSectionDefinition[]>(
     () => [
       { id: "dashboard", label: "Dashboard", path: "/dashboard", count: orders.length },
       { id: "noticias", label: "Notícias", path: "/noticias", count: news.length },
@@ -338,6 +403,7 @@ export default function App() {
         path: "/tipos-negocio",
         count: businessTypes.length,
       },
+      { id: "acessos", label: "Gestão de acessos", path: "/acessos", count: 0 },
     ],
     [
       marketingBanners.length,
@@ -357,6 +423,39 @@ export default function App() {
     ]
   )
 
+  const isHardcodedAdmin = useMemo(
+    () => HARDCODED_ADMIN_EMAILS.includes(normalizeEmail(currentUserEmail)),
+    [currentUserEmail]
+  )
+
+  const currentProfile = useMemo<AdminAccessProfile>(() => {
+    const normalizedEmail = normalizeEmail(currentUserEmail)
+    if (HARDCODED_ADMIN_EMAILS.includes(normalizedEmail)) return "admin"
+    return profileAssignments[normalizedEmail] || "support"
+  }, [currentUserEmail, profileAssignments])
+
+  const permittedSections = useMemo(() => {
+    if (currentProfile === "admin" || isHardcodedAdmin) {
+      return new Set<SectionId>(sections.map((section) => section.id))
+    }
+    return new Set<SectionId>(permissionsByProfile[currentProfile])
+  }, [currentProfile, isHardcodedAdmin, sections, permissionsByProfile])
+
+  const hasSectionAccess = (sectionId: SectionId) => {
+    if (currentProfile === "admin" || isHardcodedAdmin) return true
+    return permittedSections.has(sectionId)
+  }
+
+  const getSectionLabel = (sectionId: SectionId) =>
+    sections.find((section) => section.id === sectionId)?.label || "Módulo"
+
+  const accessibleSections = useMemo(
+    () => sections.filter((section) => hasSectionAccess(section.id)),
+    [sections, currentProfile, isHardcodedAdmin, permittedSections]
+  )
+
+  const defaultPath = accessibleSections[0]?.path || "/sem-acesso"
+
   const sectionById = useMemo(() => {
     const map = new Map<string, (typeof sections)[number]>()
     sections.forEach((section) => map.set(section.id, section))
@@ -367,24 +466,30 @@ export default function App() {
     () => [
       {
         label: "Comercial",
-        items: ["dashboard", "pedidos", "produtos"].map((id) => sectionById.get(id)).filter(Boolean),
+        items: ["dashboard", "pedidos", "produtos"]
+          .map((id) => sectionById.get(id))
+          .filter((item) => item && hasSectionAccess(item.id))
+          .filter(Boolean),
       },
       {
         label: "Marketing",
         items: ["noticias", "marketing", "promocoes", "push"]
           .map((id) => sectionById.get(id))
+          .filter((item) => item && hasSectionAccess(item.id))
           .filter(Boolean),
       },
       {
         label: "Financeiro",
         items: ["pagamentos", "cobrancas", "pix-manual", "test-payment-logs"]
           .map((id) => sectionById.get(id))
+          .filter((item) => item && hasSectionAccess(item.id))
           .filter(Boolean),
       },
       {
         label: "Operações",
         items: ["estoque", "entregas", "zonas-servico"]
           .map((id) => sectionById.get(id))
+          .filter((item) => item && hasSectionAccess(item.id))
           .filter(Boolean),
       },
       {
@@ -398,12 +503,14 @@ export default function App() {
           "fabricantes",
           "emails",
           "email-logs",
+          "acessos",
         ]
           .map((id) => sectionById.get(id))
+          .filter((item) => item && hasSectionAccess(item.id))
           .filter(Boolean),
       },
     ],
-    [sectionById]
+    [sectionById, currentProfile, isHardcodedAdmin, permittedSections]
   )
 
   const headers = useMemo(
@@ -416,6 +523,44 @@ export default function App() {
 
   const handleOrderDeleted = (orderId: string) => {
     setOrders((current) => current.filter((order) => order.id !== orderId))
+  }
+
+  const handleUpsertProfileAssignment = (emailInput: string, profile: AdminAccessProfile) => {
+    const normalized = normalizeEmail(emailInput)
+    if (!normalized) return
+    setProfileAssignments((current) => ({ ...current, [normalized]: profile }))
+  }
+
+  const handleRemoveProfileAssignment = (emailInput: string) => {
+    const normalized = normalizeEmail(emailInput)
+    setProfileAssignments((current) => {
+      if (!(normalized in current)) return current
+      const next = { ...current }
+      delete next[normalized]
+      return next
+    })
+  }
+
+  const handleTogglePermission = (
+    profile: Exclude<AdminAccessProfile, "admin">,
+    sectionId: SectionId
+  ) => {
+    setPermissionsByProfile((current) => {
+      const currentItems = current[profile]
+      const exists = currentItems.includes(sectionId)
+      const nextItems = exists
+        ? currentItems.filter((item) => item !== sectionId)
+        : [...currentItems, sectionId]
+      return { ...current, [profile]: nextItems }
+    })
+  }
+
+  const handleResetRestrictedProfiles = () => {
+    setPermissionsByProfile((current) => ({
+      ...current,
+      partner: [],
+      support: [],
+    }))
   }
 
   async function login(e?: FormEvent) {
@@ -437,10 +582,8 @@ export default function App() {
       if (!accessToken) {
         throw new Error("Token não retornado pelo backend")
       }
+      setCurrentUserEmail(normalizeEmail(email))
       setToken(accessToken)
-      if (location.pathname === "/" || location.pathname === "") {
-        navigate("/dashboard", { replace: true })
-      }
     } catch (err: any) {
       setError(err?.message || "Erro ao autenticar")
     } finally {
@@ -450,6 +593,7 @@ export default function App() {
 
   const handleLogout = () => {
     setToken(null)
+    setCurrentUserEmail("")
     setError("Sessão finalizada. Entre novamente.")
   }
 
@@ -463,11 +607,36 @@ export default function App() {
   }, [token])
 
   useEffect(() => {
-    if (!token) return
-    if (location.pathname === "/" || location.pathname === "") {
-      navigate("/dashboard", { replace: true })
+    if (typeof window === "undefined") return
+    const normalized = normalizeEmail(currentUserEmail)
+    if (normalized) {
+      localStorage.setItem(ADMIN_EMAIL_STORAGE_KEY, normalized)
+    } else {
+      localStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY)
     }
-  }, [token, location.pathname, navigate])
+  }, [currentUserEmail])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    localStorage.setItem(ACCESS_ASSIGNMENTS_STORAGE_KEY, JSON.stringify(profileAssignments))
+  }, [profileAssignments])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    localStorage.setItem(ACCESS_PERMISSIONS_STORAGE_KEY, JSON.stringify(permissionsByProfile))
+  }, [permissionsByProfile])
+
+  useEffect(() => {
+    if (!token) return
+    if (!currentUserEmail) {
+      setToken(null)
+      setError("Sessão sem identificação. Entre novamente.")
+      return
+    }
+    if (location.pathname === "/" || location.pathname === "") {
+      navigate(defaultPath, { replace: true })
+    }
+  }, [token, location.pathname, navigate, currentUserEmail, defaultPath])
 
   useEffect(() => {
     if (!token) return
@@ -779,6 +948,66 @@ export default function App() {
     backgroundImage: `linear-gradient(160deg, hsl(213 29% 6% / 0.94) 0%, hsl(217 24% 11% / 0.88) 45%, hsl(213 29% 6% / 0.98) 100%), url(${adminDashboardBg})`,
   }
 
+  const AccessDeniedSection = ({ sectionId }: { sectionId: SectionId }) => (
+    <section className="panel grid" style={{ gap: "0.75rem" }}>
+      <h1 className="page-title" style={{ fontSize: "1.5rem" }}>
+        Acesso negado
+      </h1>
+      <p className="muted">
+        Seu perfil <strong>{currentProfile}</strong> não possui permissão para o módulo{" "}
+        <strong>{getSectionLabel(sectionId)}</strong>.
+      </p>
+      <p className="muted">Solicite liberação para um administrador.</p>
+    </section>
+  )
+
+  const NoAccessSection = () => (
+    <section className="panel grid" style={{ gap: "0.75rem" }}>
+      <h1 className="page-title" style={{ fontSize: "1.5rem" }}>
+        Sem modulos liberados
+      </h1>
+      <p className="muted">
+        Seu perfil <strong>{currentProfile}</strong> está totalmente restrito no momento.
+      </p>
+      <p className="muted">Peça ao administrador para habilitar seus acessos.</p>
+    </section>
+  )
+
+  const sectionPathMatchers: Array<{ prefix: string; sectionId: SectionId }> = [
+    { prefix: "/dashboard", sectionId: "dashboard" },
+    { prefix: "/noticias", sectionId: "noticias" },
+    { prefix: "/marketing", sectionId: "marketing" },
+    { prefix: "/emails", sectionId: "emails" },
+    { prefix: "/cobrancas", sectionId: "cobrancas" },
+    { prefix: "/email-logs", sectionId: "email-logs" },
+    { prefix: "/test-payment-logs", sectionId: "test-payment-logs" },
+    { prefix: "/pix-manual", sectionId: "pix-manual" },
+    { prefix: "/pagamentos", sectionId: "pagamentos" },
+    { prefix: "/estabelecimentos-pendentes", sectionId: "estabelecimentos-pendentes" },
+    { prefix: "/condominios-pendentes", sectionId: "estabelecimentos-pendentes" },
+    { prefix: "/parceiros", sectionId: "parceiros" },
+    { prefix: "/fabricantes", sectionId: "fabricantes" },
+    { prefix: "/produtos", sectionId: "produtos" },
+    { prefix: "/entregas", sectionId: "entregas" },
+    { prefix: "/zonas-servico", sectionId: "zonas-servico" },
+    { prefix: "/push", sectionId: "push" },
+    { prefix: "/estoque", sectionId: "estoque" },
+    { prefix: "/pedidos", sectionId: "pedidos" },
+    { prefix: "/promocoes", sectionId: "promocoes" },
+    { prefix: "/canais", sectionId: "canais" },
+    { prefix: "/usuarios", sectionId: "usuarios" },
+    { prefix: "/tipos-negocio", sectionId: "tipos-negocio" },
+    { prefix: "/acessos", sectionId: "acessos" },
+  ]
+
+  const blockedSection = useMemo(() => {
+    const match = sectionPathMatchers.find((item) =>
+      location.pathname === item.prefix || location.pathname.startsWith(`${item.prefix}/`)
+    )
+    if (!match) return null
+    return hasSectionAccess(match.sectionId) ? null : match.sectionId
+  }, [location.pathname, currentProfile, isHardcodedAdmin, permittedSections])
+
   return (
     <>
       {!token ? (
@@ -844,11 +1073,11 @@ export default function App() {
                 </div>
                 <h2>Painel da operação</h2>
                 <span className="muted" style={{ fontSize: "0.9rem" }}>
-                  Selecione um módulo para trabalhar.
+                  {currentUserEmail || "sem usuário"} · perfil {currentProfile}
                 </span>
               </div>
               <nav className="nav">
-                {navGroups.map((group) => (
+                {navGroups.filter((group) => group.items.length > 0).map((group) => (
                   <div key={group.label} style={{ marginTop: "0.75rem" }}>
                     <span
                       className="muted"
@@ -883,8 +1112,11 @@ export default function App() {
                   <span className="muted">Erro: {catalogError}</span>
                 </div>
               )}
-              <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              {blockedSection ? (
+                <AccessDeniedSection sectionId={blockedSection} />
+              ) : (
+                <Routes>
+                <Route path="/" element={<Navigate to={defaultPath} replace />} />
                 <Route
                   path="/dashboard"
                   element={
@@ -1613,8 +1845,21 @@ export default function App() {
                 <Route path="/tipos-negocio/:businessTypeId/excluir" element={<BusinessTypeDeleteRoute />} />
                 <Route path="/usuarios/:userId/resetar-senha" element={<UsersResetRoute />} />
                 <Route path="/usuarios/:userId/status" element={<UsersStatusRoute />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/acessos" element={<AccessManagementSection
+                  currentUserEmail={currentUserEmail}
+                  hardcodedAdminEmails={HARDCODED_ADMIN_EMAILS}
+                  sections={sections}
+                  profileAssignments={profileAssignments}
+                  permissionsByProfile={permissionsByProfile}
+                  onUpsertAssignment={handleUpsertProfileAssignment}
+                  onRemoveAssignment={handleRemoveProfileAssignment}
+                  onTogglePermission={handleTogglePermission}
+                  onResetRestrictedProfiles={handleResetRestrictedProfiles}
+                />} />
+                <Route path="/sem-acesso" element={<NoAccessSection />} />
+                <Route path="*" element={<Navigate to={defaultPath} replace />} />
               </Routes>
+              )}
             </main>
           </div>
         </div>

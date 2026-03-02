@@ -284,6 +284,38 @@ const POST = async (req, res) => {
     })
   }
 
+  const appendNotificationHistory = async (notification) => {
+    const current = Array.isArray(customer?.metadata?.notifications_history)
+      ? customer.metadata.notifications_history
+      : []
+    const dedupeKey = `${notification.status}|${notification.payment_collection_id || ""}|${notification.message}`
+    const deduped = current.filter((item) => item?.dedupe_key !== dedupeKey)
+    const next = [
+      {
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        status: notification.status,
+        order_id: notification.order_id || null,
+        payment_collection_id: notification.payment_collection_id || null,
+        company_id: notification.company_id || null,
+        method: notification.method || null,
+        created_at: notification.created_at,
+        read: false,
+        dedupe_key: dedupeKey,
+      },
+      ...deduped,
+    ].slice(0, 200)
+    await updateCustomersWorkflow(req.scope).run({
+      input: {
+        selector: { id: customerId },
+        update: {
+          metadata: { ...(customer.metadata || {}), notifications_history: next },
+        },
+      },
+    })
+  }
+
   if (method === "boleto" && adminEmail) {
 
     let attachment = null
@@ -378,19 +410,24 @@ const POST = async (req, res) => {
     recipients: uniqueRecipients,
   })
 
+  const realtimeNotification = {
+    id: `${paymentCollectionId}:${Date.now()}`,
+    status: method === "boleto" ? "pending_boleto" : "pending_pix",
+    title: method === "boleto" ? "Boleto gerado" : "PIX gerado",
+    message: `Pagamento pendente para ${companyName}.`,
+    payment_collection_id: paymentCollectionId,
+    company_id: companyId,
+    method,
+    created_at: new Date().toISOString(),
+  }
+
+  await appendNotificationHistory(realtimeNotification)
+
   publishNotificationEvent({
     customerId,
     companyId,
     type: "notification.created",
-    notification: {
-      id: paymentCollectionId,
-      status: method === "boleto" ? "pending_boleto" : "pending_pix",
-      title: method === "boleto" ? "Boleto gerado" : "PIX gerado",
-      message: `Pagamento pendente para ${companyName}.`,
-      payment_collection_id: paymentCollectionId,
-      company_id: companyId,
-      method,
-    },
+    notification: realtimeNotification,
   })
 
   return res.status(200).json({ sent: true, recipients: uniqueRecipients })
