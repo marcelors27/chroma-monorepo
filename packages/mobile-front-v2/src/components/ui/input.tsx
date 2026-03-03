@@ -1,7 +1,13 @@
 import { Input as TamaguiInput } from "tamagui";
 import type { InputProps as TamaguiInputProps } from "tamagui";
 
-export function Input(props: TamaguiInputProps) {
+type InputProps = TamaguiInputProps & {
+  type?: "text" | "password" | string;
+};
+
+export function Input({ type, secureTextEntry, autoCapitalize, textContentType, ...props }: InputProps) {
+  const isPassword = type === "password";
+
   return (
     <TamaguiInput
       backgroundColor="$backgroundStrong"
@@ -13,6 +19,9 @@ export function Input(props: TamaguiInputProps) {
       borderRadius={16}
       paddingHorizontal={12}
       placeholderTextColor="#8C98A8"
+      secureTextEntry={secureTextEntry ?? isPassword}
+      autoCapitalize={autoCapitalize ?? (isPassword ? "none" : undefined)}
+      textContentType={textContentType ?? (isPassword ? "password" : undefined)}
       {...props}
     />
   );
