@@ -120,11 +120,11 @@ const unzipXlsx = (buffer) => {
 const parseSharedStrings = (xml) => {
   if (!xml) return []
   const values = []
-  const siRegex = /<si\b[^>]*>([\s\S]*?)<\/si>/g
+  const siRegex = /<(?:\w+:)?si\b[^>]*>([\s\S]*?)<\/(?:\w+:)?si>/g
   let match
   while ((match = siRegex.exec(xml))) {
     const texts = []
-    const textRegex = /<t\b[^>]*>([\s\S]*?)<\/t>/g
+    const textRegex = /<(?:\w+:)?t\b[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/g
     let textMatch
     while ((textMatch = textRegex.exec(match[1]))) {
       texts.push(decodeXml(textMatch[1]))
@@ -143,23 +143,23 @@ const cellValue = (attrs, body, sharedStrings) => {
   const type = getAttr(attrs, "t")
   if (type === "inlineStr") {
     const texts = []
-    const textRegex = /<t\b[^>]*>([\s\S]*?)<\/t>/g
+    const textRegex = /<(?:\w+:)?t\b[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/g
     let textMatch
     while ((textMatch = textRegex.exec(body))) texts.push(decodeXml(textMatch[1]))
     return texts.join("")
   }
-  const value = body.match(/<v\b[^>]*>([\s\S]*?)<\/v>/)?.[1] || ""
+  const value = body.match(/<(?:\w+:)?v\b[^>]*>([\s\S]*?)<\/(?:\w+:)?v>/)?.[1] || ""
   if (type === "s") return sharedStrings[Number(value)] || ""
   return decodeXml(value)
 }
 
 const parseWorksheet = (xml, sharedStrings) => {
   const rows = []
-  const rowRegex = /<row\b[^>]*>([\s\S]*?)<\/row>/g
+  const rowRegex = /<(?:\w+:)?row\b[^>]*>([\s\S]*?)<\/(?:\w+:)?row>/g
   let rowMatch
   while ((rowMatch = rowRegex.exec(xml))) {
     const row = []
-    const cellRegex = /<c\b([^>]*)>([\s\S]*?)<\/c>/g
+    const cellRegex = /<(?:\w+:)?c\b([^>]*)>([\s\S]*?)<\/(?:\w+:)?c>/g
     let cellMatch
     while ((cellMatch = cellRegex.exec(rowMatch[1]))) {
       const ref = getAttr(cellMatch[1], "r")
