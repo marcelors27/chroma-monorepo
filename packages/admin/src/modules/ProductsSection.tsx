@@ -6,6 +6,7 @@ import {
   faChevronDown,
   faChevronLeft,
   faChevronRight,
+  faFileImport,
   faFloppyDisk,
   faPen,
   faPlus,
@@ -136,6 +137,19 @@ export default function ProductsSection({
     manufacturer_id: "",
   })
   const [manufacturerFilter, setManufacturerFilter] = useState("")
+  const [catalogImportFile, setCatalogImportFile] = useState<File | null>(null)
+  const [catalogImportForm, setCatalogImportForm] = useState({
+    shipping_profile_id: "",
+    sales_channel_id: "",
+    default_price: "0",
+  })
+  const [catalogImportSaving, setCatalogImportSaving] = useState(false)
+  const [catalogImportResult, setCatalogImportResult] = useState<{
+    created: number
+    updated: number
+    skipped: number
+    failed: number
+  } | null>(null)
 
   const totalInventory = useMemo(() => {
     return products.reduce((acc, p) => {
@@ -247,6 +261,15 @@ export default function ProductsSection({
       return { ...prev, allowed_shipping_option_ids: ids }
     })
   }, [isCreateMode, productForm.shipping_profile_id, selectedProfileOptions])
+
+  useEffect(() => {
+    if (catalogImportForm.shipping_profile_id) return
+    if (!shippingProfiles.length) return
+    setCatalogImportForm((prev) => ({
+      ...prev,
+      shipping_profile_id: shippingProfiles[0]?.id || "",
+    }))
+  }, [catalogImportForm.shipping_profile_id, shippingProfiles])
 
   const toggleProductExpanded = (productId: string) => {
     setExpandedProducts((prev) => {
@@ -723,6 +746,69 @@ export default function ProductsSection({
     }
     const json = await res.json()
     return json?.inventory_items?.[0]?.id as string | undefined
+  }
+
+  const fileToBase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = String(reader.result || "")
+        resolve(result.includes(",") ? result.split(",").pop() || "" : result)
+      }
+      reader.onerror = () => reject(reader.error || new Error("Não foi possível ler o arquivo."))
+      reader.readAsDataURL(file)
+    })
+
+  const refreshProductsList = async () => {
+    const productFields = encodeURIComponent(
+      "+variants.inventory_quantity,+variants.prices,+variants.title,+variants.id,+variants.sku,+metadata,+shipping_profile_id"
+    )
+    const res = await fetch(`${medusaUrl}/admin/products?limit=50&fields=${productFields}`, {
+      headers,
+    })
+    if (!res.ok) return
+    const json = await res.json()
+    setProducts(json.products ?? [])
+  }
+
+  const importCatalogProducts = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!catalogImportFile) {
+      setProductError("Selecione o arquivo XLSX do catálogo.")
+      return
+    }
+    if (!catalogImportForm.shipping_profile_id) {
+      setProductError("Selecione um shipping profile para os produtos importados.")
+      return
+    }
+    setCatalogImportSaving(true)
+    setProductError(null)
+    setCatalogImportResult(null)
+    try {
+      const fileBase64 = await fileToBase64(catalogImportFile)
+      const res = await fetch(`${medusaUrl}/admin/catalog-products/import`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          file_base64: fileBase64,
+          shipping_profile_id: catalogImportForm.shipping_profile_id,
+          sales_channel_id: catalogImportForm.sales_channel_id || null,
+          default_price: catalogImportForm.default_price || "0",
+          currency_code: "brl",
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || "Não foi possível importar o catálogo.")
+      }
+      const json = await res.json()
+      setCatalogImportResult(json.summary || null)
+      await refreshProductsList()
+    } catch (err: any) {
+      setProductError(err?.message || "Erro ao importar catálogo.")
+    } finally {
+      setCatalogImportSaving(false)
+    }
   }
 
   async function createProduct(e: FormEvent) {
@@ -2086,6 +2172,116 @@ export default function ProductsSection({
           <strong style={{ fontSize: "1.6rem" }}>{openOrders}</strong>
           <span className="muted">Acompanhe a separação</span>
         </div>
+      </section>
+
+      <section className="panel">
+        <form className="grid" style={{ gap: "0.75rem" }} onSubmit={importCatalogProducts}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "1rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <h3>Importar catálogo de condomínios</h3>
+              <p className="muted" style={{ marginTop: "0.25rem" }}>
+                Atualiza produtos existentes pelo SKU e cria os SKUs novos da planilha.
+              </p>
+            </div>
+            <button
+              className="btn btn-secondary"
+              type="submit"
+              disabled={catalogImportSaving || !catalogImportFile}
+            >
+              <FontAwesomeIcon icon={faFileImport} />
+              {catalogImportSaving ? "Importando..." : "Importar"}
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gap: "0.75rem",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            }}
+          >
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Arquivo XLSX</span>
+              <input
+                type="file"
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                className="field-input"
+                onChange={(event) => setCatalogImportFile(event.target.files?.[0] || null)}
+              />
+            </label>
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Shipping profile</span>
+              <select
+                className="field-input"
+                value={catalogImportForm.shipping_profile_id}
+                onChange={(event) =>
+                  setCatalogImportForm((prev) => ({
+                    ...prev,
+                    shipping_profile_id: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Selecionar</option>
+                {shippingProfiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name || profile.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Sales Channel (opcional)</span>
+              <select
+                className="field-input"
+                value={catalogImportForm.sales_channel_id}
+                onChange={(event) =>
+                  setCatalogImportForm((prev) => ({
+                    ...prev,
+                    sales_channel_id: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Selecionar</option>
+                {salesChannels.map((channel) => (
+                  <option key={channel.id} value={channel.id}>
+                    {channel.name || channel.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid" style={{ gap: "0.35rem" }}>
+              <span className="muted">Preço padrão (R$)</span>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                className="field-input"
+                value={catalogImportForm.default_price}
+                onChange={(event) =>
+                  setCatalogImportForm((prev) => ({
+                    ...prev,
+                    default_price: event.target.value,
+                  }))
+                }
+              />
+            </label>
+          </div>
+
+          {catalogImportResult && (
+            <div className="muted">
+              Criados: {catalogImportResult.created} · Atualizados: {catalogImportResult.updated} ·
+              Ignorados: {catalogImportResult.skipped} · Falhas: {catalogImportResult.failed}
+            </div>
+          )}
+        </form>
       </section>
 
       <section className="panel">
