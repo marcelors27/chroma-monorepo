@@ -14,6 +14,7 @@ const {
 const REQUIRED_HEADERS = ["sku", "produto"]
 const DEFAULT_CURRENCY = "brl"
 const DEFAULT_PRODUCT_IMAGE_URL = "/placeholder.svg"
+const CREATE_BATCH_SIZE = 50
 
 const normalizeKey = (value) =>
   String(value || "")
@@ -256,40 +257,95 @@ const buildProductPayload = (row, options) => {
   }
 }
 
-const findVariantBySku = async (scope, sku) => {
-  const remoteQuery = scope.resolve(ContainerRegistrationKeys.REMOTE_QUERY)
-  const query = remoteQueryObjectFromString({
-    entryPoint: "product_variant",
-    variables: { filters: { sku } },
-    fields: [
-      "id",
-      "sku",
-      "title",
-      "product_id",
-      "product.id",
-      "product.title",
-      "product.thumbnail",
-      "product.images.id",
-      "product.images.url",
-      "product.metadata",
-      "price_set.prices.id",
-      "price_set.prices.currency_code",
-    ],
-  })
-  const variants = await remoteQuery(query)
-  return variants?.[0] || null
+const chunk = (items, size) => {
+  const chunks = []
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size))
+  }
+  return chunks
 }
 
-const upsertRow = async (scope, row, options) => {
+const findVariantsBySku = async (scope, skus) => {
+  const remoteQuery = scope.resolve(ContainerRegistrationKeys.REMOTE_QUERY)
+  const bySku = new Map()
+  for (const skuChunk of chunk(skus, 100)) {
+    const query = remoteQueryObjectFromString({
+      entryPoint: "product_variant",
+      variables: { filters: { sku: skuChunk } },
+      fields: [
+        "id",
+        "sku",
+        "title",
+        "product_id",
+        "product.id",
+        "product.title",
+        "product.thumbnail",
+        "product.images.id",
+        "product.images.url",
+        "product.metadata",
+        "price_set.prices.id",
+        "price_set.prices.currency_code",
+      ],
+    })
+    const variants = await remoteQuery(query)
+    for (const variant of variants || []) {
+      if (variant?.sku && !bySku.has(String(variant.sku).toUpperCase())) {
+        bySku.set(String(variant.sku).toUpperCase(), variant)
+      }
+    }
+  }
+  return bySku
+}
+
+const createRows = async (scope, rows, options, summary, results) => {
+  for (const rowChunk of chunk(rows, CREATE_BATCH_SIZE)) {
+    const products = rowChunk.map((row) => buildProductPayload(row, options))
+    try {
+      const { result } = await createProductsWorkflow(scope).run({
+        input: { products },
+      })
+      rowChunk.forEach((row, index) => {
+        summary.created += 1
+        results.push({
+          row: row.row_number,
+          action: "created",
+          product_id: result?.[index]?.id || null,
+          sku: row.sku,
+        })
+      })
+    } catch (err) {
+      for (const row of rowChunk) {
+        try {
+          const { result } = await createProductsWorkflow(scope).run({
+            input: { products: [buildProductPayload(row, options)] },
+          })
+          summary.created += 1
+          results.push({
+            row: row.row_number,
+            action: "created",
+            product_id: result?.[0]?.id || null,
+            sku: row.sku,
+          })
+        } catch (rowErr) {
+          summary.failed += 1
+          results.push({
+            row: row.row_number,
+            sku: row.sku,
+            action: "failed",
+            reason:
+              rowErr?.message ||
+              err?.message ||
+              "Falha ao criar produto",
+          })
+        }
+      }
+    }
+  }
+}
+
+const updateExistingRow = async (scope, row, existing, options) => {
   const payload = buildProductPayload(row, options)
   const variantPayload = payload.variants[0]
-  const existing = await findVariantBySku(scope, row.sku)
-  if (!existing?.id || !existing?.product_id) {
-    const { result } = await createProductsWorkflow(scope).run({
-      input: { products: [payload] },
-    })
-    return { action: "created", product_id: result?.[0]?.id || null, sku: row.sku }
-  }
 
   const existingMetadata = existing.product?.metadata || {}
   const existingImages = Array.isArray(existing.product?.images) ? existing.product.images : []
@@ -369,15 +425,26 @@ const POST = async (req, res) => {
 
   const summary = { created: 0, updated: 0, skipped: skipped.length, failed: 0 }
   const results = [...skipped.map((item) => ({ ...item, action: "skipped" }))]
+  const options = {
+    shipping_profile_id: body.shipping_profile_id,
+    sales_channel_id: body.sales_channel_id || null,
+    default_price: body.default_price,
+    currency_code: body.currency_code || DEFAULT_CURRENCY,
+  }
+  const existingBySku = await findVariantsBySku(
+    req.scope,
+    uniqueRows.map((row) => row.sku)
+  )
+  const rowsToCreate = []
 
   for (const row of uniqueRows) {
+    const existing = existingBySku.get(row.sku)
+    if (!existing?.id || !existing?.product_id) {
+      rowsToCreate.push(row)
+      continue
+    }
     try {
-      const result = await upsertRow(req.scope, row, {
-        shipping_profile_id: body.shipping_profile_id,
-        sales_channel_id: body.sales_channel_id || null,
-        default_price: body.default_price,
-        currency_code: body.currency_code || DEFAULT_CURRENCY,
-      })
+      const result = await updateExistingRow(req.scope, row, existing, options)
       summary[result.action] += 1
       results.push({ row: row.row_number, ...result })
     } catch (err) {
@@ -391,7 +458,9 @@ const POST = async (req, res) => {
     }
   }
 
-  res.json({ summary, results: results.slice(0, 200) })
+  await createRows(req.scope, rowsToCreate, options, summary, results)
+
+  res.json({ summary, results })
 }
 
 module.exports = { POST }
