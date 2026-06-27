@@ -65,6 +65,10 @@ const HARDCODED_ADMIN_EMAILS = Array.from(
       .filter(Boolean)
   )
 )
+const isAdminEmail = (value: string) => {
+  const normalized = normalizeEmail(value)
+  return HARDCODED_ADMIN_EMAILS.includes(normalized)
+}
 
 type Toast = { id: string; title: string; description?: string; variant?: "success" | "error" }
 
@@ -424,13 +428,13 @@ export default function App() {
   )
 
   const isHardcodedAdmin = useMemo(
-    () => HARDCODED_ADMIN_EMAILS.includes(normalizeEmail(currentUserEmail)),
+    () => isAdminEmail(currentUserEmail),
     [currentUserEmail]
   )
 
   const currentProfile = useMemo<AdminAccessProfile>(() => {
     const normalizedEmail = normalizeEmail(currentUserEmail)
-    if (HARDCODED_ADMIN_EMAILS.includes(normalizedEmail)) return "admin"
+    if (isAdminEmail(normalizedEmail)) return "admin"
     return profileAssignments[normalizedEmail] || "support"
   }, [currentUserEmail, profileAssignments])
 
@@ -1012,19 +1016,22 @@ export default function App() {
     <>
       {!token ? (
         <div className="page-background" style={loginBackgroundStyle}>
-          <div className="layout" data-testid="admin-login">
-            <header className="grid" style={{ gap: "0.75rem" }}>
+          <div className="layout login-layout" data-testid="admin-login">
+            <header className="panel login-intro">
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <img src={logo} alt="Chroma" style={{ width: "32px", height: "32px" }} />
                 <span className="pill">Chroma Admin</span>
               </div>
-              <h1 style={{ fontSize: "2.1rem" }}>Painel da operação</h1>
-              <p className="muted" style={{ maxWidth: "640px" }}>
-                Autentique com o usuário admin do Medusa para ver produtos, estoque e pedidos.
+              <h1>Painel da operação</h1>
+              <p className="muted">
+                Gerencie produtos, estoque, parceiros e pedidos em um único lugar.
+              </p>
+              <p className="muted">
+                Entre com o seu e-mail corporativo para continuar.
               </p>
             </header>
 
-            <form className="panel grid" onSubmit={login} style={{ gap: "1rem", maxWidth: "520px" }}>
+            <form className="panel grid login-form" onSubmit={login}>
               <h2>Entrar</h2>
               <label className="grid" style={{ gap: "0.35rem" }}>
                 <span className="muted">E-mail</span>
@@ -1034,6 +1041,8 @@ export default function App() {
                   type="email"
                   required
                   className="field-input"
+                  placeholder="voce@empresa.com"
+                  autoComplete="email"
                   data-testid="admin-email"
                 />
               </label>
@@ -1046,19 +1055,17 @@ export default function App() {
                   type="password"
                   required
                   className="field-input"
+                  placeholder="Sua senha"
+                  autoComplete="current-password"
                   data-testid="admin-password"
                 />
               </label>
 
-              {error && <div className="muted">Erro: {error}</div>}
+              {error && <div className="login-error">Não foi possível entrar: {error}</div>}
 
               <button className="btn" type="submit" disabled={isLoading} data-testid="admin-submit">
-                {isLoading ? "Autenticando..." : "Acessar admin"}
+                {isLoading ? "Autenticando..." : "Acessar painel"}
               </button>
-              <p className="muted" style={{ fontSize: "0.9rem" }}>
-                Dica: crie o usuário rodando `medusa user -e admin@chroma.local -p supersecret` no
-                pacote da API.
-              </p>
             </form>
           </div>
         </div>
