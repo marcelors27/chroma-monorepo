@@ -82,6 +82,9 @@ importers:
       '@medusajs/cli':
         specifier: 2.12.3
         version: 2.12.3(@types/node@22.19.3)(sqlite3@5.1.7)
+      '@medusajs/core-flows':
+        specifier: 2.12.3
+        version: 2.12.3(@medusajs/framework@2.12.3)
       '@medusajs/dashboard':
         specifier: ^2.12.3
         version: 2.12.3(typescript@5.9.3)

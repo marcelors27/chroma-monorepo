@@ -902,6 +902,11 @@ const middlewares = defineMiddlewares([
   },
   {
     method: ["ALL"],
+    matcher: ["/admin/catalog-products", "/admin/catalog-products/*"],
+    middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
+  },
+  {
+    method: ["ALL"],
     matcher: ["/admin/email-logs", "/admin/email-logs/*"],
     middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
   },
