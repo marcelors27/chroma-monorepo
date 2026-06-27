@@ -8,7 +8,7 @@ import { NavigationContainer, useFocusEffect } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { BottomTabBarProps, createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Home, Package, ClipboardList, ShoppingCart, User } from "lucide-react-native";
 import { TamaguiProvider } from "tamagui";
 import tamaguiConfig from "../tamagui.config";
@@ -446,10 +446,15 @@ const App = () => (
                 <AuthProvider>
                   <CondoProviderWithAuth>
                     <CartProvider>
-                      <NavigationContainer>
-                        <RootNavigator />
-                        <GlobalLoadingOverlay />
-                      </NavigationContainer>
+                      <KeyboardAvoidingView
+                        style={{ flex: 1 }}
+                        behavior={Platform.OS === "ios" ? "padding" : "height"}
+                      >
+                        <NavigationContainer>
+                          <RootNavigator />
+                          <GlobalLoadingOverlay />
+                        </NavigationContainer>
+                      </KeyboardAvoidingView>
                     </CartProvider>
                   </CondoProviderWithAuth>
                 </AuthProvider>
