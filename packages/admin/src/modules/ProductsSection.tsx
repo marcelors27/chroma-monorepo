@@ -1,4 +1,4 @@
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react"
+import { FormEvent, Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import {
@@ -27,6 +27,7 @@ import {
 import { formatMoney } from "../utils/format"
 
 type VariantLocation = { id: string; name: string; stocked?: number | null }
+const PRODUCT_PAGE_SIZE = 50
 
 type ProductsSectionProps = {
   medusaUrl: string
@@ -141,6 +142,8 @@ export default function ProductsSection({
     manufacturer_id: "",
   })
   const [manufacturerFilter, setManufacturerFilter] = useState("")
+  const [productsLoadingMore, setProductsLoadingMore] = useState(false)
+  const productsLoadingMoreRef = useRef(false)
   const [catalogImportFile, setCatalogImportFile] = useState<File | null>(null)
   const [catalogImportForm, setCatalogImportForm] = useState({
     shipping_profile_id: "",
@@ -768,9 +771,10 @@ export default function ProductsSection({
     const productFields = encodeURIComponent(
       "+variants.inventory_quantity,+variants.prices,+variants.title,+variants.id,+variants.sku,+metadata,+shipping_profile_id"
     )
-    const res = await fetch(`${medusaUrl}/admin/products?limit=50&fields=${productFields}`, {
-      headers,
-    })
+    const res = await fetch(
+      `${medusaUrl}/admin/products?limit=${PRODUCT_PAGE_SIZE}&fields=${productFields}`,
+      { headers }
+    )
     if (!res.ok) return
     const json = await res.json()
     setProducts(json.products ?? [])
@@ -1269,6 +1273,56 @@ export default function ProductsSection({
       return String(metadata.manufacturer_id || "") === manufacturerFilter
     })
   }, [products, manufacturerFilter])
+
+  const loadMoreProducts = async () => {
+    if (mode !== "list") return
+    if (productsLoadingMoreRef.current) return
+    if (products.length >= productCount) return
+
+    productsLoadingMoreRef.current = true
+    setProductsLoadingMore(true)
+    setProductError(null)
+    try {
+      const productFields = encodeURIComponent(
+        "+variants.inventory_quantity,+variants.prices,+variants.title,+variants.id,+variants.sku,+metadata,+shipping_profile_id"
+      )
+      const res = await fetch(
+        `${medusaUrl}/admin/products?limit=${PRODUCT_PAGE_SIZE}&offset=${products.length}&fields=${productFields}`,
+        { headers }
+      )
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || "Não foi possível carregar mais produtos.")
+      }
+      const json = await res.json()
+      const nextProducts = json.products ?? []
+      setProducts((prev) => {
+        const seen = new Set(prev.map((item) => item.id))
+        const uniqueNext = nextProducts.filter((item: Product) => !seen.has(item.id))
+        return [...prev, ...uniqueNext]
+      })
+      setProductsCount(Number(json.count ?? productCount))
+    } catch (err: any) {
+      setProductError(err?.message || "Erro ao carregar mais produtos.")
+    } finally {
+      productsLoadingMoreRef.current = false
+      setProductsLoadingMore(false)
+    }
+  }
+
+  useEffect(() => {
+    if (mode !== "list") return
+    const onScroll = () => {
+      const distanceToBottom =
+        document.documentElement.scrollHeight - (window.innerHeight + window.scrollY)
+      if (distanceToBottom < 480) {
+        loadMoreProducts()
+      }
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [mode, products.length, productCount, medusaUrl, headers])
 
   if (isDeleteMode) {
     if (!activeProduct) {
@@ -2302,7 +2356,11 @@ export default function ProductsSection({
         >
           <h3>Catálogo recente</h3>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span className="pill">{filteredCatalogProducts.length} itens</span>
+            <span className="pill">
+              {manufacturerFilter
+                ? `${filteredCatalogProducts.length} filtrados`
+                : `${products.length} de ${productCount}`}
+            </span>
             <button
               className="btn btn-secondary btn-sm btn-icon"
               type="button"
@@ -2494,9 +2552,21 @@ export default function ProductsSection({
                   </Fragment>
                 )
               })}
+              {productsLoadingMore && (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: "center" }}>
+                    Carregando mais produtos...
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
+        {!productsLoadingMore && products.length < productCount && (
+          <div className="muted" style={{ marginTop: "0.75rem", textAlign: "center" }}>
+            Role para carregar mais produtos.
+          </div>
+        )}
       </section>
     </div>
   )
