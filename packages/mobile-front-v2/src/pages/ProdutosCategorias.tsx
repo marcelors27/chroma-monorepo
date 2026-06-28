@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { Header } from "@/components/layout/Header";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import fallbackImage from "@/assets/condo-background.jpg";
 import {
   getProductCategory,
   getProductImage,
@@ -81,13 +82,7 @@ export default function ProdutosCategorias() {
     onPress: () => void;
   }) => (
     <Pressable style={styles.heroCard} onPress={onPress}>
-      {image ? (
-        <Image source={{ uri: image }} style={styles.heroImage} resizeMode="cover" />
-      ) : (
-        <View style={styles.heroImageFallback}>
-          <Text style={styles.heroFallbackText}>Sem imagem</Text>
-        </View>
-      )}
+      <Image source={image ? { uri: image } : fallbackImage} style={styles.heroImage} resizeMode="cover" />
       <View style={styles.heroOverlay} />
       <Text style={styles.heroTitle} numberOfLines={2}>
         {title}
@@ -198,17 +193,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: "100%",
     height: "100%",
-  },
-  heroImageFallback: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(38, 47, 62, 0.9)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroFallbackText: {
-    color: "#8C98A8",
-    fontSize: 11,
-    fontWeight: "600",
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,

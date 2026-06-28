@@ -37,6 +37,7 @@ export function ProductCard({
   const discount = originalPrice ? Math.round((1 - price / originalPrice) * 100) : 0;
   const isOnSale = Boolean(isOnPromotion) || discount > 0;
   const handlePress = onPress ?? (() => navigation.navigate("ProductDetails" as never, { id } as never));
+  const imageSource = typeof image === "string" && image.trim() ? { uri: image } : fallbackImage;
 
   return (
     <Pressable
@@ -44,7 +45,7 @@ export function ProductCard({
       style={[styles.card, style]}
     >
       <View style={styles.media}>
-        <ImageWithSkeleton source={{ uri: image }} style={styles.mediaImage} defaultSource={fallbackImage} />
+        <ImageWithSkeleton source={imageSource} style={styles.mediaImage} defaultSource={fallbackImage} />
         {isOnSale && (
           <View style={styles.discountTag}>
             <Text style={styles.discountText}>{discount > 0 ? `PROMO -${discount}%` : "PROMO"}</Text>

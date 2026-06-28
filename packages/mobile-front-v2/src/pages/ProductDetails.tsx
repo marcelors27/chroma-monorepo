@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import {
   ArrowLeft,
@@ -43,6 +43,8 @@ type MediaItem = {
   url: string;
   thumbnail?: string;
 };
+
+const fallbackImageUrl = Image.resolveAssetSource(fallbackImage).uri;
 
 const getYouTubeId = (url: string) => {
   const match =
@@ -116,7 +118,7 @@ export default function ProductDetails() {
         const url = resolveMediaUrl(img?.url || img?.thumbnail || img);
         return url ? ({ type: "image", url } as MediaItem) : null;
       }).filter(Boolean) || [];
-    const fallbackImage = getProductImage(rawProduct);
+    const productFallbackImage = getProductImage(rawProduct);
     const media: MediaItem[] = [];
     if (variantImage && typeof variantImage === "string") {
       const resolvedVariant = resolveMediaUrl(variantImage);
@@ -125,8 +127,8 @@ export default function ProductDetails() {
       }
     }
     media.push(...(images as MediaItem[]));
-    if (!media.length && fallbackImage) {
-      media.push({ type: "image", url: fallbackImage });
+    if (!media.length) {
+      media.push({ type: "image", url: productFallbackImage || fallbackImageUrl });
     }
     const featuresFromTags = rawProduct.tags?.map((tag) => tag?.value).filter(Boolean) || [];
     return {
