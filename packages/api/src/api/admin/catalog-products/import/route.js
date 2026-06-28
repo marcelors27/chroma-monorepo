@@ -1,3 +1,4 @@
+const crypto = require("crypto")
 const zlib = require("zlib")
 const {
   ContainerRegistrationKeys,
@@ -7,6 +8,7 @@ const {
 } = require("@medusajs/framework/utils")
 const {
   createProductsWorkflow,
+  linkProductsToSalesChannelWorkflow,
   updateProductsWorkflow,
   updateProductVariantsWorkflow,
 } = require("@medusajs/core-flows")
@@ -56,6 +58,10 @@ const slugify = (value) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "")
     .slice(0, 80)
+
+const normalizeManufacturerName = (value) => String(value || "").trim().replace(/\s+/g, " ")
+
+const normalizeManufacturerKey = (value) => normalizeManufacturerName(value).toLowerCase()
 
 const decodeXml = (value) =>
   String(value || "")
@@ -222,12 +228,73 @@ const getImportMetadata = (row) => ({
   observacoes_programador: row.observacoes_programador || null,
 })
 
+const ensureManufacturers = async (scope, rows) => {
+  const db = scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
+  const byKey = new Map()
+
+  for (const row of rows) {
+    const name = normalizeManufacturerName(row.marca_sugerida)
+    const slug = slugify(name)
+    if (!name || !slug || byKey.has(normalizeManufacturerKey(name))) continue
+    byKey.set(normalizeManufacturerKey(name), { name, slug })
+  }
+
+  if (!byKey.size) return new Map()
+
+  const slugs = Array.from(byKey.values()).map((item) => item.slug)
+  const existingRows = await db("manufacturers")
+    .select("id", "name", "slug", "image_url")
+    .whereIn("slug", slugs)
+  const existingBySlug = new Map(existingRows.map((item) => [item.slug, item]))
+
+  const now = new Date()
+  for (const item of byKey.values()) {
+    if (existingBySlug.has(item.slug)) continue
+    const payload = {
+      id: crypto.randomUUID ? crypto.randomUUID() : `manufacturer-${Date.now()}-${item.slug}`,
+      name: item.name,
+      slug: item.slug,
+      image_url: null,
+      is_active: true,
+      sort_order: 0,
+      created_at: now,
+      updated_at: now,
+    }
+    try {
+      await db("manufacturers").insert(payload)
+      existingBySlug.set(payload.slug, payload)
+    } catch (err) {
+      const existing = await db("manufacturers")
+        .select("id", "name", "slug", "image_url")
+        .where({ slug: item.slug })
+        .first()
+      if (existing) {
+        existingBySlug.set(existing.slug, existing)
+      } else {
+        throw err
+      }
+    }
+  }
+
+  const manufacturersByName = new Map()
+  for (const item of byKey.values()) {
+    const manufacturer = existingBySlug.get(item.slug)
+    if (manufacturer) {
+      manufacturersByName.set(normalizeManufacturerKey(item.name), manufacturer)
+    }
+  }
+  return manufacturersByName
+}
+
 const buildProductPayload = (row, options) => {
   const title = row.nome_comercial || row.produto
   const description = row.descricao_tecnica || row.aplicacao || null
   const unit = row.unidade_de_venda || "Única"
   const amount = toAmount(row.preco_venda, options.default_price)
   const metadata = getImportMetadata(row)
+  const manufacturer = options.manufacturers_by_name?.get(
+    normalizeManufacturerKey(row.marca_sugerida)
+  )
 
   return {
     title,
@@ -242,7 +309,10 @@ const buildProductPayload = (row, options) => {
     metadata: {
       catalog_import: metadata,
       featured: metadata.mais_vendido || metadata.produto_em_promocao || undefined,
-      manufacturer_name: row.marca_sugerida || undefined,
+      manufacturer_id: manufacturer?.id || undefined,
+      manufacturer_slug: manufacturer?.slug || undefined,
+      manufacturer_name: manufacturer?.name || row.marca_sugerida || undefined,
+      manufacturer_image_url: manufacturer?.image_url || undefined,
     },
     variants: [
       {
@@ -283,6 +353,7 @@ const findVariantsBySku = async (scope, skus) => {
         "product.images.id",
         "product.images.url",
         "product.metadata",
+        "product.sales_channels.id",
         "price_set.prices.id",
         "price_set.prices.currency_code",
       ],
@@ -295,6 +366,19 @@ const findVariantsBySku = async (scope, skus) => {
     }
   }
   return bySku
+}
+
+const resolveSalesChannelId = async (scope, requestedId) => {
+  if (requestedId) return requestedId
+  const remoteQuery = scope.resolve(ContainerRegistrationKeys.REMOTE_QUERY)
+  const channels = await remoteQuery(
+    remoteQueryObjectFromString({
+      entryPoint: "sales_channel",
+      variables: { limit: 1 },
+      fields: ["id"],
+    })
+  )
+  return channels?.[0]?.id || null
 }
 
 const createRows = async (scope, rows, options, summary, results) => {
@@ -394,6 +478,18 @@ const updateExistingRow = async (scope, row, existing, options) => {
     },
   })
 
+  const existingSalesChannelIds = Array.isArray(existing.product?.sales_channels)
+    ? existing.product.sales_channels.map((channel) => channel.id)
+    : []
+  if (options.sales_channel_id && !existingSalesChannelIds.includes(options.sales_channel_id)) {
+    await linkProductsToSalesChannelWorkflow(scope).run({
+      input: {
+        id: options.sales_channel_id,
+        add: [existing.product_id],
+      },
+    })
+  }
+
   return { action: "updated", product_id: existing.product_id, variant_id: existing.id, sku: row.sku }
 }
 
@@ -425,11 +521,14 @@ const POST = async (req, res) => {
 
   const summary = { created: 0, updated: 0, skipped: skipped.length, failed: 0 }
   const results = [...skipped.map((item) => ({ ...item, action: "skipped" }))]
+  const manufacturersByName = await ensureManufacturers(req.scope, uniqueRows)
+  const salesChannelId = await resolveSalesChannelId(req.scope, body.sales_channel_id || null)
   const options = {
     shipping_profile_id: body.shipping_profile_id,
-    sales_channel_id: body.sales_channel_id || null,
+    sales_channel_id: salesChannelId,
     default_price: body.default_price,
     currency_code: body.currency_code || DEFAULT_CURRENCY,
+    manufacturers_by_name: manufacturersByName,
   }
   const existingBySku = await findVariantsBySku(
     req.scope,
