@@ -622,6 +622,8 @@ const withProductQuery = (path: string) => {
   return path.includes("?") ? `${path}&${query}` : `${path}?${query}`;
 };
 
+const PRODUCT_LIST_PAGE_SIZE = 50;
+
 export const clearSession = async () => {
   await setToken(null);
   await setCartId(null);
@@ -1009,18 +1011,30 @@ export const markNotificationsAsRead = async (readIds: string[]) => {
 };
 
 export const listProducts = async () => {
-  const data = await apiFetch<{ products: MedusaProduct[] }>(withProductQuery("/store/products"), {
-    method: "GET",
-  });
+  const products: MedusaProduct[] = [];
+  let offset = 0;
+
+  while (true) {
+    const data = await apiFetch<{ products: MedusaProduct[] }>(
+      withProductQuery(`/store/products?limit=${PRODUCT_LIST_PAGE_SIZE}&offset=${offset}`),
+      { method: "GET" }
+    );
+    const page = data?.products || [];
+    products.push(...page);
+
+    if (page.length < PRODUCT_LIST_PAGE_SIZE) break;
+    offset += page.length;
+  }
+
   if (DEBUG) {
-    const sample = data?.products?.[0];
+    const sample = products[0];
     console.debug("[medusa] products sample images", {
       id: sample?.id,
       thumbnail: sample?.thumbnail,
       images: sample?.images,
     });
   }
-  return data;
+  return { products };
 };
 
 export const retrieveProduct = async (id: string) => {
