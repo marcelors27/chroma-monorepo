@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import { resolveBusinessBackground } from "@/lib/business-background";
+import { getProductImageSrc, handleProductImageError } from "@/lib/product-image-fallback";
 import { formatMoney } from "@/lib/medusa";
 import { ShoppingCart, Trash2 } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -76,8 +77,9 @@ const Cart = () => {
                   >
                     <div className="w-24 h-24 border-2 border-border overflow-hidden flex-shrink-0">
                       <img
-                        src={item.image}
+                        src={getProductImageSrc(item.image)}
                         alt={item.name}
+                        onError={handleProductImageError}
                         className="w-full h-full object-cover"
                       />
                     </div>

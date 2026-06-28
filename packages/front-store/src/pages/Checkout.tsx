@@ -17,6 +17,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import { resolveBusinessBackground } from "@/lib/business-background";
+import { getProductImageSrc, handleProductImageError } from "@/lib/product-image-fallback";
 import {
   completeCart,
   createRecurrence,
@@ -1065,8 +1066,9 @@ const Checkout = () => {
                       <div key={item.id} className="flex gap-3 border-b border-border/60 pb-3 last:border-b-0 last:pb-0">
                         <div className="w-12 h-12 border-2 border-border overflow-hidden flex-shrink-0">
                           <img
-                            src={item.image}
+                            src={getProductImageSrc(item.image)}
                             alt={item.name}
+                            onError={handleProductImageError}
                             className="w-full h-full object-cover"
                           />
                         </div>

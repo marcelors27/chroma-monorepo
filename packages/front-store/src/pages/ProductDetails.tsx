@@ -7,6 +7,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { ProductReviews } from "@/components/ProductReviews";
 import { ArrowLeft, Minus, Plus, ShoppingCart, ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { getProductImageSrc, handleProductImageError } from "@/lib/product-image-fallback";
 import {
   getProductCategory,
   getProductImage,
@@ -329,8 +330,9 @@ const ProductDetails = () => {
             <div className="relative border-2 border-border bg-card aspect-square overflow-hidden">
               {mainMedia?.type === "image" && (
                 <img
-                  src={mainMedia.src}
+                  src={getProductImageSrc(mainMedia.src)}
                   alt={product.title}
+                  onError={handleProductImageError}
                   className="w-full h-full object-cover"
                 />
               )}
@@ -384,8 +386,9 @@ const ProductDetails = () => {
                   >
                     {item.type === "image" ? (
                       <img
-                        src={item.src}
+                        src={getProductImageSrc(item.src)}
                         alt={`${product.title} ${index + 1}`}
+                        onError={handleProductImageError}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -501,7 +504,12 @@ const ProductDetails = () => {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {relatedProducts.map((item) => (
                 <Link key={item.id} to={`/product/${item.id}`} className="border-2 border-border p-3 hover:border-primary transition-colors">
-                  <img src={getProductImage(item)} alt={item.name} className="aspect-square object-cover mb-2" />
+                  <img
+                    src={getProductImageSrc(getProductImage(item))}
+                    alt={item.name}
+                    onError={handleProductImageError}
+                    className="aspect-square object-cover mb-2"
+                  />
                   <p className="font-semibold">{item.name}</p>
                   <p className="text-primary font-bold">{formatMoney(item.price)}</p>
                 </Link>

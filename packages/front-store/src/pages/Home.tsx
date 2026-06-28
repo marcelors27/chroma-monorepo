@@ -18,6 +18,7 @@ import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import { resolveBusinessBackground } from "@/lib/business-background";
+import { getProductImageSrc, handleProductImageError } from "@/lib/product-image-fallback";
 import {
   getProductCategory,
   getProductImage,
@@ -620,8 +621,9 @@ const Home = () => {
                 >
                   <div className="relative aspect-video bg-secondary">
                     <img
-                      src={promo.image}
+                      src={getProductImageSrc(promo.image)}
                       alt={promo.title}
+                      onError={handleProductImageError}
                       className="w-full h-full object-cover"
                     />
                     {showPromotionBadge && (
@@ -888,17 +890,12 @@ const Home = () => {
                   }}
                 >
                   <div className="relative aspect-video bg-secondary">
-                    {product.image ? (
-                      <img
-                        src={product.image}
-                        alt={product.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-                        Sem imagem
-                      </div>
-                    )}
+                    <img
+                      src={getProductImageSrc(product.image)}
+                      alt={product.title}
+                      onError={handleProductImageError}
+                      className="w-full h-full object-cover"
+                    />
                     {product.onSale && (
                       <Badge className="absolute top-2 right-2 bg-destructive text-destructive-foreground">
                         {showDiscount ? (

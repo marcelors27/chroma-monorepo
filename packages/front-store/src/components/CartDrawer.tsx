@@ -11,6 +11,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { formatMoney } from "@/lib/medusa";
+import { getProductImageSrc, handleProductImageError } from "@/lib/product-image-fallback";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   Select,
@@ -80,8 +81,9 @@ const CartDrawer = () => {
                     >
                       <div className="w-20 h-20 border-2 border-border overflow-hidden flex-shrink-0">
                         <img
-                          src={item.image}
+                          src={getProductImageSrc(item.image)}
                           alt={item.name}
+                          onError={handleProductImageError}
                           className="w-full h-full object-cover"
                         />
                       </div>

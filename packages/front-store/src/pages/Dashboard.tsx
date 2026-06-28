@@ -17,6 +17,7 @@ import { useCart } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import { useBusinessTerms } from "@/contexts/BusinessTypeContext";
 import { resolveBusinessBackground } from "@/lib/business-background";
+import { getProductImageSrc, handleProductImageError } from "@/lib/product-image-fallback";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   getProductCategory,
@@ -708,8 +709,9 @@ const ProductCard = ({
       >
         <div className="aspect-square bg-secondary mb-2 sm:mb-4 border-2 border-border overflow-hidden">
           <img 
-            src={product.image} 
+            src={getProductImageSrc(product.image)}
             alt={product.name}
+            onError={handleProductImageError}
             className="w-full h-full object-cover"
           />
         </div>
