@@ -33,7 +33,9 @@ type ProductsSectionProps = {
   token: string | null
   headers: Record<string, string>
   products: Product[]
+  productCount: number
   setProducts: Dispatch<SetStateAction<Product[]>>
+  setProductsCount: Dispatch<SetStateAction<number>>
   salesChannels: SalesChannel[]
   shippingOptions: ShippingOption[]
   shippingProfiles: ShippingProfile[]
@@ -49,7 +51,9 @@ export default function ProductsSection({
   token,
   headers,
   products,
+  productCount,
   setProducts,
+  setProductsCount,
   salesChannels,
   shippingOptions,
   shippingProfiles,
@@ -727,6 +731,7 @@ export default function ProductsSection({
         throw new Error(body || "Não foi possível excluir o produto.")
       }
       setProducts((prev) => prev.filter((item) => item.id !== productId))
+      setProductsCount((prev) => Math.max(0, prev - 1))
       return true
     } catch (err: any) {
       setProductEditError(err?.message || "Erro ao excluir produto.")
@@ -769,6 +774,7 @@ export default function ProductsSection({
     if (!res.ok) return
     const json = await res.json()
     setProducts(json.products ?? [])
+    setProductsCount(Number(json.count ?? json.products?.length ?? 0))
   }
 
   const importCatalogProducts = async (event: FormEvent) => {
@@ -1007,6 +1013,7 @@ export default function ProductsSection({
       const json = await res.json()
       if (json?.product) {
         setProducts((prev) => [json.product, ...prev])
+        setProductsCount((prev) => prev + 1)
       }
 
       if (json?.product?.id) {
@@ -2159,7 +2166,7 @@ export default function ProductsSection({
       <section className="grid grid-3">
         <div className="panel grid" style={{ gap: "0.35rem" }}>
           <span className="muted">Produtos</span>
-          <strong style={{ fontSize: "1.6rem" }}>{products.length}</strong>
+          <strong style={{ fontSize: "1.6rem" }}>{productCount}</strong>
           <span className="muted">Em catálogo</span>
         </div>
         <div className="panel grid" style={{ gap: "0.35rem" }}>

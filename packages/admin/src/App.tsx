@@ -133,6 +133,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [products, setProducts] = useState<Product[]>([])
+  const [productsCount, setProductsCount] = useState(0)
   const [orders, setOrders] = useState<Order[]>([])
   const [pendingCompanies, setPendingCompanies] = useState<PendingCompany[]>([])
   const [pendingCompaniesError, setPendingCompaniesError] = useState<string | null>(null)
@@ -169,7 +170,9 @@ export default function App() {
       token={token}
       headers={headers}
       products={products}
+      productCount={productsCount}
       setProducts={setProducts}
+      setProductsCount={setProductsCount}
       salesChannels={salesChannels}
       shippingOptions={shippingOptions}
       shippingProfiles={shippingProfiles}
@@ -188,7 +191,9 @@ export default function App() {
         token={token}
         headers={headers}
         products={products}
+        productCount={productsCount}
         setProducts={setProducts}
+        setProductsCount={setProductsCount}
         salesChannels={salesChannels}
         shippingOptions={shippingOptions}
         shippingProfiles={shippingProfiles}
@@ -209,7 +214,9 @@ export default function App() {
         token={token}
         headers={headers}
         products={products}
+        productCount={productsCount}
         setProducts={setProducts}
+        setProductsCount={setProductsCount}
         salesChannels={salesChannels}
         shippingOptions={shippingOptions}
         shippingProfiles={shippingProfiles}
@@ -392,7 +399,7 @@ export default function App() {
         count: pendingCompanies.length,
       },
       { id: "parceiros", label: "Parceiros", path: "/parceiros", count: companies.length },
-      { id: "produtos", label: "Produtos", path: "/produtos", count: products.length },
+      { id: "produtos", label: "Produtos", path: "/produtos", count: productsCount },
       { id: "fabricantes", label: "Fabricantes", path: "/fabricantes", count: manufacturers.length },
       { id: "entregas", label: "Formas de entrega", path: "/entregas", count: deliveryMethodsCount },
       { id: "zonas-servico", label: "Zonas de serviço", path: "/zonas-servico", count: serviceZonesCount },
@@ -415,7 +422,7 @@ export default function App() {
       orders.length,
       pendingCompanies.length,
       priceLists.length,
-      products.length,
+      productsCount,
       deliveryMethodsCount,
       serviceZonesCount,
       salesChannels.length,
@@ -722,6 +729,7 @@ export default function App() {
         if (productsRes.ok) {
           const json = await productsRes.json()
           setProducts(json.products ?? [])
+          setProductsCount(Number(json.count ?? json.products?.length ?? 0))
         }
         if (ordersRes.ok) {
           const json = await ordersRes.json()
@@ -1135,7 +1143,7 @@ export default function App() {
                       averageTicket={averageTicket}
                       openOrders={openOrders}
                       itemsPurchased={itemsPurchased}
-                      productsCount={products.length}
+                      productsCount={productsCount}
                       pendingCompaniesCount={pendingCompanies.length}
                       dashboardOrdersCount={dashboardOrders.length}
                       recentOrders={recentOrders}
@@ -1497,7 +1505,9 @@ export default function App() {
                       token={token}
                       headers={headers}
                       products={products}
+                      productCount={productsCount}
                       setProducts={setProducts}
+                      setProductsCount={setProductsCount}
                       salesChannels={salesChannels}
                       shippingOptions={shippingOptions}
                       shippingProfiles={shippingProfiles}
