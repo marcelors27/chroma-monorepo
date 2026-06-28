@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
@@ -20,6 +20,34 @@ const MAX_MANUFACTURERS = 40;
 type CategoryHero = {
   label: string;
   image?: string;
+};
+
+const HeroCard = ({
+  title,
+  image,
+  onPress,
+}: {
+  title: string;
+  image?: string | null;
+  onPress: () => void;
+}) => {
+  const [hasImageError, setHasImageError] = useState(false);
+  const imageSource = image && !hasImageError ? { uri: image } : fallbackImage;
+
+  return (
+    <Pressable style={styles.heroCard} onPress={onPress}>
+      <Image
+        source={imageSource}
+        style={styles.heroImage}
+        resizeMode="cover"
+        onError={() => setHasImageError(true)}
+      />
+      <View style={styles.heroOverlay} />
+      <Text style={styles.heroTitle} numberOfLines={2}>
+        {title}
+      </Text>
+    </Pressable>
+  );
 };
 
 export default function ProdutosCategorias() {
@@ -71,24 +99,6 @@ export default function ProdutosCategorias() {
     }
     navigation.navigate("ProdutosIndex" as never, params as never);
   };
-
-  const HeroCard = ({
-    title,
-    image,
-    onPress,
-  }: {
-    title: string;
-    image?: string | null;
-    onPress: () => void;
-  }) => (
-    <Pressable style={styles.heroCard} onPress={onPress}>
-      <Image source={image ? { uri: image } : fallbackImage} style={styles.heroImage} resizeMode="cover" />
-      <View style={styles.heroOverlay} />
-      <Text style={styles.heroTitle} numberOfLines={2}>
-        {title}
-      </Text>
-    </Pressable>
-  );
 
   return (
     <AuthenticatedLayout>

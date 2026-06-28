@@ -403,11 +403,12 @@ const Dashboard = () => {
                       isActive ? "border-primary ring-2 ring-primary/30" : "border-border"
                     }`}
                   >
-                    {option.image ? (
-                      <img src={option.image} alt={option.label} className="absolute inset-0 w-full h-full object-cover" />
-                    ) : (
-                      <div className="absolute inset-0 bg-muted" />
-                    )}
+                    <img
+                      src={getProductImageSrc(option.image)}
+                      alt={option.label}
+                      onError={handleProductImageError}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" />
                     <span className="relative text-sm font-semibold text-white">{option.label}</span>
                   </button>
@@ -442,11 +443,12 @@ const Dashboard = () => {
                       isActive ? "border-primary ring-2 ring-primary/30" : "border-border"
                     }`}
                   >
-                    {option.image ? (
-                      <img src={option.image} alt={option.label} className="absolute inset-0 w-full h-full object-cover" />
-                    ) : (
-                      <div className="absolute inset-0 bg-muted" />
-                    )}
+                    <img
+                      src={getProductImageSrc(option.image)}
+                      alt={option.label}
+                      onError={handleProductImageError}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" />
                     <span className="relative text-sm font-semibold text-white">{option.label}</span>
                   </button>

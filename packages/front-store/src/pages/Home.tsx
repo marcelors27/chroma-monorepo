@@ -815,18 +815,13 @@ const Home = () => {
                 className="min-w-[160px] border-2 border-border bg-card p-3 hover:border-primary transition-colors"
               >
                 <div className="aspect-[4/3] bg-secondary border border-border overflow-hidden mb-2 rounded-md">
-                  {manufacturer.image_url ? (
-                    <img
-                      src={manufacturer.image_url}
-                      alt={manufacturer.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                      Sem imagem
-                    </div>
-                  )}
+                  <img
+                    src={getProductImageSrc(manufacturer.image_url)}
+                    alt={manufacturer.name}
+                    onError={handleProductImageError}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
                 </div>
                 <p className="font-medium text-sm line-clamp-2">{manufacturer.name}</p>
               </Link>

@@ -11,8 +11,10 @@ import { Header } from "@/components/layout/Header";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { NewsCard } from "@/components/ui/NewsCard";
 import { ProductCard } from "@/components/ui/ProductCard";
+import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Skeleton } from "@/components/ui/skeleton";
+import fallbackImage from "@/assets/condo-background.jpg";
 import { toast } from "@/lib/toast";
 import { useCondo } from "@/contexts/CondoContext";
 import { useCart } from "@/contexts/CartContext";
@@ -520,11 +522,11 @@ export default function Index() {
                   }
                 >
                   <View style={styles.manufacturerImageWrap}>
-                    {manufacturer.image_url ? (
-                      <Image source={{ uri: manufacturer.image_url }} style={styles.manufacturerImage} resizeMode="cover" />
-                    ) : (
-                      <Text style={styles.manufacturerImageFallback}>Sem imagem</Text>
-                    )}
+                    <ImageWithSkeleton
+                      source={manufacturer.image_url ? { uri: manufacturer.image_url } : fallbackImage}
+                      style={styles.manufacturerImage}
+                      defaultSource={fallbackImage}
+                    />
                   </View>
                   <Text style={styles.manufacturerName} numberOfLines={2}>
                     {manufacturer.name}
@@ -824,10 +826,6 @@ const styles = StyleSheet.create({
   manufacturerImage: {
     width: "100%",
     height: "100%",
-  },
-  manufacturerImageFallback: {
-    color: "#8C98A8",
-    fontSize: 11,
   },
   manufacturerName: {
     color: "#E6E8EA",
