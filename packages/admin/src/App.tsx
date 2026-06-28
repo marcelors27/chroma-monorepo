@@ -1109,7 +1109,7 @@ export default function App() {
         <div className="page-background" style={appBackgroundStyle}>
           <div className="app-shell">
             <aside className="sidebar">
-              <div className="grid" style={{ gap: "0.4rem" }}>
+              <div className="sidebar-header">
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <img src={logo} alt="Chroma" style={{ width: "28px", height: "28px" }} />
                   <span className="pill">Chroma Admin</span>
