@@ -161,6 +161,7 @@ export default function App() {
   const [serviceZonesCount, setServiceZonesCount] = useState(0)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [dashboardDays, setDashboardDays] = useState<7 | 30 | 90>(7)
+  const [openNavGroups, setOpenNavGroups] = useState<Record<string, boolean>>({})
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -476,6 +477,7 @@ export default function App() {
   const navGroups = useMemo(
     () => [
       {
+        id: "comercial",
         label: "Comercial",
         items: ["dashboard", "pedidos", "produtos"]
           .map((id) => sectionById.get(id))
@@ -483,6 +485,7 @@ export default function App() {
           .filter(Boolean),
       },
       {
+        id: "marketing",
         label: "Marketing",
         items: ["noticias", "marketing", "promocoes", "push"]
           .map((id) => sectionById.get(id))
@@ -490,6 +493,7 @@ export default function App() {
           .filter(Boolean),
       },
       {
+        id: "financeiro",
         label: "Financeiro",
         items: ["pagamentos", "cobrancas", "pix-manual", "test-payment-logs"]
           .map((id) => sectionById.get(id))
@@ -497,6 +501,7 @@ export default function App() {
           .filter(Boolean),
       },
       {
+        id: "operacoes",
         label: "Operações",
         items: ["estoque", "entregas", "zonas-servico"]
           .map((id) => sectionById.get(id))
@@ -504,6 +509,7 @@ export default function App() {
           .filter(Boolean),
       },
       {
+        id: "configuracoes",
         label: "Configurações",
         items: [
           "estabelecimentos-pendentes",
@@ -523,6 +529,28 @@ export default function App() {
     ],
     [sectionById, currentProfile, isHardcodedAdmin, permittedSections]
   )
+
+  const visibleNavGroups = useMemo(
+    () => navGroups.filter((group) => group.items.length > 0),
+    [navGroups]
+  )
+
+  const activeNavGroupId = useMemo(() => {
+    return visibleNavGroups.find((group) =>
+      group.items.some(
+        (item) => location.pathname === item!.path || location.pathname.startsWith(`${item!.path}/`)
+      )
+    )?.id
+  }, [location.pathname, visibleNavGroups])
+
+  useEffect(() => {
+    if (!activeNavGroupId) return
+    setOpenNavGroups((current) => ({ ...current, [activeNavGroupId]: true }))
+  }, [activeNavGroupId])
+
+  const toggleNavGroup = (groupId: string) => {
+    setOpenNavGroups((current) => ({ ...current, [groupId]: !current[groupId] }))
+  }
 
   const headers = useMemo(
     () => ({
@@ -1092,29 +1120,38 @@ export default function App() {
                 </span>
               </div>
               <nav className="nav">
-                {navGroups.filter((group) => group.items.length > 0).map((group) => (
-                  <div key={group.label} style={{ marginTop: "0.75rem" }}>
-                    <span
-                      className="muted"
-                      style={{ fontSize: "0.75rem", letterSpacing: "0.06em" }}
-                    >
-                      {group.label}
-                    </span>
-                    <div className="grid" style={{ gap: "0.35rem", marginTop: "0.35rem" }}>
-                      {group.items.map((item) => (
-                        <NavLink
-                          key={item!.id}
-                          className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
-                          to={item!.path}
-                          data-testid={`admin-nav-${item!.id}`}
-                        >
-                          <span>{item!.label}</span>
-                          <span className="nav-badge">{item!.count}</span>
-                        </NavLink>
-                      ))}
+                {visibleNavGroups.map((group) => {
+                  const isOpen = Boolean(openNavGroups[group.id])
+                  return (
+                    <div key={group.id} className="sidebar-group">
+                      <button
+                        className="sidebar-group-trigger"
+                        type="button"
+                        onClick={() => toggleNavGroup(group.id)}
+                        aria-expanded={isOpen}
+                        aria-controls={`sidebar-group-${group.id}`}
+                      >
+                        <span>{group.label}</span>
+                        <span className="sidebar-group-chevron">{isOpen ? "▾" : "▸"}</span>
+                      </button>
+                      {isOpen && (
+                        <div id={`sidebar-group-${group.id}`} className="sidebar-group-items">
+                          {group.items.map((item) => (
+                            <NavLink
+                              key={item!.id}
+                              className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+                              to={item!.path}
+                              data-testid={`admin-nav-${item!.id}`}
+                            >
+                              <span>{item!.label}</span>
+                              <span className="nav-badge">{item!.count}</span>
+                            </NavLink>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </nav>
               <button className="btn btn-secondary" type="button" onClick={handleLogout}>
                 Sair
